@@ -25,7 +25,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.75 2003/03/20 03:55:26 david Exp $");
+RCSID("$Id: cvsps.c,v 4.76 2003/03/20 15:11:07 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -477,7 +477,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
-    debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>]");
+    debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>] [--cvs-direct]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -505,6 +505,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
     debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (they're faulty in some setups)");
+    debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);

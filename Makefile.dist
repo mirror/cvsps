@@ -6,6 +6,8 @@ OBJS=\
 	cbtcommon/debug.o\
 	cbtcommon/hash.o\
 	cbtcommon/text_util.o\
+	cbtcommon/sio.o\
+	cbtcommon/tcpsocket.o\
 	cvsps.o\
 	cache.o\
 	util.o\

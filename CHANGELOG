@@ -5,7 +5,7 @@
   never found.
 - change -f from strstr to regex
 - change regex to EXTENDED regex
-- add the cvs_direct options
+- add the --cvs-direct option
 
 2.0b5
 - add a cvs_check_cap for capability checking. 

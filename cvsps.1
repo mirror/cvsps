@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rcmds] [--diff-opts <option string>]
+[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rcmds] [--diff-opts <option string>] [--cvs-direct]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -86,6 +86,11 @@ required for stable PatchSet numbering.  Use with care.
 .B \--diffs-opts <option string>
 send a custom set of options to diff, for example to increase
 the number of context lines, or change the diff format.
+.TP
+.B \--cvs-direct
+use built-in cvs client code. This enables the 'pipelining' of multiple
+requests over a single client, reducing the overhead of handshaking and
+authentication to one per PatchSet instead of one per file.
 .SH "NOTE ON TAG HANDLING"
 Tags are fundamentally 'file at a time' in cvs, but like everything else,
 it would be nice to imagine that they are 'repository at a time.'  The

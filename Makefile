@@ -54,6 +54,8 @@ dist:
 	cat copyright.head stats.h >dist/stats.h
 	cat copyright.head cap.c >dist/cap.c
 	cat copyright.head cap.h >dist/cap.h
+	cat copyright.head cvs_direct.c >dist/cvs_direct.c
+	cat copyright.head cvs_direct.h >dist/cvs_direct.h
 	cp README dist/
 	cp COPYING dist/
 	cp cvsps.1 dist/
@@ -69,6 +71,10 @@ dist:
 	cat copyright.head $(CBTCOMMON_DIST)/debug.c >dist/cbtcommon/debug.c
 	cat copyright.head $(CBTCOMMON_DIST)/hash.c >dist/cbtcommon/hash.c
 	cat copyright.head $(CBTCOMMON_DIST)/text_util.c >dist/cbtcommon/text_util.c
+	cat copyright.head $(CBTCOMMON_DIST)/tcpsocket.c >dist/cbtcommon/tcpsocket.c
+	cat copyright.head $(CBTCOMMON_DIST)/tcpsocket.h >dist/cbtcommon/tcpsocket.h
+	cat copyright.head $(CBTCOMMON_DIST)/sio.c >dist/cbtcommon/sio.c
+	cat copyright.head $(CBTCOMMON_DIST)/sio.h >dist/cbtcommon/sio.h
 
 htdocs: dist
 	rm -fr htdocs/
