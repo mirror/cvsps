@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.91 2003/03/31 23:06:18 david Exp $");
+RCSID("$Id: cvsps.c,v 4.92 2003/04/03 18:34:04 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -102,6 +102,7 @@ static int cvs_direct;
 static int compress;
 static char compress_arg[8];
 
+static void check_norc(int, char *[]);
 static int parse_args(int, char *[]);
 static int parse_rc();
 static void load_from_cvs();
@@ -137,10 +138,18 @@ int main(int argc, char *argv[])
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
-    if (parse_args(argc, argv) < 0)
-	exit(1);
+    /*
+     * we want to parse the rc first, so command line can override it
+     * but also, --norc should stop the rc from being processed, so
+     * we look for --norc explicitly first.  Note: --norc in the rc 
+     * file itself will prevent the cvs rc file from being used.
+     */
+    check_norc(argc, argv);
 
     if (strlen(norc) == 0 && parse_rc() < 0)
+	exit(1);
+
+    if (parse_args(argc, argv) < 0)
 	exit(1);
 
     if (diff_opts && !cvs_direct && do_diff)
@@ -739,6 +748,7 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-h") == 0)
 	    return usage(NULL, NULL);
 
+	/* see special handling of --norc in main */
 	if (strcmp(argv[i], "--norc") == 0)
 	{
 	    norc = "-f";
@@ -2322,4 +2332,18 @@ static CvsFileRevision * rev_follow_branch(CvsFileRevision * rev, const char * b
     }
     
     return NULL;
+}
+
+static void check_norc(int argc, char * argv[])
+{
+    int i = 1; 
+    while (i < argc)
+    {
+	if (strcmp(argv[i], "--norc") == 0)
+	{
+	    norc = "-f";
+	    break;
+	}
+	i++;
+    }
 }
