@@ -1,5 +1,6 @@
 DEP_OBJS=cvsps.o
-include /cobite/share/libversions/Makefile.include-1
+CBT_DIR=/cobite
+include $(CBT_DIR)/share/libversions/Makefile.include-1
 
 #
 # use if trying to debug inline functions
@@ -14,10 +15,17 @@ MAJOR=1
 MINOR=3
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
+
+ifeq "$(CONFIG)" "Debug"
+RPATH+=$(CBT_DIR)/lib/debug
+else
+RPATH=$(CBT_DIR)/lib
+endif
+
 all: cvsps
 
 cvsps: $(OBJS)
-	gcc -Wl,-rpath,/cobite/lib $(LDFLAGS) -o cvsps $(OBJS) $(LIBS)
+	gcc -Wl,-rpath,$(RPATH) $(LDFLAGS) -o cvsps $(OBJS) $(LIBS)
 
 clean: this_clean
 
