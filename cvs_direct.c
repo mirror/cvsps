@@ -192,7 +192,7 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
     if ((ctx->read_fd = tcp_create_socket(REUSE_ADDR)) < 0)
 	goto out_free_err;
 
-    ctx->write_fd = ctx->read_fd;
+    ctx->write_fd = dup(ctx->read_fd);
 
     if (tcp_connect(ctx->read_fd, server, atoi(port)) < 0)
 	goto out_close_err;
@@ -320,13 +320,68 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 
 void close_cvs_server(CvsServerCtx * ctx)
 {
+    if (ctx->compressed)
+    {
+	int ret, len;
+	char buff[BUFSIZ];
+	    
+	do
+	{
+	    ctx->zout.next_out = buff;
+	    ctx->zout.avail_out = BUFSIZ;
+	    ret = deflate(&ctx->zout, Z_FINISH);
+
+	    if ((ret == Z_OK || ret == Z_STREAM_END) && ctx->zout.avail_out != BUFSIZ)
+	    {
+		len = BUFSIZ - ctx->zout.avail_out;
+		if (writen(ctx->write_fd, buff, len) != len)
+		    debug(DEBUG_APPERROR, "cvs_direct: zout: error writing final state");
+		    
+		//hexdump(buff, len, "cvs_direct: zout: sending unsent data");
+	    }
+	} while (ret == Z_OK);
+
+	do
+	{
+	    if (ctx->zin.avail_in == 0)
+	    {
+		len = read(ctx->read_fd, ctx->zread_buff, RD_BUFF_SIZE);
+		if (len > 0)
+		{
+		    ctx->zin.next_in = ctx->zread_buff;
+		    ctx->zin.avail_in = len;
+		}
+		else 
+		{
+		    debug(DEBUG_APPERROR, "cvs_direct: zin: EOF or ERROR waiting for Z_STREAM_END");
+		}
+	    }
+
+	    ctx->zin.next_out = buff;
+	    ctx->zin.avail_out = BUFSIZ;
+
+	    ret = inflate(&ctx->zin, Z_SYNC_FLUSH);
+	    len = BUFSIZ - ctx->zin.avail_out;
+	    if ((ret == Z_OK || ret == Z_STREAM_END) && len > 0)
+		hexdump(buff, BUFSIZ - ctx->zin.avail_out, "cvs_direct: zin: unread data at close");
+	} while (ret == Z_OK);
+
+	if ((ret = deflateEnd(&ctx->zout)) != Z_OK)
+	    debug(DEBUG_APPERROR, "cvs_direct: zout: deflateEnd error: %s: %s", 
+		  (ret == Z_STREAM_ERROR) ? "Z_STREAM_ERROR":"Z_DATA_ERROR", ctx->zout.msg);
+
+	if ((ret = inflateEnd(&ctx->zin)) != Z_OK)
+	    debug(DEBUG_APPERROR, "cvs_direct: zin: inflateEnd error: %s: %s", 
+		  (ret == Z_STREAM_ERROR) ? "Z_STREAM_ERROR":"Z_DATA_ERROR", ctx->zin.msg);
+    }
+
     if (ctx->read_fd >= 0)
     {
 	debug(DEBUG_TCP, "cvs_direct: closing cvs server connection %d", ctx->read_fd);
 	close(ctx->read_fd);
     }
 
-    if (ctx->write_fd >= 0 && ctx->write_fd != ctx->read_fd)
+    if (ctx->write_fd >= 0)
     {
 	debug(DEBUG_TCP, "cvs_direct: closing cvs server connection %d", ctx->write_fd);
 	close(ctx->write_fd);
