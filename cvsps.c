@@ -10,7 +10,9 @@
 #include <common/text_util.h>
 #include <common/debug.h>
 
-#define CVS_LOG_MAX 8192
+#define LOG_STR_MAX 8192
+#define AUTH_STR_MAX 64
+#define REV_STR_MAX 64
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 enum
@@ -31,15 +33,15 @@ typedef struct _CvsFile
 typedef struct _PatchSet
 {
     time_t date;
-    char author[64];
-    char descr[CVS_LOG_MAX];
+    char author[AUTH_STR_MAX];
+    char descr[LOG_STR_MAX];
     struct list_head members;
 } PatchSet;
 
 typedef struct _PatchSetMember
 {
-    char pre_rev[16];
-    char post_rev[16];
+    char pre_rev[REV_STR_MAX];
+    char post_rev[REV_STR_MAX];
     PatchSet * cp;
     CvsFile * file;
     int dead_revision;
@@ -65,12 +67,15 @@ static CvsFile * parse_file(const char *);
 static PatchSetMember * parse_revision(const char *);
 static PatchSet * get_patch_set(const char *, const char *, const char *);
 static void assign_pre_revision(PatchSetMember *, PatchSetMember *);
+static void check_print_patch_set(PatchSet *);
+static void print_patch_set(PatchSet *);
 static void show_ps_tree_node(const void *, const VISIT, const int);
 static int compare_patch_sets(const void *, const void *);
 static void convert_date(time_t *, const char *);
 static int is_revision_metadata(const char *);
 static int patch_set_contains_member(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
+static void strzncpy(char *, const char *, int);
 
 int main(int argc, char *argv[])
 {
@@ -80,8 +85,9 @@ int main(int argc, char *argv[])
     CvsFile * file = NULL;
     PatchSetMember * psm = NULL, * last_psm = NULL;
     char datebuff[20];
-    char authbuff[64];
-    char logbuff[CVS_LOG_MAX];
+    char authbuff[AUTH_STR_MAX];
+    char logbuff[LOG_STR_MAX];
+    int loglen = 0;
     int have_log = 0;
     
     parse_args(argc, argv);
@@ -107,12 +113,12 @@ int main(int argc, char *argv[])
 	    if (strncmp(buff, "RCS file", 8) == 0)
 	    {
 		file = parse_file(buff);
-		state++;
+		state = NEED_START_LOG;
 	    }
 	    break;
 	case NEED_START_LOG:
 	    if (strncmp(buff, "--------", 8) == 0)
-		state++;
+		state = NEED_REVISION;
 	    break;
 	case NEED_REVISION:
 	    if (strncmp(buff, "revision", 8) == 0)
@@ -127,7 +133,7 @@ int main(int argc, char *argv[])
 		assign_pre_revision(last_psm, psm);
 		last_psm = psm;
 		list_add(&psm->file_link, file->patch_sets.prev);
-		state++;
+		state = NEED_DATE_AUTHOR_STATE;
 	    }
 	    break;
 	case NEED_DATE_AUTHOR_STATE:
@@ -138,6 +144,7 @@ int main(int argc, char *argv[])
 		strncpy(datebuff, buff + 6, 19);
 		datebuff[19] = 0;
 
+		strcpy(authbuff, "unknown");
 		p = strstr(buff, "author: ");
 		if (p)
 		{
@@ -151,6 +158,7 @@ int main(int argc, char *argv[])
 		    }
 		}
 		
+		/* read the 'state' tag to see if this is a dead revision */
 		p = strstr(buff, "state: ");
 		if (p)
 		{
@@ -162,7 +170,7 @@ int main(int argc, char *argv[])
 			    psm->dead_revision = 1;
 		}
 
-		state++;
+		state = NEED_EOM;
 	    }
 	    break;
 	case NEED_EOM:
@@ -171,6 +179,7 @@ int main(int argc, char *argv[])
 		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
 		list_add(&psm->patch_set_link, &psm->cp->members);
 		logbuff[0] = 0;
+		loglen = 0;
 		psm = NULL;
 		state = NEED_REVISION;
 		have_log = 0;
@@ -180,6 +189,7 @@ int main(int argc, char *argv[])
 		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
 		list_add(&psm->patch_set_link, &psm->cp->members);
 		logbuff[0] = 0;
+		loglen = 0;
 		assign_pre_revision(last_psm, NULL);
 		psm = NULL;
 		last_psm = NULL;
@@ -189,14 +199,19 @@ int main(int argc, char *argv[])
 	    }
 	    else
 	    {
-		//FIXME: no silent buffer overflow
 		/* other "blahblah: information;" messages can 
 		 * follow the stuff we pay attention to
 		 */
 		if (have_log || !is_revision_metadata(buff))
 		{
+		    int len;
+		    
+		    len = min(LOG_STR_MAX - loglen, strlen(buff));
+		    memcpy(logbuff + loglen, buff, len);
+		    loglen += len;
+		    logbuff[loglen - 1] = 0;
+
 		    have_log = 1;
-		    strcat(logbuff, buff);
 		}
 		else 
 		{
@@ -210,6 +225,7 @@ int main(int argc, char *argv[])
 
     pclose(cvsfp);
     twalk(ps_tree, show_ps_tree_node);
+
     exit(0);
 }
 
@@ -322,7 +338,13 @@ static void init_strip_path()
     }
     
     rep_buff[strlen(rep_buff) - 1] = 0;
-    strip_path_len = sprintf(strip_path, "%s/%s/", p, rep_buff);
+    strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, rep_buff);
+
+    if (strip_path_len < 0)
+    {
+	debug(DEBUG_APPERROR, "strip_path overflow");
+	exit(1);
+    }
 
     debug(DEBUG_STATUS, "strip_path: %s", strip_path);
 }
@@ -382,7 +404,7 @@ static PatchSetMember * parse_revision(const char * buff)
 
     //FIXME: what about pre_rev?
     strcpy(retval->pre_rev, "UNKNOWN");
-    strcpy(retval->post_rev, buff + 9);
+    strzncpy(retval->post_rev, buff + 9, REV_STR_MAX);
     chop(retval->post_rev);
     retval->cp = NULL;
     retval->dead_revision = 0;
@@ -403,8 +425,8 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
     }
 
     convert_date(&retval->date, dte);
-    strcpy(retval->author, author);
-    strcpy(retval->descr, log);
+    strzncpy(retval->author, author, AUTH_STR_MAX);
+    strzncpy(retval->descr, log, LOG_STR_MAX);
     INIT_LIST_HEAD(&retval->members);
 
     find = (PatchSet**)tsearch(retval, &ps_tree, compare_patch_sets);
@@ -437,7 +459,7 @@ static int get_branch(char * buff, const char * rev)
 
 static void assign_pre_revision(PatchSetMember * last_psm, PatchSetMember * psm)
 {
-    char pre[16], post[16];
+    char pre[REV_STR_MAX], post[REV_STR_MAX];
 
     if (!last_psm)
 	return;
@@ -483,6 +505,22 @@ static void assign_pre_revision(PatchSetMember * last_psm, PatchSetMember * psm)
     strcpy(last_psm->pre_rev, pre);
 }
 
+static void check_print_patch_set(PatchSet * ps)
+{
+    if (restrict_date_start > 0 && 
+	(ps->date < restrict_date_start ||
+	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
+	return;
+    
+    if (restrict_author && strcmp(restrict_author, ps->author) != 0)
+	return;
+
+    if (restrict_file && !patch_set_contains_member(ps, restrict_file))
+	return;
+    
+    print_patch_set(ps);
+}
+
 static void print_patch_set(PatchSet * ps)
 {
     struct tm * tm;
@@ -525,25 +563,14 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 	{
 	    if (ps_counter == show_patch_set)
 	    {
+		print_patch_set(ps);
 		do_cvs_diff(ps);
 		exit(0);
 	    }
 	    break;
 	}
 
-	if (restrict_date_start > 0 && 
-	    (ps->date < restrict_date_start ||
-	     (restrict_date_end > 0 && ps->date > restrict_date_end)))
-	    break;
-
-	if (restrict_author && strcmp(restrict_author, ps->author) != 0)
-	    break;
-
-	if (restrict_file && !patch_set_contains_member(ps, restrict_file))
-	    break;
-
-
-	print_patch_set(ps);
+	check_print_patch_set(ps);
 
     default:
 	break;
@@ -629,6 +656,9 @@ static void do_cvs_diff(PatchSet * ps)
 {
     struct list_head * next = ps->members.next;
 
+    fflush(stdout);
+    fflush(stderr);
+
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
@@ -655,4 +685,10 @@ static void do_cvs_diff(PatchSet * ps)
 
 	next = next->next;
     }
+}
+
+static void strzncpy(char * dst, const char * src, int n)
+{
+    strncpy(dst, src, n);
+    dst[n - 1] = 0;
 }
