@@ -5,6 +5,12 @@
   before. warn if non-supported version is 
   detected
 - add --no-rcmds to manually disable rlog and rdiff
+- add a fix for some bizarre inconsistencies found
+  in some random repositories, such as tagged
+  revisions that don't exist.
+- remove the adaptive crap filter and bk_log_border
+  logic now that Larry has cleaned up the exported
+  BK->CVS trees.
 
 2.0b4
 - add the bk_log_border parsing logic to handle the
