@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.57 2003/03/16 21:45:03 david Exp $");
+RCSID("$Id: cvsps.c,v 4.58 2003/03/17 14:52:49 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1254,16 +1254,34 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
 
 static void do_cvs_diff(PatchSet * ps)
 {
-    struct list_head * next = ps->members.next;
+    struct list_head * next;
 
     fflush(stdout);
     fflush(stderr);
 
-    while (next != &ps->members)
+    for (next = ps->members.next; next != &ps->members; next = next->next)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2+1];
 	cmdbuff[PATH_MAX*2] = 0;
+
+	/*
+	 * Check the patchset funk. we may not want to diff this particular file 
+	 */
+	if (ps->funk_factor == FNK_SHOW_SOME && psm->bad_funk)
+	{
+	    printf("Index: %s\n", psm->file->filename);
+	    printf("===================================================================\n");
+	    printf("*** Member not diffed, before start tag\n");
+	    continue;
+	}
+	else if (ps->funk_factor == FNK_HIDE_SOME && !psm->bad_funk)
+	{
+	    printf("Index: %s\n", psm->file->filename);
+	    printf("===================================================================\n");
+	    printf("*** Member not diffed, after end tag\n");
+	    continue;
+	}
 
 	/*
 	 * It's possible for pre_rev to be a 'dead' revision.
@@ -1287,8 +1305,6 @@ static void do_cvs_diff(PatchSet * ps)
 	}
 
 	system(cmdbuff);
-
-	next = next->next;
     }
 }
 
