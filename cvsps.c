@@ -8,14 +8,17 @@
 #include <ctype.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <regex.h>
+
 #include <cbtcommon/hash.h>
 #include <cbtcommon/list.h>
 #include <cbtcommon/text_util.h>
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.38 2003/02/25 02:39:54 david Exp $");
+RCSID("$Id: cvsps.c,v 4.39 2003/02/25 03:10:07 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -114,7 +117,7 @@ static int ignore_cache;
 static int do_write_cache;
 static int statistics;
 static const char * norc = "";
-static const char * patchset_dir = NULL;
+static const char * patchset_dir;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -477,6 +480,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
     debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
+    debug(DEBUG_APPERROR, "  -p <directory> output patchsets to individual files in <directory>");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
     debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
@@ -611,7 +615,16 @@ static void parse_args(int argc, char *argv[])
 		debug(DEBUG_APPERROR, "Warning: The HEAD branch of CVS is called HEAD, not TRUNK");
 	    continue;
 	}
-	
+
+	if (strcmp(argv[i], "-p") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -p missing", "");
+	    
+	    patchset_dir = argv[i++];
+	    continue;
+	}
+
 	if (strcmp(argv[i], "-v") == 0)
 	{
 	    debuglvl = ~0;
@@ -932,19 +945,47 @@ static void check_print_patch_set(PatchSet * ps)
 	    if (range->min_counter <= ps_counter &&
 		ps_counter <= range->max_counter)
 	    {
-		goto found;
+		break;
 	    }
 	    next = next->next;
 	}
 	
-	return;
+	if (next == &show_patch_set_ranges)
+	    return;
     }
 
- found:
+    if (patchset_dir)
+    {
+	char path[PATH_MAX];
+
+	snprintf(path, PATH_MAX, "%s/%d.patch", patchset_dir, ps_counter);
+
+	fflush(stdout);
+	close(1);
+	if (open(path, O_WRONLY|O_TRUNC|O_CREAT, 0666) < 0)
+	{
+	    debug(DEBUG_SYSERROR, "can't open patch file %s", path);
+	    exit(1);
+	}
+
+	fprintf(stderr, "Directing PatchSet %d to file %s\n", ps_counter, path);
+    }
+
+    /*
+     * If the summary_first option is in effect, there will be 
+     * two passes through the tree.  the first with summary_first == 1
+     * the second with summary_first == 2.  if the option is not
+     * in effect, there will be one pass with summary_first == 0
+     *
+     * When the -s option is in effect, the show_patch_set_ranges
+     * list will be non-empty.
+     */
     if (summary_first <= 1)
 	print_patch_set(ps);
-    if (summary_first != 1 && !list_empty(&show_patch_set_ranges))
+    if (!list_empty(&show_patch_set_ranges) && summary_first != 1)
 	do_cvs_diff(ps);
+
+    fflush(stdout);
 }
 
 static void print_patch_set(PatchSet * ps)
