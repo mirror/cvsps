@@ -8,6 +8,7 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
+#include <regex.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -135,22 +136,48 @@ char *get_string(char const *str)
     return *res;
 }
 
+static int get_int_substr(const char * str, const regmatch_t * p)
+{
+    char buff[256];
+    memcpy(buff, str + p->rm_so, p->rm_eo - p->rm_so);
+    buff[p->rm_eo - p->rm_so] = 0;
+    return atoi(buff);
+}
+
 void convert_date(time_t * t, const char * dte)
 {
-    /* HACK: this routine parses two formats,
-     * 1) 'cvslog' format YYYY/MM/DD HH:MM:SS
-     * 2) time_t formatted as %d
-     */
-       
-    if (strchr(dte, '/'))
+    static regex_t date_re;
+    static int init_re;
+
+#define MAX_MATCH 16
+    size_t nmatch = MAX_MATCH;
+    regmatch_t match[MAX_MATCH];
+
+    if (!init_re) 
     {
+	if (regcomp(&date_re, "([0-9]{4})[-/]([0-9]{2})[-/]([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})", REG_EXTENDED)) 
+	{
+	    fprintf(stderr, "FATAL: date regex compilation error\n");
+	    exit(1);
+	}
+	init_re = 1;
+    }
+    
+    if (regexec(&date_re, dte, nmatch, match, 0) == 0)
+    {
+	regmatch_t * pm = match;
 	struct tm tm;
+
+	/* first regmatch_t is match location of entire re */
+	pm++;
 	
-	memset(&tm, 0, sizeof(tm));
-	sscanf(dte, "%d/%d/%d %d:%d:%d", 
-	       &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
-	       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
-	
+	tm.tm_year = get_int_substr(dte, pm++);
+	tm.tm_mon  = get_int_substr(dte, pm++);
+	tm.tm_mday = get_int_substr(dte, pm++);
+	tm.tm_hour = get_int_substr(dte, pm++);
+	tm.tm_min  = get_int_substr(dte, pm++);
+	tm.tm_sec  = get_int_substr(dte, pm++);
+
 	tm.tm_year -= 1900;
 	tm.tm_mon--;
 	
