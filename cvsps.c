@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.21 2001/12/05 17:34:32 david Exp $");
+RCSID("$Id: cvsps.c,v 4.22 2001/12/05 17:35:25 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -170,7 +170,7 @@ static void load_from_cvs()
 
     if (!cvsfp)
     {
-	debud(DEBUG_SYSERROR, "can't open cvs pipe using command %s", cmd);
+	debug(DEBUG_SYSERROR, "can't open cvs pipe using command %s", cmd);
 	exit(1);
     }
     
