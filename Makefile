@@ -2,14 +2,14 @@ CC=gcc
 CFLAGS=-O2 -g -Wall -I..
 
 OBJS=\
-	genps.o\
+	cvsps.o\
 	../libcommon/hash.o\
 	../libcommon/text_util.o\
 	../libcommon/debug.o
 
-all: genps
+all: cvsps
 
-genps: $(OBJS)
-	gcc -o genps $(OBJS)
+cvsps: $(OBJS)
+	gcc -o cvsps $(OBJS)
 
 
