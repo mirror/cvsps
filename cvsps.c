@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.54 2003/03/13 00:58:37 david Exp $");
+RCSID("$Id: cvsps.c,v 4.55 2003/03/14 21:08:16 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -87,6 +87,7 @@ static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
+static void set_ps_id(const void *, const VISIT, const int);
 static void show_ps_tree_node(const void *, const VISIT, const int);
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime(const void *, const void *);
@@ -139,6 +140,9 @@ int main(int argc, char *argv[])
 	do_write_cache = 1;
     }
 
+    ps_counter = 0;
+    twalk(ps_tree_bytime, set_ps_id);
+
     resolve_global_symbols();
 
     if (do_write_cache)
@@ -150,11 +154,9 @@ int main(int argc, char *argv[])
 	print_statistics();
     }
 
-    ps_counter = 0;
     twalk(ps_tree_bytime, show_ps_tree_node);
     if (summary_first++)
     {
-	ps_counter = 0;
 	twalk(ps_tree_bytime, show_ps_tree_node);
     }
 
@@ -919,13 +921,8 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 
 static void check_print_patch_set(PatchSet * ps)
 {
-    /*
-     * Ignore the 'BRANCH ADD' patchsets 
-     */
-    if (ps->branch_add)
+    if (ps->psid < 0)
 	return;
-
-    ps_counter++;
 
     if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
@@ -955,13 +952,13 @@ static void check_print_patch_set(PatchSet * ps)
     if (restrict_tag_start && restrict_tag_ps_start == 0) 
     {
 	if (ps->tag && strcmp(ps->tag, restrict_tag_start) == 0)
-	    restrict_tag_ps_start = ps_counter;
+	    restrict_tag_ps_start = ps->psid;
     }
 
     if (restrict_tag_end && restrict_tag_ps_end == 0)
     {
 	if (ps->tag && strcmp(ps->tag, restrict_tag_end) == 0)
-	    restrict_tag_ps_end = ps_counter;
+	    restrict_tag_ps_end = ps->psid;
     }
 
     /* 
@@ -971,15 +968,15 @@ static void check_print_patch_set(PatchSet * ps)
      */
     if (restrict_tag_start)
     {
-	if (restrict_tag_ps_start == 0 || ps_counter <= restrict_tag_ps_start)
+	if (restrict_tag_ps_start == 0 || ps->psid <= restrict_tag_ps_start)
 	{
-	    if (ps_counter == restrict_tag_ps_start)
-		debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps_counter, restrict_tag_start);
+	    if (ps->psid == restrict_tag_ps_start)
+		debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps->psid, restrict_tag_start);
 
 	    return;
 	}
 
-	if (restrict_tag_end && restrict_tag_ps_end > 0 && ps_counter > restrict_tag_ps_end)
+	if (restrict_tag_end && restrict_tag_ps_end > 0 && ps->psid > restrict_tag_ps_end)
 	    return;
     }
 
@@ -991,8 +988,8 @@ static void check_print_patch_set(PatchSet * ps)
 	while (next != &show_patch_set_ranges)
 	{
 	    PatchSetRange *range = list_entry(next, PatchSetRange, link);
-	    if (range->min_counter <= ps_counter &&
-		ps_counter <= range->max_counter)
+	    if (range->min_counter <= ps->psid &&
+		ps->psid <= range->max_counter)
 	    {
 		break;
 	    }
@@ -1007,7 +1004,7 @@ static void check_print_patch_set(PatchSet * ps)
     {
 	char path[PATH_MAX];
 
-	snprintf(path, PATH_MAX, "%s/%d.patch", patch_set_dir, ps_counter);
+	snprintf(path, PATH_MAX, "%s/%d.patch", patch_set_dir, ps->psid);
 
 	fflush(stdout);
 	close(1);
@@ -1017,7 +1014,7 @@ static void check_print_patch_set(PatchSet * ps)
 	    exit(1);
 	}
 
-	fprintf(stderr, "Directing PatchSet %d to file %s\n", ps_counter, path);
+	fprintf(stderr, "Directing PatchSet %d to file %s\n", ps->psid, path);
     }
 
     /*
@@ -1047,7 +1044,7 @@ static void print_patch_set(PatchSet * ps)
     
     /* this '---...' is different from the 28 hyphens that separate cvs log output */
     printf("---------------------\n");
-    printf("PatchSet %d %s\n", ps_counter, ps->funk_factor > 0 ? "(FUNKY)" :"");
+    printf("PatchSet %d %s\n", ps->psid, ps->funk_factor > 0 ? "(FUNKY)" :"");
     printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
 	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
@@ -1070,6 +1067,36 @@ static void print_patch_set(PatchSet * ps)
     }
     
     printf("\n");
+}
+
+static void set_ps_id(const void * nodep, const VISIT which, const int depth)
+{
+    PatchSet * ps;
+
+    switch(which)
+    {
+    case postorder:
+    case leaf:
+	ps = *(PatchSet**)nodep;
+
+	/*
+	 * Ignore the 'BRANCH ADD' patchsets 
+	 */
+	if (!ps->branch_add)
+	{
+	    ps_counter++;
+	    ps->psid = ps_counter;
+	}
+	else
+	{
+	    ps->psid = -1;
+	}
+
+	break;
+
+    default:
+	break;
+    }
 }
 
 static void show_ps_tree_node(const void * nodep, const VISIT which, const int depth)
@@ -1358,6 +1385,7 @@ static PatchSet * create_patch_set()
     if (ps)
     {
 	INIT_LIST_HEAD(&ps->members);
+	ps->psid = -1;
 	ps->descr = NULL;
 	ps->author = NULL;
 	ps->tag = NULL;
@@ -1724,8 +1752,8 @@ static void resolve_global_symbols()
 	    if (next_rev->post_psm->ps->date < ps->date)
 	    {
 		int flag = check_rev_funk(ps, next_rev);
-		debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
-		      rev->file->filename, rev->rev, sym->tag);
+		debug(DEBUG_STATUS, "file %s revision %s tag %s: TAG VIOLATION %s",
+		      rev->file->filename, rev->rev, sym->tag, tag_flag_descr[flag]);
 		ps->tag_flags |= flag;
 	    }
 	}
@@ -1818,6 +1846,8 @@ static void set_psm_initial(PatchSetMember * psm)
  */
 static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 {
+    int retval = TAG_FUNKY;
+
     while (rev)
     {
 	PatchSet * next_ps = rev->post_psm->ps;
@@ -1833,7 +1863,16 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	{
 	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	    if (before_tag(psm->post_rev, ps->tag))
-		return TAG_INVALID;
+	    {
+		retval = TAG_INVALID;
+		debug(DEBUG_APPERROR, 
+		      "Invalid PatchSet %d, Tag %s:\n"
+		      "    %s:%s=after, %s:%s=before. Treated as 'before'", 
+		      next_ps->psid, ps->tag, 
+		      rev->file->filename, rev->rev, 
+		      psm->post_rev->file->filename, psm->post_rev->rev);
+		goto next;
+	    }
 	}
 
 	/*
@@ -1851,10 +1890,11 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	if (restrict_tag_end && strcmp(ps->tag, restrict_tag_end) == 0)
 	    next_ps->funk_factor = -1;
 
+  next:
 	rev = rev_follow_branch(rev, ps->branch);
     }
 
-    return TAG_FUNKY;
+    return retval;
 }
 
 /* determine if the revision is before the tag */

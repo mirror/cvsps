@@ -22,7 +22,7 @@ struct _CvsFileRevision
     CvsFile * file;
     char * branch;
     /*
-     * A revision can be part of man PatchSets because it may
+     * A revision can be part of many PatchSets because it may
      * be the branch point of many branches (as a pre_rev).  
      * It should, however, be the 'post_rev' of only one 
      * PatchSetMember.  The 'main line of inheritence' is
@@ -34,7 +34,7 @@ struct _CvsFileRevision
     struct list_head branch_children;
     
     /* 
-     * for linking this 'branch head' into the parent revision list
+     * for linking this 'first branch rev' into the parent branch_children
      */
     struct list_head link;
 
@@ -48,8 +48,8 @@ struct _CvsFile
 {
     char *filename;
     struct hash_table * revisions;    /* rev_str to revision [CvsFileRevision*] */
-    struct hash_table * branches;     /* branch to branch_sym map [char*]       */
-    struct hash_table * branches_sym; /* branch_sym to branch map [char*]       */
+    struct hash_table * branches;     /* branch to branch_sym [char*]           */
+    struct hash_table * branches_sym; /* branch_sym to branch [char*]           */
     struct hash_table * symbols;      /* tag to revision [CvsFileRevision*]     */
     /* 
      * this is a hack. when we initially create entries in the symbol hash
@@ -59,8 +59,18 @@ struct _CvsFile
     int have_branches;
 };
 
+struct _PatchSetMember
+{
+    CvsFileRevision * pre_rev;
+    CvsFileRevision * post_rev;
+    PatchSet * ps;
+    CvsFile * file;
+    struct list_head link;
+};
+
 struct _PatchSet
 {
+    int psid;
     time_t date;
     char *descr;
     char *author;
@@ -81,15 +91,6 @@ struct _PatchSet
      * after, and vice-versa if a second -r option was specified
      */
     int funk_factor;
-};
-
-struct _PatchSetMember
-{
-    CvsFileRevision * pre_rev;
-    CvsFileRevision * post_rev;
-    PatchSet * ps;
-    CvsFile * file;
-    struct list_head link;
 };
 
 struct _PatchSetRange
