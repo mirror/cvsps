@@ -11,13 +11,14 @@
 #include <common/debug.h>
 
 #define CVS_LOG_MAX 8192
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 enum
 {
     NEED_FILE,
     NEED_START_LOG,
     NEED_REVISION,
-    NEED_DATE_AND_AUTHOR,
+    NEED_DATE_AUTHOR_STATE,
     NEED_EOM
 };
 
@@ -41,6 +42,7 @@ typedef struct _PatchSetMember
     char post_rev[16];
     PatchSet * cp;
     CvsFile * file;
+    int dead_revision;
     struct list_head file_link;
     struct list_head patch_set_link;
 } PatchSetMember;
@@ -128,12 +130,14 @@ int main(int argc, char *argv[])
 		state++;
 	    }
 	    break;
-	case NEED_DATE_AND_AUTHOR:
+	case NEED_DATE_AUTHOR_STATE:
 	    if (strncmp(buff, "date:", 5) == 0)
 	    {
 		char * p;
+
 		strncpy(datebuff, buff + 6, 19);
 		datebuff[19] = 0;
+
 		p = strstr(buff, "author: ");
 		if (p)
 		{
@@ -147,6 +151,17 @@ int main(int argc, char *argv[])
 		    }
 		}
 		
+		p = strstr(buff, "state: ");
+		if (p)
+		{
+		    char * op;
+		    p += 7;
+		    op = strchr(p, ';');
+		    if (op)
+			if (strncmp(p, "dead", min(4, op - p)) == 0)
+			    psm->dead_revision = 1;
+		}
+
 		state++;
 	    }
 	    break;
@@ -155,7 +170,6 @@ int main(int argc, char *argv[])
 	    {
 		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
 		list_add(&psm->patch_set_link, &psm->cp->members);
-		datebuff[0] = 0;
 		logbuff[0] = 0;
 		psm = NULL;
 		state = NEED_REVISION;
@@ -165,7 +179,6 @@ int main(int argc, char *argv[])
 	    {
 		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
 		list_add(&psm->patch_set_link, &psm->cp->members);
-		datebuff[0] = 0;
 		logbuff[0] = 0;
 		assign_pre_revision(last_psm, NULL);
 		psm = NULL;
@@ -374,6 +387,7 @@ static PatchSetMember * parse_revision(const char * buff)
     strcpy(retval->post_rev, buff + 9);
     chop(retval->post_rev);
     retval->cp = NULL;
+    retval->dead_revision = 0;
 
     debug(DEBUG_STATUS, "new rev: %s", retval->post_rev);
 
@@ -463,11 +477,36 @@ static void assign_pre_revision(PatchSetMember * last_psm, PatchSetMember * psm)
     strcpy(last_psm->pre_rev, pre);
 }
 
+static void print_patch_set(PatchSet * ps)
+{
+    struct tm * tm;
+    struct list_head * next;
+
+    tm = localtime(&ps->date);
+    next = ps->members.next;
+    
+    printf("---------------------\n");
+    printf("PatchSet %d\n", ps_counter);
+    printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
+	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
+	   tm->tm_hour, tm->tm_min, tm->tm_sec);
+    printf("Author: %s\n", ps->author);
+    printf("Log:\n%s", ps->descr);
+    printf("Members: \n");
+    
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	printf("\t%s:%s->%s%s\n", psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision ? "(DEAD)": "");
+	next = next->next;
+    }
+    
+    printf("\n");
+}
+
 static void show_ps_tree_node(const void * nodep, const VISIT which, const int depth)
 {
     PatchSet * ps;
-    struct list_head * next;
-    struct tm * tm;
 
     switch(which)
     {
@@ -493,26 +532,9 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 	if (restrict_file && !patch_set_contains_member(ps, restrict_file))
 	    break;
 
-	tm = localtime(&ps->date);
-	next = ps->members.next;
 
-	printf("---------------------\n");
-	printf("PatchSet %d\n", ps_counter);
-	printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
-	       1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
-	       tm->tm_hour, tm->tm_min, tm->tm_sec);
-	printf("Author: %s\n", ps->author);
-	printf("Log:\n%s", ps->descr);
-	printf("Members: \n");
+	print_patch_set(ps);
 
-	while (next != &ps->members)
-	{
-	    PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
-	    printf("\t%s:%s->%s\n", psm->file->filename, psm->pre_rev, psm->post_rev);
-	    next = next->next;
-	}
-	
-	printf("\n");
     default:
 	break;
     }
