@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.81 2003/03/25 00:02:08 david Exp $");
+RCSID("$Id: cvsps.c,v 4.82 2003/03/25 03:38:02 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -103,6 +103,7 @@ static int compress;
 static char compress_arg[8];
 
 static int parse_args(int, char *[]);
+static int parse_rc();
 static void load_from_cvs();
 static void init_strip_path();
 static CvsFile * parse_file(const char *);
@@ -135,6 +136,9 @@ int main(int argc, char *argv[])
     debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPMSG1;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
+
+    if (parse_rc() < 0)
+	exit(1);
 
     if (parse_args(argc, argv) < 0)
 	exit(1);
@@ -788,6 +792,42 @@ static int parse_args(int argc, char *argv[])
 	debug(DEBUG_APPMSG1, "         will need to be applied using the '-p0' option");
 	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
 	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
+    }
+
+    return 0;
+}
+
+static int parse_rc()
+{
+    char rcfile[PATH_MAX];
+    FILE * fp;
+    snprintf(rcfile, PATH_MAX, "%s/cvspsrc", get_cvsps_dir());
+    if ((fp = fopen(rcfile, "r")))
+    {
+	char buff[BUFSIZ];
+	while (fgets(buff, BUFSIZ, fp))
+	{
+	    char * argv[3], *p;
+	    int argc = 2;
+
+	    chop(buff);
+
+	    argv[0] = "garbage";
+
+	    p = strchr(buff, ' ');
+	    if (p)
+	    {
+		*p++ = '\0';
+		argv[2] = xstrdup(p);
+		argc = 3;
+	    }
+
+	    argv[1] = xstrdup(buff);
+
+	    if (parse_args(argc, argv) < 0)
+		return -1;
+	}
+	fclose(fp);
     }
 
     return 0;

@@ -62,6 +62,9 @@ char *get_cvsps_dir()
     static char prefix[PATH_MAX];
     const char * home;
 
+    if (prefix[0])
+	return prefix;
+
     if (!(home = getenv("HOME")))
     {
 	debug(DEBUG_APPERROR, "HOME environment variable not set");
