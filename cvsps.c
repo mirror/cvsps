@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.19 2001/11/26 22:31:21 david Exp $");
+RCSID("$Id: cvsps.c,v 4.20 2001/12/05 17:22:55 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -170,7 +170,7 @@ static void load_from_cvs()
 
     if (!cvsfp)
     {
-	perror("can't open cvs pipe\n");
+	debud(DEBUG_SYSERROR, "can't open cvs pipe using command %s", cmd);
 	exit(1);
     }
     
@@ -872,32 +872,42 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	char * branch_rev = (char*)get_hash_object(psm->file->branches_sym, branch);
-	
-	if (branch_rev)
+
+	/* special case the branch called 'TRUNK' */
+	if (strcmp(branch, "TRUNK") == 0)
 	{
-	    char post_rev[REV_STR_MAX];
-	    char branch[REV_STR_MAX];
-	    int file_leaf, branch_leaf;
-
-	    strcpy(branch, branch_rev);
-
-	    /* first get the branch the file rev is on */
-	    if (get_branch_ext(post_rev, psm->post_rev, &file_leaf))
+	    char * p = strchr(psm->post_rev, '.');
+	    if (p && !strchr(p + 1, '.'))
+		return 1;
+	}
+	else
+	{
+	    char * branch_rev = (char*)get_hash_object(psm->file->branches_sym, branch);
+	    
+	    if (branch_rev)
 	    {
-		branch_leaf = file_leaf;
-
-		/* check against branch and all branch ancestor branches */
-		do 
+		char post_rev[REV_STR_MAX];
+		char branch[REV_STR_MAX];
+		int file_leaf, branch_leaf;
+		
+		strcpy(branch, branch_rev);
+		
+		/* first get the branch the file rev is on */
+		if (get_branch_ext(post_rev, psm->post_rev, &file_leaf))
 		{
-		    debug(DEBUG_STATUS, "check %s against %s for %s", branch, post_rev, psm->file->filename);
-		    if (strcmp(branch, post_rev) == 0)
-			return (file_leaf <= branch_leaf);
+		    branch_leaf = file_leaf;
+		    
+		    /* check against branch and all branch ancestor branches */
+		    do 
+		    {
+			debug(DEBUG_STATUS, "check %s against %s for %s", branch, post_rev, psm->file->filename);
+			if (strcmp(branch, post_rev) == 0)
+			    return (file_leaf <= branch_leaf);
+		    }
+		    while(get_branch_ext(branch, branch, &branch_leaf));
 		}
-		while(get_branch_ext(branch, branch, &branch_leaf));
 	    }
 	}
-	
 	next = next->next;
     }
 
@@ -1373,3 +1383,4 @@ static char * cvs_file_add_branch(CvsFile * file, const char * rev, const char *
     
     return new_tag;
 }
+
