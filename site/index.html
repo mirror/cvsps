@@ -43,21 +43,27 @@ of CVSps looks like:
 <tr><td width=50>&nbsp;</td><td>
 <pre>
 ---------------------
-PatchSet 1701
-Date: 2001/11/06 19:49:04
-Author: joe
+PatchSet 44656
+Date: 2003/02/27 13:46:06
+Author: ghazi
+Branch: gcc-3_3-branch
+Tag: (none)
 Log:
-this release completes line summary find
+2003-02-24  Danny Smith  <dannysmith@users.source.forge.net>
 
-Members: 
-   Makefile:1.3.4.9->1.3.4.10 [v4_1-patches]
-   apache_mod/summary.C:1.66.2.2->1.66.2.3 [v4_1-patches]
-   apache_mod/sql.C:1.59.2.5->1.59.2.6 [v4_1-patches]
+  * physmem.c (physmem_total): Add _WIN32 support.
+  (physmem_available): Likewise.
+
+Members:
+  libiberty/ChangeLog:1.398.2.14->1.398.2.15
+  libiberty/physmem.c:1.1.2.7->1.1.2.8
 
 ---------------------
 </pre></td><td width=50>&nbsp;
 <tr><td colspan=3>
-This snapshot shows the output of one patchset.  You can see it tracks all
+This snapshot shows the output of one patchset.  This patchset is
+taken from actual output when running against the gcc CVS repository :-)
+You can see it tracks all
 files changed, gives the pre- and post- version numbers, and (when 
 applicable, as in this example) indicates what branch the patchset was on.  
 It is also possible to generate a diff of the patchset using CVSps.  CVSps 
@@ -79,7 +85,8 @@ CVSps is GPLed software.  If you want more information on the GPL, visit:<br>
 <table cellpadding=3><tr><td>
 You can download the source tarball for CVSps here:
 <br>
-<a href="cvsps-1.3.3.tar.gz">cvsps-1.3.3.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-1.3.3.tar.gz">cvsps-2.0b1.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-1.3.3.tar.gz">cvsps-1.3.3.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent stable version)<br>
 <a href="cvsps-1.3.2.tar.gz">cvsps-1.3.2.tar.gz</a><br>
 <a href="cvsps-1.3.1.tar.gz">cvsps-1.3.1.tar.gz</a><br>
 <a href="cvsps-1.3.tar.gz">cvsps-1.3.tar.gz</a><br>
