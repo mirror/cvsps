@@ -25,7 +25,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.76 2003/03/20 15:11:07 david Exp $");
+RCSID("$Id: cvsps.c,v 4.77 2003/03/20 15:21:41 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -478,6 +478,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>] [--cvs-direct]");
+    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -506,6 +507,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
     debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (they're faulty in some setups)");
     debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
+    debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -743,6 +745,15 @@ static void parse_args(int argc, char *argv[])
 	{
 	    cvs_direct = 1;
 	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "--debuglvl") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to --debuglvl missing", "");
+
+	    debuglvl = atoi(argv[i++]);
 	    continue;
 	}
 
