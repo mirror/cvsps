@@ -7,6 +7,8 @@
   psid when problems are found (above)
 - more code restructuring - move stats to own module
 - commenting cleanups
+- include the very rudimentary merge_utils.sh functions
+  I use to assist merging stuff
 
 2.0b1
 - major restructuring of source code.  single cvsps.c split into

@@ -56,6 +56,7 @@ dist:
 	cp COPYING dist/
 	cp cvsps.1 dist/
 	cp CHANGELOG dist/
+	cp merge_utils.sh dist/
 	@echo "NOTE: Using $(CBTCOMMON_DIST) for dist files"
 	cat copyright.head $(CBTCOMMON_DIST)/list.h >dist/cbtcommon/list.h
 	cat copyright.head $(CBTCOMMON_DIST)/hash.h >dist/cbtcommon/hash.h
