@@ -13,7 +13,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.31 2003/02/24 18:49:33 david Exp $");
+RCSID("$Id: cvsps.c,v 4.32 2003/02/24 20:08:00 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -92,6 +92,7 @@ static void * string_tree;
 
 static int timestamp_fuzz_factor = 300;
 static const char * restrict_author;
+static const char * restrict_log;
 static const char * restrict_file;
 static time_t restrict_date_start;
 static time_t restrict_date_end;
@@ -452,6 +453,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
     debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
     debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
+    debug(DEBUG_APPERROR, "  -l <text> restrict output to patchsets with <text> in log message");
     debug(DEBUG_APPERROR, "  -f <file> restrict output to patchsets involving file");
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
@@ -521,7 +523,16 @@ static void parse_args(int argc, char *argv[])
 	    restrict_author = argv[i++];
 	    continue;
 	}
-	
+
+	if (strcmp(argv[i], "-l") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -l missing", "");
+
+	    restrict_log = argv[i++];
+	    continue;
+	}
+
 	if (strcmp(argv[i], "-f") == 0)
 	{
 	    if (++i >= argc)
@@ -614,7 +625,7 @@ static void init_strip_path()
     }
 
     fclose(fp);
-	
+
     p = strrchr(root_buff, ':');
 
     if (!p)
@@ -687,16 +698,16 @@ static CvsFile * parse_file(const char * buff)
     len -= strip_path_len;
     memmove(fn, fn + strip_path_len, len);
     fn[len] = 0;
-    
+
     /* check if file is in the 'Attic/' and remove it */
-    if ((p = strrchr(fn, '/')) && 
+    if ((p = strrchr(fn, '/')) &&
 	p - fn >= 5 && strncmp(p - 5, "Attic", 5) == 0)
     {
 	memmove(p - 5, p + 1, len - (p - fn + 1));
 	len -= 6;
 	fn[len] = 0;
     }
-    
+
     debug(DEBUG_STATUS, "stripped filename %s", fn);
 
     retval = (CvsFile*)get_hash_object(file_hash, fn);
@@ -713,7 +724,7 @@ static CvsFile * parse_file(const char * buff)
 	    debug(DEBUG_SYSERROR, "malloc failed");
 	    exit(1);
 	}
-	
+
 	debug(DEBUG_STATUS, "new file: %s", retval->filename);
     }
     else
@@ -727,7 +738,7 @@ static CvsFile * parse_file(const char * buff)
 static PatchSet * get_patch_set(const char * dte, const char * log, const char * author)
 {
     PatchSet * retval = NULL, **find = NULL;
-    
+
     if (!(retval = create_patchset()))
     {
 	debug(DEBUG_SYSERROR, "malloc failed for PatchSet");
@@ -762,7 +773,7 @@ static int get_branch_ext(char * buff, const char * rev, int * leaf)
 {
     char * p;
     int len = strlen(rev);
-    
+
     /* allow get_branch(buff, buff) without destroying contents */
     memmove(buff, rev, len);
     buff[len] = 0;
@@ -853,12 +864,15 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 
 static void check_print_patch_set(PatchSet * ps)
 {
-    if (restrict_date_start > 0 && 
+    if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
 	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
 	return;
-    
+
     if (restrict_author && strcmp(restrict_author, ps->author) != 0)
+	return;
+
+    if (restrict_log && strstr(ps->descr, restrict_log) != 0)
 	return;
 
     if (restrict_file && !patch_set_contains_member(ps, restrict_file))

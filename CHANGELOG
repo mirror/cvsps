@@ -1,3 +1,12 @@
+1.4
+- redid the data structures a bit to 'normalize' the references to 
+  a file revision.  this allows the program to detect the case
+  when a file is added on a branch, and generate the right output
+  for 'cvsps -s' in this case (frequent bug report)
+- added the '-l' option to restrict patchsets based on log descr
+  content. (patch from Geoff Soutter).  added man page for it.
+
+
 1.3.3 (why isn't this 1.4 again?)
 - added the 'memory reduction' patch from Baruch Even.  This patch
   greatly reduces the memory footprint of CVSps against a large 
@@ -67,3 +76,4 @@
 
 1.1 Initial public release.
 -------- end of changelog ---------
+
