@@ -6,7 +6,6 @@
 #include <search.h>
 #include <time.h>
 #include <ctype.h>
-#include <assert.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -21,8 +20,9 @@
 #include "cache.h"
 #include "cvsps_types.h"
 #include "cvsps.h"
+#include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.42 2003/02/25 21:04:31 david Exp $");
+RCSID("$Id: cvsps.c,v 4.43 2003/02/25 21:28:12 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -38,12 +38,22 @@ enum
     NEED_EOM
 };
 
+/* true globals */
 struct hash_table * file_hash;
 
+/* static globals */
 static int ps_counter;
 static void * ps_tree, * ps_tree_bytime;
-static void * string_tree;
 static struct hash_table * global_symbols;
+static char strip_path[PATH_MAX];
+static int strip_path_len;
+static time_t cache_date;
+static int update_cache;
+static int ignore_cache;
+static int do_write_cache;
+static int statistics;
+
+/* settable via options */
 static int timestamp_fuzz_factor = 300;
 static const char * restrict_author;
 static int have_restrict_log;
@@ -54,13 +64,6 @@ static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static int summary_first;
-static char strip_path[PATH_MAX];
-static int strip_path_len;
-static time_t cache_date;
-static int update_cache;
-static int ignore_cache;
-static int do_write_cache;
-static int statistics;
 static const char * norc = "";
 static const char * patchset_dir;
 static const char * restrict_tag_start;
@@ -90,40 +93,6 @@ static void print_statistics(void);
 static void resolve_file_symbols();
 static void resolve_global_symbols();
 static int revision_affects_branch(CvsFileRevision *, const char *);
-
-char *xstrdup(char const *str)
-{
-    char *ret;
-    assert(str);
-    ret = strdup(str);
-    if (!ret)
-    {
-	debug(DEBUG_ERROR, "strdup failed");
-	exit(1);
-    }
-
-    return ret;
-}
-
-typedef int (*compare_func)(const void *, const void *);
-
-char *get_string(char const *str)
-{
-    char ** res;
-
-    if (!str)
-	return NULL;
-    
-    res = (char **)tfind(str, &string_tree, (compare_func)strcmp);
-    if (!res)
-    {
-	char *key = xstrdup(str);
-	res = (char **)tsearch(key, &string_tree, (compare_func)strcmp);
-	*res = key;
-    }
-
-    return *res;
-}
 
 int main(int argc, char *argv[])
 {
@@ -1229,12 +1198,6 @@ static void do_cvs_diff(PatchSet * ps)
 
 	next = next->next;
     }
-}
-
-void strzncpy(char * dst, const char * src, int n)
-{
-    strncpy(dst, src, n);
-    dst[n - 1] = 0;
 }
 
 CvsFileRevision * cvs_file_add_revision(CvsFile * file, char * rev_str)

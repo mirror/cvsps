@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <time.h>
@@ -14,91 +13,19 @@
 #include "cache.h"
 #include "cvsps_types.h"
 #include "cvsps.h"
+#include "util.h"
 
 #define CACHE_DESCR_BOUNDARY "-=-END CVSPS DESCR-=-\n"
-#define CVSPS_PREFIX ".cvsps"
 
+/* the tree walk pretty much requries use of globals :-( */
 static FILE * cache_fp;
+static int ps_counter;
+
 static void write_tree_node_to_cache(const void *, const VISIT, const int);
 static void parse_cache_revision(PatchSetMember *, const char *);
 static void dump_patch_set(FILE *, PatchSet *);
-static int ps_counter;
 
-static char *readfile(char const *filename, char *buf, size_t size)
-{
-    FILE *fp;
-    char *ptr;
-    size_t len;
-
-    fp = fopen(filename, "r");
-    if (!fp)
-	return NULL;
-
-    ptr = fgets(buf, size, fp);
-    fclose(fp);
-
-    if (!ptr)
-	return NULL;
-
-    len = strlen(buf);
-    if (buf[len-1] == '\n')
-	buf[len-1] = '\0';
-    
-    return buf;
-}
-
-static char *strrep(char *s, char find, char replace)
-{
-    char * p = s;
-    while (*p)
-    {
-	if (*p == find)
-	    *p = replace;
-	p++;
-    }
-
-    return s;
-}
-
-static char *get_prefix(void)
-{
-    struct stat sbuf;
-    static char prefix[PATH_MAX];
-    const char * home;
-
-    if (!(home = getenv("HOME")))
-    {
-	debug(DEBUG_APPERROR, "HOME environment variable not set");
-	exit(1);
-    }
-
-    if (snprintf(prefix, PATH_MAX, "%s/%s", home, CVSPS_PREFIX) >= PATH_MAX)
-    {
-	debug(DEBUG_APPERROR, "prefix buffer overflow");
-	exit(1);
-    }
-
-    /* Make sure the prefix directory exists */
-    if (stat(prefix, &sbuf) < 0)
-    {
-	int ret;
-	ret = mkdir(prefix, 0777);
-	if (ret < 0)
-	{
-	    debug(DEBUG_SYSERROR, "Cannot create the cvsps directory '%s'", CVSPS_PREFIX);
-	    exit(1);
-	}
-    }
-    else
-    {
-	if (!(S_ISDIR(sbuf.st_mode)))
-	    debug(DEBUG_APPERROR, "cvsps directory '%s' is not a directory!", CVSPS_PREFIX);
-    }
-
-    return prefix;
- }
-
-static FILE *cvsps_open(char const *mode)
+static FILE *cache_open(char const *mode)
 {
     char root[PATH_MAX];
     char repository[PATH_MAX];
@@ -107,7 +34,7 @@ static FILE *cvsps_open(char const *mode)
     FILE * fp;
 
     /* Get the prefix */
-    prefix = get_prefix();
+    prefix = get_cvsrc_dir();
     if (!prefix)
 	return NULL;
     
@@ -210,7 +137,7 @@ time_t read_cache()
     char logbuff[LOG_STR_MAX] = "";
     time_t cache_date;
 
-    if (!(fp = cvsps_open("r")))
+    if (!(fp = cache_open("r")))
 	return -1;
 
     /* first line is date cache was created, format "cache date: %d\n" */
@@ -392,7 +319,7 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
 
     ps_counter = 0;
 
-    if ((cache_fp = cvsps_open("w")) == NULL)
+    if ((cache_fp = cache_open("w")) == NULL)
     {
 	debug(DEBUG_SYSERROR, "can't open CVS/cvsps.cache for write");
 	return;
