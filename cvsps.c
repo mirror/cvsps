@@ -7,6 +7,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <assert.h>
+#include <sys/stat.h>
 #include <regex.h>
 #include <cbtcommon/hash.h>
 #include <cbtcommon/list.h>
@@ -14,7 +15,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.35 2003/02/24 21:41:12 david Exp $");
+RCSID("$Id: cvsps.c,v 4.36 2003/02/24 22:03:24 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -22,6 +23,7 @@ RCSID("$Id: cvsps.c,v 4.35 2003/02/24 21:41:12 david Exp $");
 #define CACHE_DESCR_BOUNDARY "-=-END CVSPS DESCR-=-\n"
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CVSPS_PREFIX ".cvsps"
 
 enum
 {
@@ -461,8 +463,8 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-v] [-h]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
-    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) CVS/cvsps.cache file");
-    debug(DEBUG_APPERROR, "  -u update CVS/cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
     debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
     debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
@@ -1210,13 +1212,129 @@ static void strzncpy(char * dst, const char * src, int n)
     dst[n - 1] = 0;
 }
 
+static char *readfile(char const *filename, char *buf, size_t size)
+{
+    FILE *fp;
+    char *ptr;
+    size_t len;
+
+    fp = fopen(filename, "r");
+    if (!fp)
+	return NULL;
+
+    ptr = fgets(buf, size, fp);
+    fclose(fp);
+
+    if (!ptr)
+	return NULL;
+
+    len = strlen(buf);
+    if (buf[len-1] == '\n')
+	buf[len-1] = '\0';
+    
+    return buf;
+}
+
+static char *strrep(char *s, char find, char replace)
+{
+    char * p = s;
+    while (*p)
+    {
+	if (*p == find)
+	    *p = replace;
+	p++;
+    }
+
+    return s;
+}
+
+static char *get_prefix(void)
+{
+    struct stat sbuf;
+    static char prefix[PATH_MAX];
+    const char * home;
+
+    if (!(home = getenv("HOME")))
+    {
+	debug(DEBUG_APPERROR, "HOME environment variable not set");
+	exit(1);
+    }
+
+    if (snprintf(prefix, PATH_MAX, "%s/%s", home, CVSPS_PREFIX) >= PATH_MAX)
+    {
+	debug(DEBUG_APPERROR, "prefix buffer overflow");
+	exit(1);
+    }
+
+    /* Make sure the prefix directory exists */
+    if (stat(prefix, &sbuf) < 0)
+    {
+	int ret;
+	ret = mkdir(prefix, 0777);
+	if (ret < 0)
+	{
+	    debug(DEBUG_SYSERROR, "Cannot create the cvsps directory '%s'", CVSPS_PREFIX);
+	    exit(1);
+	}
+    }
+    else
+    {
+	if (!(S_ISDIR(sbuf.st_mode)))
+	    debug(DEBUG_APPERROR, "cvsps directory '%s' is not a directory!", CVSPS_PREFIX);
+    }
+
+    return prefix;
+ }
+
+static FILE *cvsps_open(char const *mode)
+{
+    char root[PATH_MAX];
+    char repository[PATH_MAX];
+    char *prefix, *tmp1, *tmp2;
+    char fname[PATH_MAX];
+    FILE * fp;
+
+    /* Get the prefix */
+    prefix = get_prefix();
+    if (!prefix)
+	return NULL;
+    
+    /* Generate the full path */
+    tmp1 = readfile("CVS/Root", root, sizeof(root));
+    tmp2 = readfile("CVS/Repository", repository, sizeof(repository));
+    if (!tmp1 || !tmp2)
+	return NULL;
+
+    strrep(root, '/', '#');
+    strrep(repository, '/', '#');
+
+    snprintf(fname, PATH_MAX, "%s/%s#%s", prefix, root, repository);
+    
+    if (!(fp = fopen(fname, mode)) && *mode == 'r')
+    {
+	if ((fp = fopen("CVS/cvsps.cache", mode)))
+	{
+	    fprintf(stderr, "\n");
+	    fprintf(stderr, "****WARNING**** Obsolete CVS/cvsps.cache file found.\n");
+	    fprintf(stderr, "                New file will be re-written in ~/%s/\n", CVSPS_PREFIX);
+	    fprintf(stderr, "                Old file will be ignored from now on\n");
+	    fprintf(stderr, "                Please manually remove.\n");
+	    fprintf(stderr, "                Continuing in 5 seconds.\n");
+	    sleep(5);
+	    do_write_cache = 1;
+	}
+    }
+
+    return fp;
+}
+
 static void write_cache()
 {
     struct hash_entry * file_iter;
 
     ps_counter = 0;
 
-    if ((cache_fp = fopen("CVS/cvsps.cache", "w")) == NULL)
+    if ((cache_fp = cvsps_open("w")) == NULL)
     {
 	debug(DEBUG_SYSERROR, "can't open CVS/cvsps.cache for write");
 	return;
@@ -1358,13 +1476,13 @@ static int read_cache()
     char authbuff[AUTH_STR_MAX] = "";
     char logbuff[LOG_STR_MAX] = "";
 
-    if (!(fp = fopen("CVS/cvsps.cache", "r")))
+    if (!(fp = cvsps_open("r")))
 	return -1;
 
     /* first line is date cache was created, format "cache date: %d\n" */
     if (!fgets(buff, BUFSIZ, fp) || strncmp(buff, "cache date:", 11))
     {
-	debug(DEBUG_APPERROR, "bad CVS/cvsps.cache file");
+	debug(DEBUG_APPERROR, "bad cvsps.cache file");
 	return -1;
     }
 
