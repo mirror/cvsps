@@ -1,3 +1,44 @@
+1.3.3 (why isn't this 1.4 again?)
+- added the 'memory reduction' patch from Baruch Even.  This patch
+  greatly reduces the memory footprint of CVSps against a large 
+  repository by using dynamically allocated buffers, and by using
+  a tree to hold "common" strings (to avoid having a thousand copies
+  of the string "1.1").  This patch also adds a new option '-t' which
+  displays some memory usage statistics at the top.
+
+- added the 00-strip-revision.patch from Steven Tweedie which fixes
+  a parsing problem when there are locked files in the repository
+
+- added the 'Tweedie Tweenie' patch from Steven Tweedie (01-stable-tree) 
+  which fixes a bug where interspersed commits could cause unstable 
+  tree behavior.  This would happen especially when multiple users commit 
+  at the same time to different parts of a large tree over a slow link.
+
+- added the --norc option (based on a suggestion by Soren S. Jorvang) 
+  to handle cases where people have bad stuff in their .cvsrc which makes 
+  cvsps fail.  I could have added the '-f' unconditionally to the command
+  line for cvs when run under cvsps, but somehow that seemed dangerous.
+
+1.3.2 (small feature release)
+- added the 'multi-patchset' feature to the -s option, provided in its
+  entirety by Daiki Ueno <ueno@unixuser.org>
+
+1.3.1 (bugfix release mostly)
+- fix bug with updating cache (-u) having to do with matching new and old 
+  revisions
+
+- fix timestamp_fuzz_factor bug where the fuzz was applied to loading
+  from cache by mistake.
+
+- add a spec file (from Jan IVEN <Jan.Iven@cern.ch>)
+
+- improve the parameterization of Makefile, and make things relocatable
+  (from many people, esp. Amitai Schlair <schmonz@schmonz.com>)
+
+- fix strip_path_len calculation (again - I had munged the prior fix)
+  Jeffrey Ebert <ebert@sonicsinc.com>
+
+
 1.3
 - fix case where CVSROOT is initial substring of Repository when
   creating strip_path variable.

@@ -23,8 +23,8 @@ update CVS/cvsps.cache file
 .B \-z <fuzz>
 set the timestamp fuzz factor for identifying patch sets
 .TP
-.B \-s <patchset>
-generate a diff for a given patchset
+.B \-s <patchset>[-<patchset>[,<patchset>[-<patchset>...]]]
+generate a diff for a given patchsets and patchset ranges
 .TP
 .B \-a <author>
 restrict output to patchsets created by author
@@ -42,6 +42,12 @@ restrict output to patchsets affecting history of branch
 .TP
 .B \-v
 show verbose parsing messages
+.TP
+.B \-t
+show some brief memory usage statistics
+.TP
+.B \--norc
+when invoking cvs, ignore the .cvsrc file
 .TP
 .B \-h
 display usage summary

@@ -1,4 +1,4 @@
-CVSps (c) 2001 David Mansfield
+CVSps (c) 2001,2002 David Mansfield
 ------------------------------
 
 Overview.
@@ -116,11 +116,12 @@ d) viewing the changes made by a patchset.
 
 To show the 'diff' output for a given patchset, use:
 
-cvsps -s <patchset number>
+cvsps -s <patchset number>[-<patchset number>[,<patchset-number>...]]
 
 It will show you the diff of changes made by the commit.  Some effort was
 made to ensure that the patches are valid, even in the case of removing or
-creating files, a case in which 'cvs diff' fails.
+creating files, a case in which 'cvs diff' fails.  You can specify many
+patchsets using ranges, and many ranges separated by commas.
 
 e) what is timestamp fuzz factor (-z option)?
 
