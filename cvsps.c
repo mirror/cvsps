@@ -24,7 +24,7 @@
 #include "stats.h"
 #include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.69 2003/03/19 15:39:29 david Exp $");
+RCSID("$Id: cvsps.c,v 4.70 2003/03/19 16:21:32 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -452,14 +452,15 @@ static void usage(const char * str1, const char * str2)
     if (str1)
 	debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
 
-    debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] ");
-    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>]");
-    debug(DEBUG_APPERROR, "             [-l <regex>] [-r <tag> [-r <tag>]] [-p <directory>]");
-    debug(DEBUG_APPERROR, "             [-v] [-h] [-t] [--norc] [--summary-first]");
+    debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
+    debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
+    debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
+    debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
+    debug(DEBUG_APPERROR, "  -h display this informative message");
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
     debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
@@ -476,15 +477,14 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
     debug(DEBUG_APPERROR, "     revisions between the two tags.");
     debug(DEBUG_APPERROR, "  -p <directory> output patch sets to individual files in <directory>");
-    debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
+    debug(DEBUG_APPERROR, "  -v show very verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
     debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
-    debug(DEBUG_APPERROR, "  -h display this informative message");
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
-    debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (faulty in some setups)");
+    debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (they're faulty in some setups)");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -700,14 +700,14 @@ static void parse_args(int argc, char *argv[])
 	    i++;
 	    continue;
 	}
-	
+
 	if (strcmp(argv[i], "--no-rcmds") == 0)
 	{
 	    no_rcmds = 1;
 	    i++;
 	    continue;
 	}
-	
+
 	usage("invalid argument", argv[i]);
     }
 }

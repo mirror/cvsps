@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-p <patchdir>] [-a <author>] [-l <text>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v] [-t] [-h] [--norc] [--summary-first] [--test-log <filename>] [--diff-opts <option string>] [--bkcvs] [--no-rcmds]
+[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rcmds] [--diff-opts <option string>]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -13,6 +13,9 @@ big picture of the evolution of a cvs project.  While cvs tracks revision
 information, it is often difficult to see what changes were committed
 'atomically' to the repository.
 .SH OPTIONS
+.TP
+.B \-h
+display usage summary
 .TP
 .B \-x
 ignore (and rebuild) ~/.cvsps/cvsps.cache file
@@ -29,14 +32,8 @@ generate diffs of the selected patch sets
 .B \-s <patchset>[-[<patchset>]][,<patchset>...]
 generate a diff for a given patchsets and patchset ranges
 .TP
-.B \-p <dir>
-output individual patchsets as files in <dir> as <dir>/<patchset>.patch
-.TP
 .B \-a <author>
 restrict output to patchsets created by author
-.TP
-.B \-l <regex>
-restrict output to patchsets matching regex in log message
 .TP
 .B \-f <file>
 restrict output to patchsets involving file
@@ -46,17 +43,23 @@ if just one date specified, show
 revisions newer than date1.  If two dates specified,
 show revisions between two dates.
 .TP
-.B \-r <tag1> -r <tag2>
-if just one tag specified, show
-revisions since tag1. If two tags specified, show
-revisions between the two tags.
+.B \-l <regex>
+restrict output to patchsets matching regex in log message
 .TP
 .B \-b <branch>
 restrict output to patchsets affecting history of branch.
 If you want to restrict to the main branch, use a branch of 'HEAD'.
 .TP
+.B \-r <tag1> -r <tag2>
+if just one tag specified, show
+revisions since tag1. If two tags specified, show
+revisions between the two tags.
+.TP
+.B \-p <dir>
+output individual patchsets as files in <dir> as <dir>/<patchset>.patch
+.TP
 .B \-v
-show verbose parsing messages
+show very verbose parsing messages
 .TP
 .B \-t
 show some brief memory usage statistics
@@ -68,24 +71,21 @@ when invoking cvs, ignore the .cvsrc file
 when multiple patchset diffs are being generated, put the patchset
 summary for all patchsets at the beginning of the output.
 .TP
-.B \--diffs-opts <option string>
-send a custom set of options to diff, for example to increase
-the number of context lines, or change the diff format.
-.TP
 .B \--test-log <captured cvs log file>
 for testing changes, you can capture cvs log output, then test against
 this captured file instead of hammering some poor CVS server
 .TP
 .B \--bkcvs
-for use in parsing the BK->CVS tree log formats only.  This enables
+(see note below) for use in parsing the BK->CVS tree log formats only.  This enables
 some hacks which are not generally applicable.
 .TP
 .B \--no-rcmds
 disable the use of rlog and rdiff internally.  Note: rlog is
 required for stable PatchSet numbering.  Use with care.
 .TP
-.B \-h
-display usage summary
+.B \--diffs-opts <option string>
+send a custom set of options to diff, for example to increase
+the number of context lines, or change the diff format.
 .SH "NOTE ON TAG HANDLING"
 Tags are fundamentally 'file at a time' in cvs, but like everything else,
 it would be nice to imagine that they are 'repository at a time.'  The
@@ -111,6 +111,38 @@ same patchset.  If an INVALID tag is specified as one of the '-r' arguments,
 cvsps will flag each member of the affected patchsets as before or after the tag
 and the patchset summary will indicate which members are which, and diffs will 
 be generated accordingly.
+.SH "NOTE ON CVS VERSIONS"
+Among the different cvs subcommands used by cvsps is the 'rlog' command.  The
+rlog command is used to get revision history of a module, and it disregards
+the current working directory.  The important difference between 'rlog' and 'log'
+(from cvsps perspective) is the 'rlog' will include log data for files not in
+the current working directory.  The impact of this is mainly when there are 
+directories which at one time had files, but are now empty, and have been pruned
+from the working directory with the '-P' option.  If 'rlog' is not used, these
+files logs will not be parsed, and the PatchSet numbering will be unstable.
+.PP
+The main problem with 'rlog' is that, until cvs version 1.11.1, 'rlog' was an
+alias for the 'log' command.  This means, for old versions of cvs, 'rlog' has
+different semantics and usage.  cvsps will attempt to work around this problem
+by detecting capable versions of cvs.  If an old version is detected, 'log' will
+be used instead of 'rlog', and YMMV.
+.SH "NOTE ON GENERATED DIFFS"
+Another important note is that cvsps will attempt, whenever possible, to use the
+r-commands (rlog, rdiff  and co) instead of the local commands (log, diff, and update).
+This is to allow cvsps to function without a completely checked out tree.  Because
+these r-commands are used, the generated diffs will include the module directory in 
+them, and it is recommended to apply them in the working directory with the -p1 option
+to the patch command.  However, if the --diff-opts option is specified (to change, for 
+example, the lines of context), then rdiff cannot be used, because it doesn't support
+arbitrary options.  In this case, the patches will be generated without the module
+directory in the path, and -p0 will be required when applying the patch.
+.SH "NOTE ON BKCVS"
+The --bkcvs option is a special operating mode that should only be used when parsing
+the log files from the BK -> CVS exported linux kernel trees.  cvsps uses special
+semantics for recreating the BK ChangeSet metadata that has been embedded in the log
+files for those trees.  The --bkcvs option should only be specified when the cache
+file is being created or updated (i.e. initial run of cvsps, or when -u and -x options
+are used).
 .SH "NOTE ON DATE FORMATS"
 Dates have formats.  Fixme.
 .SH "SEE ALSO"

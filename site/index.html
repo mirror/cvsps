@@ -43,29 +43,39 @@ of CVSps looks like:
 <tr><td width=50>&nbsp;</td><td>
 <pre>
 ---------------------
-PatchSet 44656
-Date: 2003/02/27 13:46:06
-Author: ghazi
-Branch: gcc-3_3-branch
+PatchSet 999
+Date: 2002/07/11 19:50:46
+Author: alan
+Branch: HEAD
 Tag: (none)
 Log:
-2003-02-24  Danny Smith  <dannysmith@users.source.forge.net>
+[PATCH] Fix several pdc202xx problems
 
-  * physmem.c (physmem_total): Add _WIN32 support.
-  (physmem_available): Likewise.
+Misnaming of 20270 as 20268R
+Failure of LBA48 on 20262
+Incorrect speed detection because the old driver used host not drive side
+cable detect
+PDC202xx handling for quirks in udma reporting off some drives
+LBA48 for PIO mode
+
+BKrev: 3d2dd386wJMnehoOAhv3wL991IfXVQ
 
 Members:
-  libiberty/ChangeLog:1.398.2.14->1.398.2.15
-  libiberty/physmem.c:1.1.2.7->1.1.2.8
+  ChangeSet:1.999->1.1000
+  MAINTAINERS:1.74->1.75
+  drivers/ide/ide-features.c:1.4->1.5
+  drivers/ide/ide-pci.c:1.18->1.19
+  drivers/ide/pdc202xx.c:1.11->1.12
+  include/linux/pci_ids.h:1.44->1.45
 
 ---------------------
 </pre></td><td width=50>&nbsp;
 <tr><td colspan=3>
 This snapshot shows the output of one patchset.  This patchset is
-taken from actual output when running against the gcc CVS repository :-)
+taken from actual output when running against the BK->CVS 2.4 kernel tree.
 You can see it tracks all
-files changed, gives the pre- and post- version numbers, and (when 
-applicable, as in this example) indicates what branch the patchset was on.  
+files changed, gives the pre- and post- revision numbers, and (when 
+applicable, not in this example) indicates what branch the patchset was on.  
 It is also possible to generate a diff of the patchset using CVSps.  CVSps 
 essentially gives you the equivalent to tagging before and after each commit.
 </table>
@@ -77,13 +87,15 @@ essentially gives you the equivalent to tagging before and after each commit.
 A description of the usage of cvsps tersely describes a lot of its features:
 <pre>
 $ cvsps -h
-Usage: cvsps [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;patchset&gt;] [-a &lt;author&gt;]
-             [-f &lt;file&gt;] [-d &lt;date1&gt; [-d &lt;date2&gt;]] [-b &lt;branch&gt;]
-             [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]] [-p &lt;directory&gt;]
-             [-v] [-h] [-t] [--norc] [--summary-first]
+Usage: cvsps [-h] [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;range&gt;[,&lt;range&gt;]]
+             [-a &lt;author&gt;] [-f &lt;file&gt;] [-d &lt;date1&gt; [-d &lt;date2&gt;]]
+             [-b &lt;branch&gt;]  [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]]
+             [-p &lt;directory&gt;] [-v] [-t] [--norc] [--summary-first]
              [--test-log &lt;captured cvs log file&gt;] [--bkcvs]
+             [--no-rcmds] [--diff-opts &lt;option string&gt;]
 
 Where:
+  -h display this informative message
   -x ignore (and rebuild) cvsps.cache file
   -u update cvsps.cache file
   -z &lt;fuzz&gt; set the timestamp fuzz factor for identifying patch sets
@@ -100,15 +112,16 @@ Where:
      revisions since tag1. If two tags specified, show
      revisions between the two tags.
   -p &lt;directory&gt; output patch sets to individual files in &lt;directory&gt;
-  -v show verbose parsing messages
+  -v show very verbose parsing messages
   -t show some brief memory usage statistics
   --norc when invoking cvs, ignore the .cvsrc file
-  -h display this informative message
   --summary-first when multiple patch sets are shown, put all summaries first
   --test-log &lt;captured cvs log&gt; supply a captured cvs log for testing
+  --diff-opts &lt;option string&gt; supply special set of options to diff
   --bkcvs special hack for parsing the BK -&gt; CVS log format
+  --no-rcmds disable rlog and rdiff (they're faulty in some setups)
 
-cvsps version 2.0b4
+cvsps version 2.0b5
 </pre>
 </table>
 
