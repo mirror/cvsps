@@ -25,9 +25,9 @@ int cvs_check_cap(int cap)
     case CAP_HAVE_RLOG:
 	if (!(ret = check_cvs_version(1,11,1)))
 	{
-	    debug(DEBUG_APPERROR, "\n"
-		  "Your CVS client version [%s]\n"
-		  "and/or server version [%s]\n"
+	    debug(DEBUG_APPERROR, 
+		  "WARNING: Your CVS client version:\n[%s]\n"
+		  "and/or server version:\n[%s]\n"
 		  "are too old to properly support the rlog command. \n"
 		  "This command was introduced in 1.11.1.  Cvsps\n"
 		  "will use log instead, but PatchSet numbering\n"
@@ -48,7 +48,10 @@ static void get_version_external()
 {
     FILE * cvsfp;
     
-    if (!(cvsfp = popen("cvs version", "r")))
+    strcpy(client_version, "(UNKNOWN CLIENT)");
+    strcpy(server_version, "(UNKNOWN SERVER)");
+
+    if (!(cvsfp = popen("cvs version 2>/dev/null", "r")))
     {
 	debug(DEBUG_APPERROR, "cannot popen cvs version. exiting");
 	exit(1);
@@ -56,8 +59,8 @@ static void get_version_external()
     
     if (!fgets(client_version, BUFSIZ, cvsfp))
     {
-	debug(DEBUG_APPERROR, "malformed CVS version: no data");
-	exit(1);
+	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: no data");
+	goto out;
     }
     
     chop(client_version);
@@ -66,8 +69,8 @@ static void get_version_external()
     {
 	if (!fgets(server_version, BUFSIZ, cvsfp))
 	{
-	    debug(DEBUG_APPERROR, "malformed CVS version: no server data");
-	    exit(1);
+	    debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: no server data");
+	    goto out;
 	}
 	chop(server_version);
     }
@@ -76,6 +79,7 @@ static void get_version_external()
 	server_version[0] = 0;
     }
     
+ out:
     pclose(cvsfp);
 }
 
@@ -98,17 +102,22 @@ int check_version_string(const char * str, int req_major, int req_minor, int req
     char * p;
     int major, minor, extra;
 
-    p = strstr(client_version, "(CVS) ");
+    p = strstr(str, "(CVS) ");
     if (!p)
     {
-	debug(DEBUG_APPERROR, "malformed CVS version: %s", client_version);
-	exit(1);
+	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version str: %s", str);
+	return 0;
     }
 
     p += 6;
-    sscanf(p, "%d.%d.%d", &major, &minor, &extra);
+    if (sscanf(p, "%d.%d.%d", &major, &minor, &extra) != 3)
+    {	
+	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
+	return 0;
+    }
 
     return (major > req_major || 
 	    (major == req_major && minor > req_minor) ||
 	    (major == req_major && minor == req_minor && extra >= req_extra));
 }
+
