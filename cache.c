@@ -286,7 +286,7 @@ time_t read_cache()
 	    }
 	    else
 	    {
-		PatchSetMember * psm = create_patchset_member();
+		PatchSetMember * psm = create_patch_set_member();
 		parse_cache_revision(psm, buff);
 		psm->ps = ps;
 		list_add(&psm->link, psm->ps->members.prev);

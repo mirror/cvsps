@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.47 2003/02/28 14:30:42 david Exp $");
+RCSID("$Id: cvsps.c,v 4.48 2003/03/12 15:09:44 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -66,7 +66,7 @@ static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static int summary_first;
 static const char * norc = "";
-static const char * patchset_dir;
+static const char * patch_set_dir;
 static const char * restrict_tag_start;
 static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
@@ -87,8 +87,8 @@ static int is_revision_metadata(const char *);
 static int patch_set_contains_member(PatchSet *, const char *);
 static int patch_set_affects_branch(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
-static PatchSet * create_patchset();
-static PatchSetRange * create_patchset_range();
+static PatchSet * create_patch_set();
+static PatchSetRange * create_patch_set_range();
 static void parse_sym(CvsFile *, char *);
 static void print_statistics(void);
 static void resolve_global_symbols();
@@ -262,7 +262,7 @@ static void load_from_cvs()
 		 */
 		if (!rev->post_psm)
 		{
-		    psm = rev->post_psm = create_patchset_member();
+		    psm = rev->post_psm = create_patch_set_member();
 		    psm->post_rev = rev;
 		    psm->file = file;
 		    state = NEED_DATE_AUTHOR_STATE;
@@ -466,7 +466,7 @@ static void parse_args(int argc, char *argv[])
 	    min_str = strtok(argv[i++], ",");
 	    do
 	    {
-		range = create_patchset_range();
+		range = create_patch_set_range();
 
 		max_str = strrchr(min_str, '-');
 		if (max_str)
@@ -585,7 +585,7 @@ static void parse_args(int argc, char *argv[])
 	    if (++i >= argc)
 		usage("argument to -p missing", "");
 	    
-	    patchset_dir = argv[i++];
+	    patch_set_dir = argv[i++];
 	    continue;
 	}
 
@@ -768,7 +768,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 {
     PatchSet * retval = NULL, **find = NULL;
 
-    if (!(retval = create_patchset()))
+    if (!(retval = create_patch_set()))
     {
 	debug(DEBUG_SYSERROR, "malloc failed for PatchSet");
 	return NULL;
@@ -904,6 +904,8 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 
 static void check_print_patch_set(PatchSet * ps)
 {
+    ps_counter++;
+
     if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
 	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
@@ -969,11 +971,11 @@ static void check_print_patch_set(PatchSet * ps)
 	    return;
     }
 
-    if (patchset_dir)
+    if (patch_set_dir)
     {
 	char path[PATH_MAX];
 
-	snprintf(path, PATH_MAX, "%s/%d.patch", patchset_dir, ps_counter);
+	snprintf(path, PATH_MAX, "%s/%d.patch", patch_set_dir, ps_counter);
 
 	fflush(stdout);
 	close(1);
@@ -1022,7 +1024,7 @@ static void print_patch_set(PatchSet * ps)
     printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", ps->valid_tag ? "" : "**INVALID**");
     printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
-    
+
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
@@ -1047,7 +1049,6 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
     case postorder:
     case leaf:
 	ps = *(PatchSet**)nodep;
-	ps_counter++;
 	check_print_patch_set(ps);
 	break;
 
@@ -1318,7 +1319,7 @@ CvsFile * create_cvsfile()
     return f;
 }
 
-static PatchSet * create_patchset()
+static PatchSet * create_patch_set()
 {
     PatchSet * ps = (PatchSet*)calloc(1, sizeof(*ps));;
     
@@ -1334,7 +1335,7 @@ static PatchSet * create_patchset()
     return ps;
 }
 
-PatchSetMember * create_patchset_member()
+PatchSetMember * create_patch_set_member()
 {
     PatchSetMember * psm = (PatchSetMember*)calloc(1, sizeof(*psm));
     psm->pre_rev = NULL;
@@ -1343,7 +1344,7 @@ PatchSetMember * create_patchset_member()
     return psm;
 }
 
-static PatchSetRange * create_patchset_range()
+static PatchSetRange * create_patch_set_range()
 {
     PatchSetRange * psr = (PatchSetRange*)calloc(1, sizeof(*psr));
     return psr;
@@ -1502,7 +1503,7 @@ static void count_hash(struct hash_table *hash, unsigned int *total,
     *max_val= MAX(*max_val, counter);
 }
 
-static unsigned int num_patchsets = 0;
+static unsigned int num_patch_sets = 0;
 static unsigned int num_ps_member = 0, max_ps_member_in_ps = 0;
 static unsigned int num_authors = 0, max_author_len = 0, total_author_len = 0;
 static unsigned int max_descr_len = 0, total_descr_len = 0;
@@ -1525,7 +1526,7 @@ static void stat_ps_tree_node(const void * nodep, const VISIT which, const int d
     case postorder:
     case leaf:
 	ps = *(PatchSet**)nodep;
-	num_patchsets++;
+	num_patch_sets++;
 
 	/* Author statistics */
 	if (put_hash_object_ex(author_hash, ps->author, ps->author, HT_NO_KEYCOPY, NULL, &old) >= 0 && old)
@@ -1604,13 +1605,13 @@ static void print_statistics(void)
     twalk(ps_tree, stat_ps_tree_node);
 
     /* Print patchset statistics */
-    printf("Num patchsets: %d\n", num_patchsets);
+    printf("Num patchsets: %d\n", num_patch_sets);
     printf("Max PS members in PS: %d\nAverage PS members in PS: %.2f\n",
-	    max_ps_member_in_ps, (float)num_ps_member/num_patchsets);
+	    max_ps_member_in_ps, (float)num_ps_member/num_patch_sets);
     printf("Num authors: %d, Max author len: %d, Avg. author len: %.2f\n", 
 	    num_authors, max_author_len, (float)total_author_len/num_authors);
     printf("Max desc len: %d, Avg. desc len: %.2f\n",
-	    max_descr_len, (float)total_descr_len/num_patchsets);
+	    max_descr_len, (float)total_descr_len/num_patch_sets);
 }
 
 /*
