@@ -9,6 +9,12 @@
 - commenting cleanups
 - include the very rudimentary merge_utils.sh functions
   I use to assist merging stuff
+- change the way diffs are generated, handle individual
+  members that are before/after the -r tag restrictions
+- change the semantics of the -s argument.  it now only
+  restricts the patch sets the same as the other filtration
+  arguments.  new argument -g turns on diff generation
+- add manpage section discussing tag handling semantics
 
 2.0b1
 - major restructuring of source code.  single cvsps.c split into

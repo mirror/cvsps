@@ -23,7 +23,10 @@ update ~/.cvsps/cvsps.cache file
 .B \-z <fuzz>
 set the timestamp fuzz factor for identifying patch sets
 .TP
-.B \-s <patchset>[-<patchset>[,<patchset>[-<patchset>...]]]
+.B \-g
+generate diffs of the selected patch sets
+.TP
+.B \-s <patchset>[-[<patchset>]][,<patchset>...]
 generate a diff for a given patchsets and patchset ranges
 .TP
 .B \-p <dir>
@@ -52,9 +55,6 @@ revisions between the two tags.
 restrict output to patchsets affecting history of branch.
 If you want to restrict to the main branch, use a branch of 'HEAD'.
 .TP
-.B \-p <directory>
-Output patchsets to individual files in <directory>
-.TP
 .B \-v
 show verbose parsing messages
 .TP
@@ -74,7 +74,33 @@ this captured file instead of hammering some poor CVS server
 .TP
 .B \-h
 display usage summary
+.SH "NOTE ON TAG HANDLING"
+Tags are fundamentally 'file at a time' in cvs, but like everything else,
+it would be nice to imagine that they are 'repository at a time.'  The
+approach cvsps takes is that a tag is assigned to a patchset.  The meaning
+of this is that after this patchset, every revision of every file is after
+the tag (and conversely, before this patchset, at least one file is still
+before the tag).  However, there are two kinds of inconsistent (or 'funky')
+tags that can be created, even when following best practices for cvs.  
+.PP
+The first
+is what is called a FUNKY tag.  A funky tag is one where there are patchsets
+which are chronologically (and thus by patchset id) earlier than the tag, but
+are tagwise after.  These tags will be marked as '**FUNKY**' in the Tag: section
+of the cvsps output.  When a funky tag is specified as one of the '-r' arguments,
+there are some number of patchsets which need to be considered out of sequence.  
+In this case, the patchsets themselves will be labeled FUNKY and will be processed
+correctly.
+.PP
+The second is called an INVALID tag.  An invalid tag is a tag where there are
+patchsets which are chronologically (and thus by patchset id) earlier than the tag,
+but which have members which are tagwise both before, and after the tag, in the
+same patchset.  If an INVALID tag is specified as one of the '-r' arguments,
+cvsps will flag each member of the affected patchsets as before or after the tag
+and the patchset summary will indicate which members are which, and diffs will 
+be generated accordingly.
 .SH "NOTE ON DATE FORMATS"
+Dates have formats.  Fixme.
 .SH "SEE ALSO"
 .BR cvs ( 1 ),
 .BR ci ( 1 ),
@@ -91,6 +117,5 @@ display usage summary
 .SH "REPORTING BUGS"
 Report bugs to "David Mansfield <cvsps@dm.cobite.com>"
 .SH BUGS
-Updating the cache (with the -u flag) may not work perfectly in all cases.  I
-haven't tracked it down completely.
+No known bugs.
 

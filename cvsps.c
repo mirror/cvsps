@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.58 2003/03/17 14:52:49 david Exp $");
+RCSID("$Id: cvsps.c,v 4.59 2003/03/17 15:17:00 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -72,6 +72,7 @@ static const char * test_log_file;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
+static int do_diff;
 static const char * restrict_author;
 static int have_restrict_log;
 static regex_t restrict_log;
@@ -442,23 +443,24 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
     debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
-    debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
-    debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
-    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patchsets matching <regex> in log message");
-    debug(DEBUG_APPERROR, "  -f <file> restrict output to patchsets involving file");
+    debug(DEBUG_APPERROR, "  -g generate diffs of the selected patch sets");
+    debug(DEBUG_APPERROR, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
+    debug(DEBUG_APPERROR, "  -a <author> restrict output to patch sets created by author");
+    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patch sets matching <regex> in log message");
+    debug(DEBUG_APPERROR, "  -f <file> restrict output to patch sets involving file");
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
     debug(DEBUG_APPERROR, "  -r <tag1> -r <tag2> if just one tag specified, show");
     debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
     debug(DEBUG_APPERROR, "     revisions between the two tags.");
-    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
-    debug(DEBUG_APPERROR, "  -p <directory> output patchsets to individual files in <directory>");
+    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patch sets affecting history of branch");
+    debug(DEBUG_APPERROR, "  -p <directory> output patch sets to individual files in <directory>");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
     debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
     debug(DEBUG_APPERROR, "  -h display this informative message");
-    debug(DEBUG_APPERROR, "  --summary-first when multiple patchsets are shown, put all summaries first");
+    debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
@@ -476,6 +478,13 @@ static void parse_args(int argc, char *argv[])
 		usage("argument to -z missing", "");
 
 	    timestamp_fuzz_factor = atoi(argv[i++]);
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-g") == 0)
+	{
+	    do_diff = 1;
+	    i++;
 	    continue;
 	}
 	
@@ -1035,7 +1044,7 @@ static void check_print_patch_set(PatchSet * ps)
      */
     if (summary_first <= 1)
 	print_patch_set(ps);
-    if (!list_empty(&show_patch_set_ranges) && summary_first != 1)
+    if (do_diff && summary_first != 1)
 	do_cvs_diff(ps);
 
     fflush(stdout);
