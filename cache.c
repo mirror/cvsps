@@ -30,10 +30,10 @@ static void dump_patch_set(FILE *, PatchSet *);
 
 static FILE *cache_open(char const *mode)
 {
+    char *prefix;
+    char fname[PATH_MAX];
     char root[PATH_MAX];
     char repository[PATH_MAX];
-    char *prefix, *tmp1, *tmp2;
-    char fname[PATH_MAX];
     FILE * fp;
 
     /* Get the prefix */
@@ -42,10 +42,8 @@ static FILE *cache_open(char const *mode)
 	return NULL;
     
     /* Generate the full path */
-    tmp1 = readfile("CVS/Root", root, sizeof(root));
-    tmp2 = readfile("CVS/Repository", repository, sizeof(repository));
-    if (!tmp1 || !tmp2)
-	return NULL;
+    strcpy(root, root_path);
+    strcpy(repository, repository_path);
 
     strrep(root, '/', '#');
     strrep(repository, '/', '#');
@@ -425,7 +423,7 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
 
     if ((cache_fp = cache_open("w")) == NULL)
     {
-	debug(DEBUG_SYSERROR, "can't open CVS/cvsps.cache for write");
+	debug(DEBUG_SYSERROR, "can't open cvsps.cache for write");
 	return;
     }
 

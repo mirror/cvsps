@@ -1,11 +1,16 @@
 #ifndef CVSPS_H
 #define CVSPS_H
 
+#ifndef HAVE_CVSSERVERCTX_DEF
+#define HAVE_CVSSERVERCTX_DEF
+typedef struct _CvsServerCtx CvsServerCtx;
+#endif
+
 extern struct hash_table * file_hash;
 extern const char * tag_flag_descr[];
-
-
-
+extern CvsServerCtx * cvs_direct_ctx;
+extern char root_path[];
+extern char repository_path[];
 
 CvsFile * create_cvsfile();
 CvsFileRevision * cvs_file_add_revision(CvsFile *, const char *);

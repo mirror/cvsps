@@ -1,7 +1,10 @@
 #ifndef CVS_DIRECT_H
 #define CVS_DIRECT_H
 
+#ifndef HAVE_CVSSERVERCTX_DEF
+#define HAVE_CVSSERVERCTX_DEF
 typedef struct _CvsServerCtx CvsServerCtx;
+#endif
 
 CvsServerCtx * open_cvs_server(char * root, int);
 void close_cvs_server(CvsServerCtx*);

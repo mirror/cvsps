@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.88 2003/03/27 14:02:42 david Exp $");
+RCSID("$Id: cvsps.c,v 4.89 2003/03/27 15:21:23 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -45,6 +45,8 @@ enum
 /* true globals */
 struct hash_table * file_hash;
 CvsServerCtx * cvs_direct_ctx;
+char root_path[PATH_MAX];
+char repository_path[PATH_MAX];
 
 const char * tag_flag_descr[] = {
     "",
@@ -66,8 +68,6 @@ static int ps_counter;
 static void * ps_tree, * ps_tree_bytime;
 static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
-static char root_path[PATH_MAX];
-static char repository_path[PATH_MAX];
 static int strip_path_len;
 static time_t cache_date;
 static int update_cache;
@@ -105,7 +105,7 @@ static char compress_arg[8];
 static int parse_args(int, char *[]);
 static int parse_rc();
 static void load_from_cvs();
-static void init_strip_path();
+static void init_paths();
 static CvsFile * parse_file(const char *);
 static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
     /* this parses some of the CVS/ files, and initializes
      * the repository_path and other variables 
      */
-    init_strip_path();
+    init_paths();
 
     if (!ignore_cache)
     {
@@ -511,7 +511,8 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
-    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>]");
+    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
+    debug(DEBUG_APPERROR, "             [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -542,6 +543,8 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
+    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     return -1;
@@ -804,8 +807,20 @@ static int parse_args(int argc, char *argv[])
 	    snprintf(compress_arg, 8, "-z%d", compress);
 	    continue;
 	}
+	
+	if (strcmp(argv[i], "--root") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to --root missing", "");
 
-	return usage("invalid argument", argv[i]);
+	    strcpy(root_path, argv[i++]);
+	    continue;
+	}
+
+	if (argv[i][0] == '-')
+	    return usage("invalid argument", argv[i]);
+	
+	strcpy(repository_path, argv[i++]);
     }
 
     return 0;
@@ -847,52 +862,81 @@ static int parse_rc()
     return 0;
 }
 
-static void init_strip_path()
+static void init_paths()
 {
     FILE * fp;
     char * p;
     int len;
 
-    if (!(fp = fopen("CVS/Root", "r")))
+    /* determine the CVSROOT. precedence:
+     * 1) command line
+     * 2) working directory (if present)
+     * 3) environment variable CVSROOT
+     */
+    if (!root_path[0])
     {
-	debug(DEBUG_SYSERROR, "Can't open CVS/Root");
-	exit(1);
-    }
-    
-    if (!fgets(root_path, PATH_MAX, fp))
-    {
-	debug(DEBUG_APPERROR, "Error reading CVSROOT");
-	exit(1);
+	if (!(fp = fopen("CVS/Root", "r")))
+	{
+	    const char * e;
+
+	    debug(DEBUG_STATUS, "Can't open CVS/Root");
+	    e = getenv("CVSROOT");
+
+	    if (!e)
+	    {
+		debug(DEBUG_APPERROR, "cannot determine CVSROOT");
+		exit(1);
+	    }
+	    
+	    strcpy(root_path, e);
+	}
+	else
+	{
+	    if (!fgets(root_path, PATH_MAX, fp))
+	    {
+		debug(DEBUG_APPERROR, "Error reading CVSROOT");
+		exit(1);
+	    }
+	    
+	    fclose(fp);
+	    
+	    /* chop the lf and optional '/' */
+	    len = strlen(root_path) - 1;
+	    root_path[len] = 0;
+	    if (root_path[len - 1] == '/')
+		root_path[--len] = 0;
+	}
     }
 
-    fclose(fp);
+    /* Determine the repository path, precedence:
+     * 1) command line
+     * 2) working directory
+     */
+      
+    if (!repository_path[0])
+    {
+	if (!(fp = fopen("CVS/Repository", "r")))
+	{
+	    debug(DEBUG_SYSERROR, "Can't open CVS/Repository");
+	    exit(1);
+	}
+	
+	if (!fgets(repository_path, PATH_MAX, fp))
+	{
+	    debug(DEBUG_APPERROR, "Error reading repository path");
+	    exit(1);
+	}
+	
+	chop(repository_path);
+    }
 
+    /* get the path portion of the root */
     p = strrchr(root_path, ':');
 
     if (!p)
 	p = root_path;
     else 
 	p++;
-
-    /* chop the lf and optional '/' */
-    len = strlen(root_path) - 1;
-    root_path[len] = 0;
-    if (root_path[len - 1] == '/')
-	root_path[--len] = 0;
-
-    if (!(fp = fopen("CVS/Repository", "r")))
-    {
-	debug(DEBUG_SYSERROR, "Can't open CVS/Repository");
-	exit(1);
-    }
-
-    if (!fgets(repository_path, PATH_MAX, fp))
-    {
-	debug(DEBUG_APPERROR, "Error reading repository path");
-	exit(1);
-    }
-    
-    chop(repository_path);
 
     /* some CVS have the CVSROOT string as part of the repository
      * string (initial substring).  remove it.
@@ -905,6 +949,10 @@ static void init_strip_path()
 	memmove(repository_path, repository_path + len + 1, rlen + 1);
     }
 
+    /* the 'strip_path' will be used whenever the CVS server gives us a
+     * path to an 'rcs file'.  the strip_path portion of these paths is
+     * stripped off, leaving us with the working file
+     */
     strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
 
     if (strip_path_len < 0)
