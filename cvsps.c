@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.65 2003/03/18 15:12:24 david Exp $");
+RCSID("$Id: cvsps.c,v 4.66 2003/03/18 15:16:25 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -161,9 +161,7 @@ int main(int argc, char *argv[])
     ps_counter = 0;
     twalk(ps_tree_bytime, set_ps_id);
 
-    timing_start();
     resolve_global_symbols();
-    timing_stop("resolve_global_symbols()");
 
     if (do_write_cache)
 	write_cache(cache_date, ps_tree_bytime);
