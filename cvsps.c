@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.24 2001/12/07 16:32:09 david Exp $");
+RCSID("$Id: cvsps.c,v 4.25 2001/12/14 16:00:08 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -212,8 +212,12 @@ static void load_from_cvs()
 		 * (psm refers to last patch set processed at this point)
 		 * since generally speaking the log is reverse chronological.
 		 * This breaks down slightly when branches are introduced 
+		 *
+		 * Use new_rev instead of rev, since rev will be NULL for
+		 * existing revisions (i.e. cvsps -u).  assign_pre_revision
+		 * does hash lookup on new_rev to get actual rev str anyway
 		 */
-		assign_pre_revision(psm, rev);
+		assign_pre_revision(psm, new_rev);
 
 		if (rev)
 		{
