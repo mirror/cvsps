@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.26 2001/12/14 22:23:16 david Exp $");
+RCSID("$Id: cvsps.c,v 4.27 2002/04/01 21:17:07 david Exp $");
 
 #define CACHE_VERSION 1
 
@@ -124,8 +124,19 @@ int main(int argc, char *argv[])
     file_hash = create_hash_table(1023);
 
     if (!ignore_cache)
+    {
+	int save_fuzz_factor = timestamp_fuzz_factor;
+	
+	/* the timestamp fuzz should only be in effect when loading
+	 * from CVS, not re-fuzzed when loading from cache
+	 */
+	timestamp_fuzz_factor = 0;
+
 	if (read_cache() < 0)
 	    update_cache = 1;
+
+	timestamp_fuzz_factor = save_fuzz_factor;
+    }
     
     if (update_cache)
     {
@@ -1355,7 +1366,11 @@ static void parse_cache_revision(PatchSetMember * psm, const char * buff)
     strzncpy(post, s, p - s + 1);
 
     psm->pre_rev = file_get_revision(psm->file, pre);
+    if (psm->pre_rev)
+	psm->pre_rev->psm = psm;
+
     psm->post_rev = file_get_revision(psm->file, post);
+    psm->post_rev->psm = psm;
     psm->post_rev->dead = atoi(p + 8);
 }
 
