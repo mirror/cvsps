@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.15 2001/11/12 22:03:39 david Exp $")
+RCSID("$Id: cvsps.c,v 4.16 2001/11/12 22:04:10 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
