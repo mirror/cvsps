@@ -2,6 +2,11 @@
 #define CVSPS_H
 
 extern struct hash_table * file_hash;
+extern const char * tag_flag_descr[];
+
+/* these are bit flags */
+#define TAG_FUNKY   0x1
+#define TAG_INVALID 0x2
 
 CvsFile * create_cvsfile();
 CvsFileRevision * cvs_file_add_revision(CvsFile *, const char *);

@@ -17,6 +17,9 @@
 
 #define CACHE_DESCR_BOUNDARY "-=-END CVSPS DESCR-=-\n"
 
+/* change this when making the on-disk cache-format invalid */
+static int cache_version = 1;
+
 /* the tree walk API pretty much requries use of globals :-( */
 static FILE * cache_fp;
 static int ps_counter;
@@ -57,7 +60,7 @@ static FILE *cache_open(char const *mode)
 	    fprintf(stderr, "****WARNING**** Obsolete CVS/cvsps.cache file found.\n");
 	    fprintf(stderr, "                New file will be re-written in ~/%s/\n", CVSPS_PREFIX);
 	    fprintf(stderr, "                Old file will be ignored.\n");
-	    fprintf(stderr, "                Please manually remove.\n");
+	    fprintf(stderr, "                Please manually remove the old file.\n");
 	    fprintf(stderr, "                Continuing in 5 seconds.\n");
 	    sleep(5);
 	    fclose(fp);
@@ -80,7 +83,7 @@ enum
     CACHE_NEED_PS_DATE,
     CACHE_NEED_PS_AUTHOR,
     CACHE_NEED_PS_TAG,
-    CACHE_NEED_PS_VALID_TAG,
+    CACHE_NEED_PS_TAG_FLAGS,
     CACHE_NEED_PS_BRANCH,
     CACHE_NEED_PS_BRANCH_ADD,
     CACHE_NEED_PS_DESCR,
@@ -99,20 +102,35 @@ time_t read_cache()
     char datebuff[20] = "";
     char authbuff[AUTH_STR_MAX] = "";
     char tagbuff[LOG_STR_MAX] = "";
-    int valid_tag = 0;
+    int tag_flags = 0;
     char branchbuff[LOG_STR_MAX] = "";
     int branch_add = 0;
     char logbuff[LOG_STR_MAX] = "";
-    time_t cache_date;
+    time_t cache_date = -1;
+    int read_version;
 
     if (!(fp = cache_open("r")))
-	return -1;
+	goto out;
 
-    /* first line is date cache was created, format "cache date: %d\n" */
+    /* first line is cache version  format "cache version: %d\n" */
+    if (!fgets(buff, BUFSIZ, fp) || strncmp(buff, "cache version:", 14))
+    {
+	debug(DEBUG_APPERROR, "bad cvsps.cache file");
+	goto out_close;
+    }
+
+    if ((read_version = atoi(buff + 15)) != cache_version)
+    {
+	debug(DEBUG_APPERROR, "bad cvsps.cache version %d, expecting %d.  ignoring cache",
+	      read_version, cache_version);
+	goto out_close;
+    }
+
+    /* second line is date cache was created, format "cache date: %d\n" */
     if (!fgets(buff, BUFSIZ, fp) || strncmp(buff, "cache date:", 11))
     {
 	debug(DEBUG_APPERROR, "bad cvsps.cache file");
-	return -1;
+	goto out_close;
     }
 
     cache_date = atoi(buff + 12);
@@ -228,15 +246,15 @@ time_t read_cache()
 		/* remove prefix "tag: " and LF from len */
 		len -= 5;
 		strzncpy(tagbuff, buff + 5, MIN(len, LOG_STR_MAX));
-		state = CACHE_NEED_PS_VALID_TAG;
+		state = CACHE_NEED_PS_TAG_FLAGS;
 	    }
 	    break;
-	case CACHE_NEED_PS_VALID_TAG:
-	    if (strncmp(buff, "valid_tag:", 10) == 0)
+	case CACHE_NEED_PS_TAG_FLAGS:
+	    if (strncmp(buff, "tag_flags:", 10) == 0)
 	    {
-		/* remove prefix "valid_tag: " and LF from len */
+		/* remove prefix "tag_flags: " and LF from len */
 		len -= 11;
-		valid_tag = atoi(buff + 11);
+		tag_flags = atoi(buff + 11);
 		state = CACHE_NEED_PS_BRANCH;
 	    }
 	    break;
@@ -267,9 +285,9 @@ time_t read_cache()
 	    {
 		debug(DEBUG_STATUS, "patch set %s %s %s %s", datebuff, authbuff, logbuff, branchbuff);
 		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff);
-		/* the tag and valid_tag will be assigned by the resolve_global_symbols code 
+		/* the tag and tag_flags will be assigned by the resolve_global_symbols code 
 		 * ps->tag = (strlen(tagbuff)) ? get_string(tagbuff) : NULL;
-		 * ps->valid_tag = valid_tag;
+		 * ps->tag_flags = tag_flags;
 		 */
 		ps->branch_add = branch_add;
 		state = CACHE_NEED_PS_MEMBERS;
@@ -291,7 +309,7 @@ time_t read_cache()
 		datebuff[0] = 0;
 		authbuff[0] = 0;
 		tagbuff[0] = 0;
-		valid_tag = 0;
+		tag_flags = 0;
 		branchbuff[0] = 0;
 		branch_add = 0;
 		logbuff[0] = 0;
@@ -307,6 +325,9 @@ time_t read_cache()
 	}
     }
 
+ out_close:
+    fclose(fp);
+ out:
     return cache_date;
 }
 
@@ -407,6 +428,7 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
 	return;
     }
 
+    fprintf(cache_fp, "cache version: %d\n", cache_version);
     fprintf(cache_fp, "cache date: %d\n", (int)cache_date);
 
     reset_hash_iterator(file_hash);
@@ -480,7 +502,7 @@ static void dump_patch_set(FILE * fp, PatchSet * ps)
     fprintf(fp, "date: %d\n", (int)ps->date);
     fprintf(fp, "author: %s\n", ps->author);
     fprintf(fp, "tag: %s\n", ps->tag ? ps->tag : "");
-    fprintf(fp, "valid_tag: %d\n", ps->valid_tag);
+    fprintf(fp, "tag_flags: %d\n", ps->tag_flags);
     fprintf(fp, "branch: %s\n", ps->branch);
     fprintf(fp, "branch_add: %d\n", ps->branch_add);
     fprintf(fp, "descr:\n%s", ps->descr); /* descr is guaranteed to end with LF */

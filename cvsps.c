@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.49 2003/03/12 16:13:43 david Exp $");
+RCSID("$Id: cvsps.c,v 4.50 2003/03/12 17:54:03 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -40,6 +40,13 @@ enum
 
 /* true globals */
 struct hash_table * file_hash;
+
+const char * tag_flag_descr[] = {
+    "",
+    "**FUNKY**",
+    "**INVALID**",
+    "**INVALID**"
+};
 
 /* static globals */
 static int ps_counter;
@@ -1030,7 +1037,7 @@ static void print_patch_set(PatchSet * ps)
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
     printf("Branch: %s\n", ps->branch);
-    printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", ps->valid_tag ? "" : "**INVALID**");
+    printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", tag_flag_descr[ps->tag_flags]);
     printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
 
@@ -1338,8 +1345,9 @@ static PatchSet * create_patch_set()
 	ps->descr = NULL;
 	ps->author = NULL;
 	ps->tag = NULL;
-	ps->valid_tag = 1;
+	ps->tag_flags = 0;
 	ps->branch_add = 0;
+	ps->funk_factor = 0;
     }
 
     return ps;
@@ -1644,13 +1652,19 @@ static void resolve_global_symbols()
     while ((he_sym = next_hash_entry(global_symbols)))
     {
 	GlobalSymbol * sym = (GlobalSymbol*)he_sym->he_obj;
-
-	/* FIXME: LONG_MAX is possibly bad, but how can we do this? */
-	time_t valid_until = LONG_MAX;
 	PatchSet * ps;
 	struct list_head * next;
 
 	debug(DEBUG_STATUS, "resolving global symbol %s", sym->tag);
+
+	if (strcmp(sym->tag, "version_1_2") == 0)
+	    debug(DEBUG_STATUS, "here");
+
+	/*
+	 * First pass, determine the most recent PatchSet with a 
+	 * revision tagged with the symbolic tag.  This is 'the'
+	 * patchset with the tag
+	 */
 
 	for (next = sym->tags.next; next != &sym->tags; next = next->next)
 	{
@@ -1661,7 +1675,27 @@ static void resolve_global_symbols()
 
 	    if (!sym->ps || ps->date > sym->ps->date)
 		sym->ps = ps;
+	}
+	
+	/* convenience variable */
+	ps = sym->ps;
 
+	if (!ps)
+	    debug(DEBUG_APPERROR, "no patchset for tag %s", sym->tag);
+	else
+	    ps->tag = sym->tag;
+
+	/* 
+	 * Second pass. 
+	 * check if this is an invalid patchset, 
+	 * check which members are invalid.  determine
+	 * the funk factor etc.
+	 */
+	for (next = sym->tags.next; next != &sym->tags; next = next->next)
+	{
+	    Tag * tag = list_entry(next, Tag, global_link);
+	    CvsFileRevision * rev = tag->rev;
+	    
 	    /*
 	     * The revision's pre_psm->ps SHOULD be the PatchSet
 	     * where the revision became obsolete.  Every tagged 
@@ -1671,46 +1705,17 @@ static void resolve_global_symbols()
 	     * the PatchSet we are considering to be the 'tagged' 
 	     * PatchSet. (or on a separate branch)
 	     */
-	    if (rev->pre_psm)
-	    {
-		time_t t = rev->pre_psm->ps->date;
-
-		if (t < valid_until && revision_affects_branch(rev->pre_psm->post_rev, ps->branch))
-		    valid_until = t;
-	    }
-	}
-
-	ps = sym->ps;
-
-	if (!ps)
-	    debug(DEBUG_APPERROR, "no patchset for tag %s", sym->tag);
-	else
-	    ps->tag = sym->tag;
-
-	/* 
-	 * if this is an invalid patchset, check which members
-	 * are invalid.  (for reporting only at this point).
-	 */
-	if (valid_until < ps->date)
-	{
-	    struct list_head * next;
-
-	    ps->valid_tag = 0;
-
-	    for (next = sym->tags.next; next != &sym->tags; next = next->next)
-	    {
-		Tag * tag = list_entry(next, Tag, global_link);
-		CvsFileRevision * rev = tag->rev;
-
-		if (!rev->pre_psm)
-		    continue;
+	    if (!rev->pre_psm)
+		continue;
 		
-		if (rev->pre_psm->ps->date < ps->date)
+	    if (rev->pre_psm->ps->date < ps->date)
+	    {
+		CvsFileRevision * next_rev = rev->pre_psm->post_rev;
+		if (revision_affects_branch(next_rev, ps->branch))
 		{
-		    CvsFileRevision * next_rev = rev->pre_psm->post_rev;
-		    if (revision_affects_branch(next_rev, ps->branch))
-			debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
-			      rev->file->filename, rev->rev, sym->tag);
+		    debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
+			  rev->file->filename, rev->rev, sym->tag);
+		    ps->tag_flags |= TAG_INVALID;
 		}
 	    }
 	}

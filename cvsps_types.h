@@ -65,7 +65,7 @@ struct _PatchSet
     char *descr;
     char *author;
     char *tag;
-    int valid_tag;
+    int tag_flags;
     char *branch;
     struct list_head members;
     /*
@@ -75,6 +75,12 @@ struct _PatchSet
      * without resorting to looking at the log message.
      */
     int branch_add;
+    /*
+     * If the '-r' option specifies a funky tag, we will need to detect the
+     * PatchSets that come chronologically before the tag, but are logically
+     * after, and vice-versa if a second -r option was specified
+     */
+    int funk_factor;
 };
 
 struct _PatchSetMember
