@@ -18,7 +18,7 @@ OBJS=\
 all: cvsps
 
 cvsps: $(OBJS)
-	$(CC) -o cvsps $(OBJS)
+	$(CC) -o cvsps $(OBJS) -lz
 
 install:
 	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin

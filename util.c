@@ -6,8 +6,12 @@
 #include <assert.h>
 #include <search.h>
 #include <time.h>
+#include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <cbtcommon/debug.h>
 
@@ -172,4 +176,34 @@ void timing_stop(const char * msg)
 	stop_time.tv_sec--,stop_time.tv_usec += 1000000;
 
     printf("Elapsed time for %s: %d.%06d\n", msg, (int)stop_time.tv_sec, (int)stop_time.tv_usec);
+}
+
+extern char ** environ;
+
+/* taken from the linux manual page for system */
+int my_system (const char *command) 
+{
+    int pid, status;
+    
+    if (command == 0)
+	return 1;
+    pid = fork();
+    if (pid == -1)
+	return -1;
+    if (pid == 0) {
+	char *argv[4];
+	argv[0] = "sh";
+	argv[1] = "-c";
+	argv[2] = (char*)command; /* discard const */
+	argv[3] = 0;
+	execve("/bin/sh", argv, environ);
+	exit(127);
+    }
+    do {
+	if (waitpid(pid, &status, 0) == -1) {
+	    if (errno != EINTR)
+		return -1;
+	} else
+	    return status;
+    } while(1);
 }

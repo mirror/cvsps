@@ -12,5 +12,6 @@ char *get_string(char const *str);
 void convert_date(time_t *, const char *);
 void timing_start();
 void timing_stop(const char *);
+int my_system(const char *);
 
 #endif /* UTIL_H */

@@ -41,7 +41,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp);
 static CvsServerCtx * open_ctx_pserver(CvsServerCtx *, const char *);
 static CvsServerCtx * open_ctx_forked(CvsServerCtx *, const char *);
 
-CvsServerCtx * open_cvs_server(char * p_root)
+CvsServerCtx * open_cvs_server(char * p_root, int compress)
 {
     CvsServerCtx * ctx = (CvsServerCtx*)malloc(sizeof(*ctx));
     char root[PATH_MAX];
@@ -52,28 +52,32 @@ CvsServerCtx * open_cvs_server(char * p_root)
 
     ctx->head = ctx->tail = ctx->read_buff;
     ctx->read_fd = ctx->write_fd = -1;
-    memset(&ctx->zout, 0, sizeof(z_stream));
-    memset(&ctx->zin, 0, sizeof(z_stream));
     ctx->compressed = 0;
 
-    /* 
-     * to 'prime' the reads, make it look like there was output
-     * room available (i.e. we have processed all pending compressed 
-     * data
-     */
-    ctx->zin.avail_out = 1;
-
-    if (deflateInit(&ctx->zout, Z_DEFAULT_COMPRESSION) != Z_OK)
+    if (compress)
     {
-	free(ctx);
-	return NULL;
-    }
-
-    if (inflateInit(&ctx->zin) != Z_OK)
-    {
-	deflateEnd(&ctx->zout);
-	free(ctx);
-	return NULL;
+	memset(&ctx->zout, 0, sizeof(z_stream));
+	memset(&ctx->zin, 0, sizeof(z_stream));
+	
+	/* 
+	 * to 'prime' the reads, make it look like there was output
+	 * room available (i.e. we have processed all pending compressed 
+	 * data
+	 */
+	ctx->zin.avail_out = 1;
+	
+	if (deflateInit(&ctx->zout, compress) != Z_OK)
+	{
+	    free(ctx);
+	    return NULL;
+	}
+	
+	if (inflateInit(&ctx->zin) != Z_OK)
+	{
+	    deflateEnd(&ctx->zout);
+	    free(ctx);
+	    return NULL;
+	}
     }
 
     strcpy(root, p_root);
@@ -88,7 +92,7 @@ CvsServerCtx * open_cvs_server(char * p_root)
 	{
 	    ctx = open_ctx_pserver(ctx, p);
 	}
-	else if (strstr(method, "local:ext:fork:server"))
+	else if (strstr("local:ext:fork:server", method))
 	{
 	    /* handle all of these via fork, even local */
 	    ctx = open_ctx_forked(ctx, p);
@@ -121,9 +125,11 @@ CvsServerCtx * open_cvs_server(char * p_root)
 	/* this is myterious but 'mandatory' */
 	send_string(ctx, "UseUnchanged\n");
 
-	/* FIXME: make compresison optional */
-	send_string(ctx, "Gzip-stream 4\n");
-	ctx->compressed = 1;
+	if (compress)
+	{
+	    send_string(ctx, "Gzip-stream %d\n", compress);
+	    ctx->compressed = 1;
+	}
     }
 
     return ctx;

@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <regex.h>
+#include <sys/wait.h> /* for WEXITSTATUS - see system(3) */
 
 #include <cbtcommon/hash.h>
 #include <cbtcommon/list.h>
@@ -25,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.79 2003/03/24 22:32:39 david Exp $");
+RCSID("$Id: cvsps.c,v 4.80 2003/03/24 23:57:03 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -98,6 +99,8 @@ static int bkcvs;
 static int no_rlog;
 static int cvs_direct;
 static CvsServerCtx * cvs_direct_ctx;
+static int compress;
+static char compress_arg[8];
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -177,7 +180,7 @@ int main(int argc, char *argv[])
 	print_statistics(ps_tree);
 
     if (cvs_direct)
-	cvs_direct_ctx = open_cvs_server(root_path);
+	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
     twalk(ps_tree_bytime, show_ps_tree_node);
 
@@ -233,11 +236,11 @@ static void load_from_cvs()
 	 * which is necessary to fill in the pre_rev stuff for a 
 	 * PatchSetMember
 	 */
-	snprintf(cmd, BUFSIZ, "cvs %s %s -d '%s<;%s' %s", norc, ltype, date_str, date_str, use_rep_buff);
+	snprintf(cmd, BUFSIZ, "cvs %s %s %s -d '%s<;%s' %s", compress_arg, norc, ltype, date_str, date_str, use_rep_buff);
     }
     else
     {
-	snprintf(cmd, BUFSIZ, "cvs %s %s %s", norc, ltype, use_rep_buff);
+	snprintf(cmd, BUFSIZ, "cvs %s %s %s %s", compress_arg, norc, ltype, use_rep_buff);
     }
     
     debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
@@ -478,7 +481,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
-    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>]");
+    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -508,6 +511,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --no-rlog disable rlog (it's faulty in some setups)");
     debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
+    debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -754,6 +758,20 @@ static void parse_args(int argc, char *argv[])
 		usage("argument to --debuglvl missing", "");
 
 	    debuglvl = atoi(argv[i++]);
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-Z") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -Z", "");
+
+	    compress = atoi(argv[i++]);
+
+	    if (compress < 1 || compress > 9)
+		usage("-Z level must be between 1 and 9 inclusive", argv[i-1]);
+
+	    snprintf(compress_arg, 8, "-z%d", compress);
 	    continue;
 	}
 
@@ -1436,7 +1454,6 @@ static void do_cvs_diff(PatchSet * ps)
     const char * dopts;
     const char * utype;
     char use_rep_path[PATH_MAX];
-    int rcmd = 0;
 
     fflush(stdout);
     fflush(stderr);
@@ -1456,7 +1473,6 @@ static void do_cvs_diff(PatchSet * ps)
 	dopts = "-u";
 	dtype = "rdiff";
 	utype = "co";
-	rcmd = 1;
 	sprintf(use_rep_path, "%s/", repository_path);
     }
     else
@@ -1471,6 +1487,7 @@ static void do_cvs_diff(PatchSet * ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2+1];
+	int ret, check_ret = 0;
 
 	cmdbuff[0] = 0;
 	cmdbuff[PATH_MAX*2] = 0;
@@ -1519,15 +1536,15 @@ static void do_cvs_diff(PatchSet * ps)
 		rev = psm->pre_rev->rev;
 	    }
 
-	    if (cvs_direct)
+	    if (cvs_direct_ctx)
 	    {
 		/* cvs_rupdate does the pipe through diff thing internally */
 		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, rev, cr, dopts);
 	    }
 	    else
 	    {
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e 's|^+++ -|+++ %s%s|g'",
-			 norc, utype, rev, use_rep_path, psm->file->filename, dopts,
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e 's|^+++ -|+++ %s%s|g'",
+			 compress_arg, norc, utype, rev, use_rep_path, psm->file->filename, dopts,
 			 cr?"":"-",cr?"-":"",
 			 use_rep_path, psm->file->filename);
 	    }
@@ -1535,21 +1552,41 @@ static void do_cvs_diff(PatchSet * ps)
 	else
 	{
 	    /* a regular diff */
-	    if (cvs_direct)
+	    if (cvs_direct_ctx)
 	    {
 		cvs_diff(cvs_direct_ctx, repository_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
 	    }
 	    else
 	    {
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -r %s -r %s %s%s",
-			 norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, use_rep_path, psm->file->filename);
+		/* 'cvs diff' exit status '1' is ok, just means files are different */
+		if (strcmp(dtype, "diff") == 0)
+		    check_ret = 1;
+
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s %s -r %s -r %s %s%s",
+			 compress_arg, norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, 
+			 use_rep_path, psm->file->filename);
 	    }
 	}
 
-	if (cmdbuff[0] && system(cmdbuff))
+	/*
+	 * my_system doesn't block signals the way system does.
+	 * if ctrl-c is pressed while in there, we probably exit
+	 * immediately and hope the shell has sent the signal
+	 * to all of the process group members
+	 */
+	if (cmdbuff[0] && (ret = my_system(cmdbuff)))
 	{
-	    debug(DEBUG_APPERROR, "system command returned non-zero exit status. aborting");
-	    exit(1);
+	    int stat = WEXITSTATUS(ret);
+	    
+	    /* 
+	     * cvs diff returns 1 in exit status for 'files are different'
+	     * so use a better method to check for failure
+	     */
+	    if (stat < 0 || stat > check_ret || WIFSIGNALED(ret))
+	    {
+		debug(DEBUG_APPERROR, "system command returned non-zero exit status: %d: aborting", stat);
+		exit(1);
+	    }
 	}
     }
 }
