@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.20 2001/12/05 17:22:55 david Exp $");
+RCSID("$Id: cvsps.c,v 4.21 2001/12/05 17:34:32 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -335,8 +335,8 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
-    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
-    debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) CVS/cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -u update CVS/cvsps.cache file");
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
     debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
     debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
@@ -961,9 +961,9 @@ static void write_cache()
 
     ps_counter = 0;
 
-    if ((cache_fp = fopen("cvsps.cache", "w")) == NULL)
+    if ((cache_fp = fopen("CVS/cvsps.cache", "w")) == NULL)
     {
-	debug(DEBUG_SYSERROR, "can't open cvsps.cache for write");
+	debug(DEBUG_SYSERROR, "can't open CVS/cvsps.cache for write");
 	return;
     }
 
@@ -1093,13 +1093,13 @@ static int read_cache()
     authbuff[0] = 0;
     logbuff[0] = 0;
 
-    if (!(fp = fopen("cvsps.cache", "r")))
+    if (!(fp = fopen("CVS/cvsps.cache", "r")))
 	return -1;
 
     /* first line is date cache was created, format "cache date: %d\n" */
     if (!fgets(buff, BUFSIZ, fp) || strncmp(buff, "cache date:", 11))
     {
-	debug(DEBUG_APPERROR, "bad cvsps.cache file");
+	debug(DEBUG_APPERROR, "bad CVS/cvsps.cache file");
 	return -1;
     }
 
