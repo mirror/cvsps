@@ -189,7 +189,8 @@ static void load_from_cvs()
 
 		rev = cvs_file_add_revision(file, new_rev);
 
-		/* in the simple case, we are copying new_psm->post_rev to psm->pre_rev
+		/* in the simple case, we are copying rev to psm->pre_rev
+		 * (psm refers to last patch set processed at this point)
 		 * since generally speaking the log is reverse chronological.
 		 * This breaks down slightly when branches are introduced 
 		 */
@@ -294,7 +295,7 @@ static void load_from_cvs()
 		}
 		else 
 		{
-		    debug(DEBUG_STATUS, "ignoring unneeded info %s", buff);
+		    debug(DEBUG_STATUS, "ignoring unhandled info %s", buff);
 		}
 	    }
 
@@ -856,18 +857,17 @@ static void write_cache()
 
 static char * cvs_file_add_revision(CvsFile * file, const char * rev)
 {
-    char * new_rev = strdup(rev);
-    char * old_rev;
+    char * new_rev;
 
-    old_rev = (char *)put_hash_object(file->revisions, new_rev, new_rev);
-
-    if (old_rev)
+    if (get_hash_object(file->revisions, rev))
     {
 	debug(DEBUG_STATUS, "tried to add exsting revision %s to file %s", 
-	      file->filename, old_rev);
-	free(old_rev);
+	      file->filename, rev);
 	return NULL;
     }
+
+    new_rev = strdup(rev);
+    put_hash_object(file->revisions, new_rev, new_rev);
 
     debug(DEBUG_STATUS, "added revision %s to file %s", new_rev, file->filename);
     return new_rev;
