@@ -1,4 +1,4 @@
-DEP_OBJS=cvsps.o cache.o util.o stats.o cap.o
+DEP_OBJS=cvsps.o cache.o util.o stats.o cap.o cvs_direct.o
 CBT_DIR=/cobite
 include $(CBT_DIR)/share/libversions/Makefile.include-1
 

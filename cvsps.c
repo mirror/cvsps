@@ -23,8 +23,9 @@
 #include "util.h"
 #include "stats.h"
 #include "cap.h"
+#include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.73 2003/03/19 23:12:22 david Exp $");
+RCSID("$Id: cvsps.c,v 4.74 2003/03/20 02:06:10 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -63,6 +64,7 @@ static int ps_counter;
 static void * ps_tree, * ps_tree_bytime;
 static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
+static char root_path[PATH_MAX];
 static char repository_path[PATH_MAX];
 static int strip_path_len;
 static time_t cache_date;
@@ -94,6 +96,8 @@ static int restrict_tag_ps_end;
 static const char * diff_opts;
 static int bkcvs;
 static int no_rcmds;
+static int cvs_direct;
+static CvsServerCtx * cvs_direct_ctx;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -172,10 +176,17 @@ int main(int argc, char *argv[])
     if (statistics)
 	print_statistics(ps_tree);
 
+    if (cvs_direct)
+	cvs_direct_ctx = open_cvs_server(root_path);
+
     twalk(ps_tree_bytime, show_ps_tree_node);
 
     if (summary_first++)
 	twalk(ps_tree_bytime, show_ps_tree_node);
+
+
+    if (cvs_direct_ctx)
+	close_cvs_server(cvs_direct_ctx);
 
     exit(0);
 }
@@ -727,6 +738,13 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "--cvs-direct") == 0)
+	{
+	    cvs_direct = 1;
+	    i++;
+	    continue;
+	}
+
 	usage("invalid argument", argv[i]);
     }
 }
@@ -734,7 +752,7 @@ static void parse_args(int argc, char *argv[])
 static void init_strip_path()
 {
     FILE * fp;
-    char root_buff[PATH_MAX], *p;
+    char * p;
     int len;
 
     if (!(fp = fopen("CVS/Root", "r")))
@@ -743,7 +761,7 @@ static void init_strip_path()
 	exit(1);
     }
     
-    if (!fgets(root_buff, PATH_MAX, fp))
+    if (!fgets(root_path, PATH_MAX, fp))
     {
 	debug(DEBUG_APPERROR, "Error reading CVSROOT");
 	exit(1);
@@ -751,17 +769,18 @@ static void init_strip_path()
 
     fclose(fp);
 
-    p = strrchr(root_buff, ':');
+    p = strrchr(root_path, ':');
 
     if (!p)
-	p = root_buff;
+	p = root_path;
     else 
 	p++;
 
-    len = strlen(root_buff) - 1;
-    root_buff[len] = 0;
-    if (root_buff[len - 1] == '/')
-	root_buff[--len] = 0;
+    /* chop the lf and optional '/' */
+    len = strlen(root_path) - 1;
+    root_path[len] = 0;
+    if (root_path[len - 1] == '/')
+	root_path[--len] = 0;
 
     if (!(fp = fopen("CVS/Repository", "r")))
     {
@@ -1395,6 +1414,7 @@ static void do_cvs_diff(PatchSet * ps)
     const char * dopts;
     const char * utype;
     char use_rep_path[PATH_MAX];
+    int rcmd = 0;
 
     fflush(stdout);
     fflush(stderr);
@@ -1404,6 +1424,7 @@ static void do_cvs_diff(PatchSet * ps)
 	dopts = "-u";
 	dtype = "rdiff";
 	utype = "co";
+	rcmd = 1;
 	sprintf(use_rep_path, "%s/", repository_path);
     }
     else
@@ -1468,8 +1489,16 @@ static void do_cvs_diff(PatchSet * ps)
 	else
 	{
 	    /* a regular diff */
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -r %s -r %s %s%s",
-		     norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, use_rep_path, psm->file->filename);
+	    if (cvs_direct && rcmd)
+	    {
+		strcpy(cmdbuff, "true");
+		cvs_rdiff(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
+	    }
+	    else
+	    {
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -r %s -r %s %s%s",
+			 norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, use_rep_path, psm->file->filename);
+	    }
 	}
 
 	if (system(cmdbuff))
