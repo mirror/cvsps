@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.16 2001/11/12 22:04:10 david Exp $");
+RCSID("$Id: cvsps.c,v 4.17 2001/11/16 17:26:30 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -328,6 +328,21 @@ static void load_from_cvs()
 static void usage(const char * str1, const char * str2)
 {
     debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
+    debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] ");
+    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-v]");
+    debug(DEBUG_APPERROR, "");
+    debug(DEBUG_APPERROR, "Where:");
+    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
+    debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
+    debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
+    debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
+    debug(DEBUG_APPERROR, "  -f <file> restrict output to patchsets involving file");
+    debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
+    debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
+    debug(DEBUG_APPERROR, "     show revisions between two dates.");
+    debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
+
     exit(1);
 }
 
@@ -733,6 +748,13 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     long diff;
     int ret;
 
+    /* We order by date, author, descr, but because of the fuzz factor
+     * we treat times within a certain distance as equal IFF the 
+     * author and descr match.  If we allow the fuzz, but then the
+     * author or descr don't match, return the date diff (if any)
+     * in order to get the ordering right.
+     */
+
     diff = ps1->date - ps2->date;
 
     if (labs(diff) > timestamp_fuzz_factor)
@@ -741,9 +763,18 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     ret = strcmp(ps1->author, ps2->author);
 
     if (ret)
+    {
+	if (diff)
+	    return (diff < 0) ? -1 : 1;
 	return ret;
+    }
 
-    return strcmp(ps1->descr, ps2->descr);
+    ret = strcmp(ps1->descr, ps2->descr);
+
+    if (ret && diff) 
+	return (diff < 0) ? -1 : 1;
+
+    return ret;
 }
 
 static void convert_date(time_t * t, const char * dte)
