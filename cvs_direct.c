@@ -644,7 +644,7 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     FILE * fp;
     char cmdbuff[BUFSIZ];
     
-    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^+++ -|+++ %s/%s|g'",
+    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
 	     opts, create?"":"-", create?"-":"", create?"2":"1", rep, file);
 
     debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff);

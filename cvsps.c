@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.85 2003/03/25 19:33:27 david Exp $");
+RCSID("$Id: cvsps.c,v 4.86 2003/03/25 19:44:34 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1586,9 +1586,9 @@ static void do_cvs_diff(PatchSet * ps)
 	    }
 	    else
 	    {
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e 's|^+++ -|+++ %s%s|g'",
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s%s|g'",
 			 compress_arg, norc, utype, rev, use_rep_path, psm->file->filename, dopts,
-			 cr?"":"-",cr?"-":"",
+			 cr?"":"-",cr?"-":"", cr?"2":"1",
 			 use_rep_path, psm->file->filename);
 	    }
 	}
