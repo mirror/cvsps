@@ -8,7 +8,9 @@
 #include <cbtcommon/text_util.h>
 #include <cbtcommon/tcpsocket.h>
 #include <cbtcommon/sio.h>
+
 #include "cvs_direct.h"
+#include "util.h"
 
 #define RD_BUFF_SIZE 4096
 
@@ -16,7 +18,7 @@ struct _CvsServerCtx
 {
     int read_fd;
     int write_fd;
-    char repository[PATH_MAX];
+    char root[PATH_MAX];
 
     /* buffered reads from descriptor */
     char read_buff[RD_BUFF_SIZE];
@@ -105,10 +107,10 @@ CvsServerCtx * open_cvs_server(char * p_root)
 
     if (ctx)
     {
-	send_string(ctx, "Root %s\n", ctx->repository);
+	send_string(ctx, "Root %s\n", ctx->root);
 
 	/* this is taken from 1.11.1p1 trace */
-	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT\n", ctx->repository);
+	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT\n", ctx->root);
 
 	send_string(ctx, "valid-requests\n");
 
@@ -198,7 +200,7 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
     if (!read_response(ctx, "I LOVE YOU"))
 	goto out_close_err;
 
-    strcpy(ctx->repository, p);
+    strcpy(ctx->root, p);
 
     return ctx;
 
@@ -295,7 +297,7 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
     ctx->read_fd = from_cvs[0];
     ctx->write_fd = to_cvs[1];
 
-    strcpy(ctx->repository, rep);
+    strcpy(ctx->root, rep);
 
     return ctx;
 
@@ -560,6 +562,8 @@ void cvs_rdiff(CvsServerCtx * ctx,
 	       const char * rep, const char * file, 
 	       const char * rev1, const char * rev2, const char * opts)
 {
+    /* NOTE: opts are ignored for rdiff, '-u' is always used */
+
     send_string(ctx, "Argument -u\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev1);
@@ -596,4 +600,81 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     ctx_to_fp(ctx, fp);
 
     pclose(fp);
+}
+
+static int parse_patch_arg(char * arg, char ** str)
+{
+    char *tok, *tok2 = "";
+    tok = strsep(str, " ");
+    if (!tok)
+	return 0;
+
+    if (!*tok == '-')
+    {
+	debug(DEBUG_APPERROR, "diff_opts parse error: no '-' starting argument: %s", *str);
+	return 0;
+    }
+    
+    /* if it's not 'long format' argument, we can process it efficiently */
+    if (tok[1] == '-')
+    {
+	debug(DEBUG_APPERROR, "diff_opts parse_error: long format args not supported");
+	return 0;
+    }
+
+    /* see if command wants two args and they're separated by ' ' */
+    if (tok[2] == 0 && strchr("BdDFgiorVxYz", tok[1]))
+    {
+	tok2 = strsep(str, " ");
+	if (!tok2)
+	{
+	    debug(DEBUG_APPERROR, "diff_opts parse_error: argument %s requires two arguments", tok);
+	    return 0;
+	}
+    }
+    
+    snprintf(arg, 32, "%s%s", tok, tok2);
+    return 1;
+}
+
+void cvs_diff(CvsServerCtx * ctx, 
+	       const char * rep, const char * file, 
+	       const char * rev1, const char * rev2, const char * opts)
+{
+    char argstr[BUFSIZ], *p = argstr;
+    char arg[32];
+    char file_buff[PATH_MAX], *basename;
+
+    strzncpy(argstr, opts, BUFSIZ);
+    while (parse_patch_arg(arg, &p))
+	send_string(ctx, "Argument %s\n", arg);
+
+    send_string(ctx, "Argument -r\n");
+    send_string(ctx, "Argument %s\n", rev1);
+    send_string(ctx, "Argument -r\n");
+    send_string(ctx, "Argument %s\n", rev2);
+
+    /* 
+     * we need to separate the 'basename' of file in order to 
+     * generate the Directory directive(s)
+     */
+    strzncpy(file_buff, file, PATH_MAX);
+    if ((basename = strrchr(file_buff, '/')))
+    {
+	*basename = 0;
+	send_string(ctx, "Directory %s/%s\n", rep, file_buff);
+	send_string(ctx, "%s/%s/%s\n", ctx->root, rep, file_buff);
+    }
+    else
+    {
+	send_string(ctx, "Directory %s\n", rep, file_buff);
+	send_string(ctx, "%s/%s\n", ctx->root, rep);
+    }
+
+    send_string(ctx, "Directory .\n");
+    send_string(ctx, "%s\n", ctx->root);
+    send_string(ctx, "Argument %s/%s\n", rep, file);
+    send_string(ctx, "diff\n");
+
+    ctx_to_fp(ctx, stdout);
 }

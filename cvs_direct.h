@@ -7,5 +7,6 @@ CvsServerCtx * open_cvs_server(char * root);
 void close_cvs_server(CvsServerCtx*);
 void cvs_rdiff(CvsServerCtx *, const char *, const char *, const char *, const char *, const char *);
 void cvs_rupdate(CvsServerCtx *, const char *, const char *, const char *, int, const char *);
+void cvs_diff(CvsServerCtx *, const char *, const char *, const char *, const char *, const char *);
 
 #endif /* CVS_DIRECT_H */
