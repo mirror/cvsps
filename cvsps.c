@@ -361,11 +361,9 @@ static CvsFile * parse_file(const char * buff)
 	    if ((p = strrchr(retval->filename, '/')) && 
 		p - retval->filename >= 5 && strncmp(p - 5, "Attic", 5) == 0)
 	    {
-		printf("before Attic/ replace %s\n", retval->filename);
 		memmove(p - 5, p + 1, len - (p - retval->filename + 1));
 		len -= 6;
 		retval->filename[len] = 0;
-		printf("after Attic replace %s\n", retval->filename);
 	    }
 
 	    INIT_LIST_HEAD(&retval->patch_sets);
@@ -515,10 +513,14 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 	ps = *(PatchSet**)nodep;
 	ps_counter++;
 
-	if (show_patch_set > 0 && ps_counter == show_patch_set)
+	if (show_patch_set > 0)
 	{
-	    do_cvs_diff(ps);
-	    exit(0);
+	    if (ps_counter == show_patch_set)
+	    {
+		do_cvs_diff(ps);
+		exit(0);
+	    }
+	    break;
 	}
 
 	if (restrict_date_start > 0 && 
@@ -622,6 +624,27 @@ static void do_cvs_diff(PatchSet * ps)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	char cmdbuff[PATH_MAX * 2];
+
+	if (strcmp(psm->pre_rev, "INITIAL") == 0)
+	{
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u /dev/null -",
+		     psm->post_rev, psm->file->filename);
+	}
+	else if (psm->dead_revision)
+	{
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u - /dev/null",
+		     psm->pre_rev, psm->file->filename);
+	    
+	}
+	else
+	{
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs diff -u -r %s -r %s %s",
+		     psm->pre_rev, psm->post_rev, psm->file->filename);
+	}
+
+	system(cmdbuff);
+
 	next = next->next;
     }
 }
