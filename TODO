@@ -1,0 +1,4 @@
+number patch sets chronologically (preserve id's across instances)
+add function to get a diff of a patch set
+add function to show patch sets of which file 'f' is a member
+
