@@ -9,8 +9,8 @@ endif
 OBJS=$(DEP_OBJS)
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
-MAJOR=1
-MINOR=99.1
+MAJOR=2
+MINOR=0b1
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 

@@ -1,4 +1,21 @@
-1.99.1
+2.0b1
+- major restructuring of source code.  single cvsps.c split into
+  a few modules
+- major rework of the data structures in order to support the most
+  frequently requested, and most desired feature: -r.  cvsps
+  can now associated symbolic tags with specific patchsets,
+  branches are now associated with the patchset instead of 
+  the individual revision.  you can view patchsets committed
+  after a given symbolic tag, or between two tags.
+- changed the handling of same author, same log message commits
+  on different branches. this now creates multiple patchsets
+- changed the handling of 'file xyz initially added on branch xyz'
+  log messages, they now create hidden patchsets.
+- these last two items have made the patchset numbering scheme
+  incompatible with the old scheme.  patchsets are going
+  to change numbers.
+
+1.99.1 (not released)
 - redid the data structures a bit to 'normalize' the references to 
   a file revision.  this allows the program to detect the case
   when a file is added on a branch, and generate the right output
