@@ -14,7 +14,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.33 2003/02/24 20:20:54 david Exp $");
+RCSID("$Id: cvsps.c,v 4.34 2003/02/24 20:44:32 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -100,6 +100,7 @@ static time_t restrict_date_start;
 static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
+static int summary_first;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
 static time_t cache_date;
@@ -210,6 +211,12 @@ int main(int argc, char *argv[])
 
     ps_counter = 0;
     twalk(ps_tree_bytime, show_ps_tree_node);
+    if (summary_first++)
+    {
+	ps_counter = 0;
+	twalk(ps_tree_bytime, show_ps_tree_node);
+    }
+
     exit(0);
 }
 
@@ -465,6 +472,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
     debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
     debug(DEBUG_APPERROR, "  -h display this informative message");
+    debug(DEBUG_APPERROR, "  --summary-first when multiple patchsets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -600,6 +608,13 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-t") == 0)
 	{
 	    statistics = 1;
+	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "--summary-first") == 0)
+	{
+	    summary_first = 1;
 	    i++;
 	    continue;
 	}
@@ -957,7 +972,9 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 		if (range->min_counter <= ps_counter &&
 		    ps_counter <= range->max_counter)
 		{
+		    if (summary_first <= 1)
 			print_patch_set(ps);
+		    if (summary_first != 1)
 			do_cvs_diff(ps);
 		}
 		next = next->next;
