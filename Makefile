@@ -16,6 +16,9 @@ cvsps: $(OBJS)
 
 clean: this_clean
 
+install:
+	install cvsps $(CBT_DIR)/bin/
+
 this_clean:
 	rm -f *.o cvsps core
 
