@@ -684,7 +684,8 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 	}
     }
 
-    fflush(fp);
+    if (fp)
+	fflush(fp);
 }
 
 void cvs_rdiff(CvsServerCtx * ctx, 
@@ -807,3 +808,59 @@ void cvs_diff(CvsServerCtx * ctx,
 
     ctx_to_fp(ctx, stdout);
 }
+
+FILE * cvs_rlog_open(CvsServerCtx * ctx, const char * rep)
+{
+    send_string(ctx, "Argument %s\n", rep);
+    send_string(ctx, "rlog\n");
+    return (FILE*)ctx;
+}
+
+char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
+{
+    char lbuff[BUFSIZ];
+    int len;
+
+    len = read_line(ctx, lbuff);
+    debug(DEBUG_TCP, "cvs_direct: rlog: read %s", lbuff);
+
+    if (memcmp(lbuff, "M ", 2) == 0)
+    {
+	memcpy(buff, lbuff + 2, len - 2);
+	buff[len - 2 ] = '\n';
+	buff[len - 1 ] = 0;
+    }
+    else if (strcmp(lbuff, "ok") == 0 ||strcmp(lbuff, "error") == 0)
+    {
+	return NULL;
+    }
+
+    return buff;
+}
+
+void cvs_rlog_close(CvsServerCtx * ctx)
+{
+}
+
+void cvs_version(CvsServerCtx * ctx, char * client_version, char * server_version)
+{
+    char lbuff[BUFSIZ];
+    strcpy(client_version, "Client: Concurrent Versions System (CVS) 99.99.99 (client/server) cvs-direct");
+    send_string(ctx, "version\n");
+    read_line(ctx, lbuff);
+    if (memcmp(lbuff, "M ", 2) == 0)
+	sprintf(server_version, "Server: %s", lbuff + 2);
+    else
+	debug(DEBUG_APPERROR, "cvs_direct: didn't read version: %s", lbuff);
+    
+    read_line(ctx, lbuff);
+    if (strcmp(lbuff, "ok") != 0)
+	debug(DEBUG_APPERROR, "cvs_direct: protocol error reading version");
+
+    debug(DEBUG_TCP, "cvs_direct: client version %s", client_version);
+    debug(DEBUG_TCP, "cvs_direct: server version %s", server_version);
+}
+
+
+
+

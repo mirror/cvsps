@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.86 2003/03/25 19:44:34 david Exp $");
+RCSID("$Id: cvsps.c,v 4.87 2003/03/27 13:52:08 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -44,6 +44,7 @@ enum
 
 /* true globals */
 struct hash_table * file_hash;
+CvsServerCtx * cvs_direct_ctx;
 
 const char * tag_flag_descr[] = {
     "",
@@ -98,7 +99,6 @@ static const char * diff_opts;
 static int bkcvs;
 static int no_rlog;
 static int cvs_direct;
-static CvsServerCtx * cvs_direct_ctx;
 static int compress;
 static char compress_arg[8];
 
@@ -177,7 +177,10 @@ int main(int argc, char *argv[])
 
 	timestamp_fuzz_factor = save_fuzz_factor;
     }
-    
+
+    if (cvs_direct && (do_diff || update_cache))
+	cvs_direct_ctx = open_cvs_server(root_path, compress);
+
     if (update_cache)
     {
 	load_from_cvs();
@@ -194,9 +197,6 @@ int main(int argc, char *argv[])
 
     if (statistics)
 	print_statistics(ps_tree);
-
-    if (cvs_direct && do_diff)
-	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
     twalk(ps_tree_bytime, show_ps_tree_node);
 
@@ -240,7 +240,7 @@ static void load_from_cvs()
     if (cache_date > 0)
     {
 	struct tm * tm = gmtime(&cache_date);
-	strftime(date_str, 64, "%b %d, %Y %H:%M:%S GMT", tm);
+	strftime(date_str, 64, "%d %b %Y %H:%M:%S %z", tm);
 
 	/* this command asks for logs using two different date
 	 * arguments, separated by ';' (see man rlog).  The first
@@ -262,9 +262,10 @@ static void load_from_cvs()
 
     cache_date = time(NULL);
 
-    /* for testing again and again without bashing a cvs server */
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
+    else if (cvs_direct_ctx)
+	cvsfp = cvs_rlog_open(cvs_direct_ctx, repository_path);
     else
 	cvsfp = popen(cmd, "r");
 
@@ -273,9 +274,18 @@ static void load_from_cvs()
 	debug(DEBUG_SYSERROR, "can't open cvs pipe using command %s", cmd);
 	exit(1);
     }
-    
-    while(fgets(buff, BUFSIZ, cvsfp))
+
+    for (;;)
     {
+	char * tst;
+	if (cvs_direct_ctx)
+	    tst = cvs_rlog_fgets(buff, BUFSIZ, cvs_direct_ctx);
+	else
+	    tst = fgets(buff, BUFSIZ, cvsfp);
+
+	if (!tst)
+	    break;
+
 	debug(DEBUG_STATUS, "state: %d read line:%s", state, buff);
 
 	switch(state)
@@ -475,7 +485,11 @@ static void load_from_cvs()
     {
 	fclose(cvsfp);
     }
-    else 
+    else if (cvs_direct_ctx)
+    {
+	cvs_rlog_close(cvs_direct_ctx);
+    }
+    else
     {
 	if (pclose(cvsfp) < 0)
 	{

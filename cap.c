@@ -6,6 +6,9 @@
 #include <cbtcommon/text_util.h>
 
 #include "cap.h"
+#include "cvs_direct.h"
+
+extern CvsServerCtx * cvs_direct_ctx;
 
 static char client_version[BUFSIZ];
 static char server_version[BUFSIZ];
@@ -41,41 +44,49 @@ int cvs_check_cap(int cap)
     return ret;
 }
 
+static void get_version_external()
+{
+    FILE * cvsfp;
+    
+    if (!(cvsfp = popen("cvs version", "r")))
+    {
+	debug(DEBUG_APPERROR, "cannot popen cvs version. exiting");
+	exit(1);
+    }
+    
+    if (!fgets(client_version, BUFSIZ, cvsfp))
+    {
+	debug(DEBUG_APPERROR, "malformed CVS version: no data");
+	exit(1);
+    }
+    
+    chop(client_version);
+    
+    if (strncmp(client_version, "Client", 6) == 0)
+    {
+	if (!fgets(server_version, BUFSIZ, cvsfp))
+	{
+	    debug(DEBUG_APPERROR, "malformed CVS version: no server data");
+	    exit(1);
+	}
+	chop(server_version);
+    }
+    else
+    {
+	server_version[0] = 0;
+    }
+    
+    pclose(cvsfp);
+}
+
 int check_cvs_version(int req_major, int req_minor, int req_extra)
 {
     if (!client_version[0])
     {
-	FILE * cvsfp;
-
-	if (!(cvsfp = popen("cvs version", "r")))
-	{
-	    debug(DEBUG_APPERROR, "cannot popen cvs version. exiting");
-	    exit(1);
-	}
-	
-	if (!fgets(client_version, BUFSIZ, cvsfp))
-	{
-	    debug(DEBUG_APPERROR, "malformed CVS version: no data");
-	    exit(1);
-	}
-
-	chop(client_version);
-	
-	if (strncmp(client_version, "Client", 6) == 0)
-	{
-	    if (!fgets(server_version, BUFSIZ, cvsfp))
-	    {
-		debug(DEBUG_APPERROR, "malformed CVS version: no server data");
-		exit(1);
-	    }
-	    chop(server_version);
-	}
+	if (cvs_direct_ctx)
+	    cvs_version(cvs_direct_ctx, client_version, server_version);
 	else
-	{
-	    server_version[0] = 0;
-	}
-
-	pclose(cvsfp);
+	    get_version_external();
     }
 
     return (check_version_string(client_version, req_major, req_minor, req_extra) &&
