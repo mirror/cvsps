@@ -1,7 +1,7 @@
 CC?=gcc
 CFLAGS?=-g -O2 -Wall 
 CFLAGS+=-I. -DVERSION=\"$(MAJOR).$(MINOR)\"
-PREFIX?=/usr/local
+prefix?=/usr/local
 OBJS=\
 	cbtcommon/debug.o\
 	cbtcommon/hash.o\
@@ -9,13 +9,13 @@ OBJS=\
 	cvsps.o
 
 cvsps: $(OBJS)
-	${CC} -o cvsps $(OBJS)
+	$(CC) -o cvsps $(OBJS)
 
 install:
-	[ -d ${PREFIX}/bin ] || mkdir -p ${PREFIX}/bin
-	[ -d ${PREFIX}/man/man1 ] || mkdir -p ${PREFIX}/man/man1
-	install cvsps ${PREFIX}/bin
-	install -m 644 cvsps.1 ${PREFIX}/man/man1
+	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
+	[ -d $(prefix)/man/man1 ] || mkdir -p $(prefix)/man/man1
+	install cvsps $(prefix)/bin
+	install -m 644 cvsps.1 $(prefix)/man/man1
 
 clean:
 	rm -f cvsps *.o cbtcommon/*.o core

@@ -12,7 +12,7 @@ OBJS=$(DEP_OBJS)
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=1
-MINOR=3
+MINOR=4
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 
@@ -43,6 +43,8 @@ dist:
 	echo MAJOR=$(MAJOR) >dist/Makefile
 	echo MINOR=$(MINOR) >>dist/Makefile
 	cat Makefile.dist >>dist/Makefile
+	echo "Version: $(MAJOR).$(MINOR)" >dist/cvsps.spec
+	cat cvsps.spec.dist >>dist/cvsps.spec
 	cat copyright.head cvsps.c >dist/cvsps.c
 	cp README dist/
 	cp COPYING dist/
