@@ -22,8 +22,9 @@
 #include "cvsps.h"
 #include "util.h"
 #include "stats.h"
+#include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.67 2003/03/18 22:19:43 david Exp $");
+RCSID("$Id: cvsps.c,v 4.68 2003/03/18 23:29:30 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -91,6 +92,7 @@ static int restrict_tag_ps_start;
 static int restrict_tag_ps_end;
 static const char * diff_opts;
 static int bkcvs;
+static int no_rcmds;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -192,6 +194,19 @@ static void load_from_cvs()
     char cmd[BUFSIZ];
     char date_str[64];
     int bk_log_border = 1;
+    char use_rep_buff[PATH_MAX];
+    char * ltype;
+
+    if (!no_rcmds && cvs_check_cap(CAP_HAVE_RLOG))
+    {
+	ltype = "rlog";
+	snprintf(use_rep_buff, PATH_MAX, "%s", repository_path);
+    }
+    else
+    {
+	ltype = "log";
+	use_rep_buff[0] = 0;
+    }
 
     if (cache_date > 0)
     {
@@ -207,11 +222,11 @@ static void load_from_cvs()
 	 * which is necessary to fill in the pre_rev stuff for a 
 	 * PatchSetMember
 	 */
-	snprintf(cmd, BUFSIZ, "cvs %s rlog -d '%s<;%s' %s", norc, date_str, date_str, repository_path);
+	snprintf(cmd, BUFSIZ, "cvs %s %s -d '%s<;%s' %s", norc, ltype, date_str, date_str, use_rep_buff);
     }
     else
     {
-	snprintf(cmd, BUFSIZ, "cvs %s rlog %s", norc, repository_path);
+	snprintf(cmd, BUFSIZ, "cvs %s %s %s", norc, ltype, use_rep_buff);
     }
     
     debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
@@ -486,6 +501,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-l <regex>] [-r <tag> [-r <tag>]] [-p <directory>]");
     debug(DEBUG_APPERROR, "             [-v] [-h] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
+    debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
@@ -510,7 +526,9 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -h display this informative message");
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
+    debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
+    debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (faulty in some setups)");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -723,6 +741,13 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--bkcvs") == 0)
 	{
 	    bkcvs = 1;
+	    i++;
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "--no-rcmds") == 0)
+	{
+	    no_rcmds = 1;
 	    i++;
 	    continue;
 	}
@@ -1398,7 +1423,7 @@ static void do_cvs_diff(PatchSet * ps)
     fflush(stdout);
     fflush(stderr);
 
-    if (diff_opts == NULL) 
+    if (!no_rcmds && diff_opts == NULL) 
     {
 	dopts = "-u";
 	dtype = "rdiff";
@@ -1406,7 +1431,7 @@ static void do_cvs_diff(PatchSet * ps)
     }
     else
     {
-	dopts = diff_opts;
+	dopts = diff_opts ? diff_opts : "-u";
 	dtype = "diff";
 	use_rep_path[0] = 0;
     }

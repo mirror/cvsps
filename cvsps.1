@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-p <patchdir>] [-a <author>] [-l <text>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v] [-t] [-h] [--norc] [--summary-first] [--test-log <filename>]
+[-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-p <patchdir>] [-a <author>] [-l <text>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v] [-t] [-h] [--norc] [--summary-first] [--test-log <filename>] [--diff-opts <option string>] [--bkcvs] [--no-rcmds]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -68,9 +68,21 @@ when invoking cvs, ignore the .cvsrc file
 when multiple patchset diffs are being generated, put the patchset
 summary for all patchsets at the beginning of the output.
 .TP
+.B \--diffs-opts <option string>
+send a custom set of options to diff, for example to increase
+the number of context lines, or change the diff format.
+.TP
 .B \--test-log <captured cvs log file>
 for testing changes, you can capture cvs log output, then test against
 this captured file instead of hammering some poor CVS server
+.TP
+.B \--bkcvs
+for use in parsing the BK->CVS tree log formats only.  This enables
+some hacks which are not generally applicable.
+.TP
+.B \--no-rcmds
+disable the use of rlog and rdiff internally.  Note: rlog is
+required for stable PatchSet numbering.  Use with care.
 .TP
 .B \-h
 display usage summary

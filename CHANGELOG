@@ -1,3 +1,11 @@
+2.0b5
+- add a cvs_check_cap for capability checking. 
+- use cvs_check_cap to check whether rlog is 
+  supported.  it's not supported in 1.11 and  
+  before. warn if non-supported version is 
+  detected
+- add --no-rcmds to manually disable rlog and rdiff
+
 2.0b4
 - add the bk_log_border parsing logic to handle the
   case where 'cvs log' text was committed into the log
