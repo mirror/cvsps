@@ -25,7 +25,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.78 2003/03/24 21:02:04 david Exp $");
+RCSID("$Id: cvsps.c,v 4.79 2003/03/24 22:32:39 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -95,7 +95,7 @@ static int restrict_tag_ps_start;
 static int restrict_tag_ps_end;
 static const char * diff_opts;
 static int bkcvs;
-static int no_rcmds;
+static int no_rlog;
 static int cvs_direct;
 static CvsServerCtx * cvs_direct_ctx;
 
@@ -129,7 +129,7 @@ static int before_tag(CvsFileRevision * rev, const char * tag);
 
 int main(int argc, char *argv[])
 {
-    debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR;
+    debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPMSG1;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
@@ -208,7 +208,7 @@ static void load_from_cvs()
     char use_rep_buff[PATH_MAX];
     char * ltype;
 
-    if (!no_rcmds && cvs_check_cap(CAP_HAVE_RLOG))
+    if (!no_rlog && cvs_check_cap(CAP_HAVE_RLOG))
     {
 	ltype = "rlog";
 	snprintf(use_rep_buff, PATH_MAX, "%s", repository_path);
@@ -477,7 +477,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
-    debug(DEBUG_APPERROR, "             [--no-rcmds] [--diff-opts <option string>] [--cvs-direct]");
+    debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
@@ -505,7 +505,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
-    debug(DEBUG_APPERROR, "  --no-rcmds disable rlog and rdiff (they're faulty in some setups)");
+    debug(DEBUG_APPERROR, "  --no-rlog disable rlog (it's faulty in some setups)");
     debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
@@ -734,9 +734,9 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "--no-rcmds") == 0)
+	if (strcmp(argv[i], "--no-rlog") == 0)
 	{
-	    no_rcmds = 1;
+	    no_rlog = 1;
 	    i++;
 	    continue;
 	}
@@ -758,6 +758,16 @@ static void parse_args(int argc, char *argv[])
 	}
 
 	usage("invalid argument", argv[i]);
+    }
+
+    if (diff_opts && !cvs_direct && do_diff)
+    {
+	debug(DEBUG_APPMSG1, "\nWARNING: diff options are not supported by 'cvs rdiff'");
+	debug(DEBUG_APPMSG1, "         which is usually used to create diffs.  'cvs diff'");
+	debug(DEBUG_APPMSG1, "         will be used instead, but the resulting patches ");
+	debug(DEBUG_APPMSG1, "         will need to be applied using the '-p0' option");
+	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
+	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
     }
 }
 
@@ -1431,7 +1441,17 @@ static void do_cvs_diff(PatchSet * ps)
     fflush(stdout);
     fflush(stderr);
 
-    if (!no_rcmds && diff_opts == NULL) 
+    /* 
+     * if cvs_direct is not in effect, and diff options are specified,
+     * then we have to use diff instead of rdiff and we'll get a -p0 
+     * diff (instead of -p1) [in a manner of speaking].  So to make sure
+     * that the add/remove diffs get generated likewise, we need to use
+     * 'update' instead of 'co' 
+     *
+     * cvs_direct will always use diff (not rdiff), but will also always
+     * generate -p1 diffs.
+     */
+    if (diff_opts == NULL) 
     {
 	dopts = "-u";
 	dtype = "rdiff";
@@ -1441,7 +1461,7 @@ static void do_cvs_diff(PatchSet * ps)
     }
     else
     {
-	dopts = diff_opts ? diff_opts : "-u";
+	dopts = diff_opts;
 	dtype = "diff";
 	utype = "update";
 	use_rep_path[0] = 0;
@@ -1451,6 +1471,8 @@ static void do_cvs_diff(PatchSet * ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2+1];
+
+	cmdbuff[0] = 0;
 	cmdbuff[PATH_MAX*2] = 0;
 
 	/*
@@ -1477,39 +1499,36 @@ static void do_cvs_diff(PatchSet * ps)
 	 * The problem is that this must be piped to diff, and so the resulting
 	 * diff doesn't contain the filename anywhere! (diff between - and /dev/null).
 	 * sed is used to replace the '-' with the filename. 
+	 *
+	 * It's possible for pre_rev to be a 'dead' revision. This happens when a file 
+	 * is added on a branch. post_rev will be dead dead for remove
 	 */
+	if (!psm->pre_rev || psm->pre_rev->dead || psm->post_rev->dead)
+	{
+	    int cr;
+	    const char * rev;
 
-	/*
-	 * It's possible for pre_rev to be a 'dead' revision.
-	 * this happens when a file is added on a branch.
-	 */
-	if (!psm->pre_rev || psm->pre_rev->dead)
-	{
-	    if (cvs_direct && rcmd)
+	    if (!psm->pre_rev || psm->pre_rev->dead)
 	    {
-		strcpy(cmdbuff, "true");
-		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->post_rev->rev, 1, dopts);
+		cr = 1;
+		rev = psm->post_rev->rev;
 	    }
 	    else
 	    {
-		/* a 'create file' diff */
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s /dev/null - | sed -e '2 s|^+++ -|+++ %s%s|g'",
-			 norc, utype, psm->post_rev->rev, use_rep_path, psm->file->filename, dopts, 
-			 use_rep_path, psm->file->filename);
+		cr = 0;
+		rev = psm->pre_rev->rev;
 	    }
-	}
-	else if (psm->post_rev->dead)
-	{
-	    if (cvs_direct && rcmd)
+
+	    if (cvs_direct)
 	    {
-		strcpy(cmdbuff, "true");
-		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->pre_rev->rev, 0, dopts);
+		/* cvs_rupdate does the pipe through diff thing internally */
+		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, rev, cr, dopts);
 	    }
 	    else
 	    {
-		/* a 'remove file' diff */
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s%s|g'",
-			 norc, utype, psm->pre_rev->rev, use_rep_path, psm->file->filename, dopts, 
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e 's|^+++ -|+++ %s%s|g'",
+			 norc, utype, rev, use_rep_path, psm->file->filename, dopts,
+			 cr?"":"-",cr?"-":"",
 			 use_rep_path, psm->file->filename);
 	    }
 	}
@@ -1518,11 +1537,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    /* a regular diff */
 	    if (cvs_direct)
 	    {
-		strcpy(cmdbuff, "true");
-		if (rcmd)
-		    cvs_rdiff(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
-		else
-		    cvs_diff(cvs_direct_ctx, repository_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
+		cvs_diff(cvs_direct_ctx, repository_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
 	    }
 	    else
 	    {
@@ -1531,7 +1546,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    }
 	}
 
-	if (system(cmdbuff))
+	if (cmdbuff[0] && system(cmdbuff))
 	{
 	    debug(DEBUG_APPERROR, "system command returned non-zero exit status. aborting");
 	    exit(1);

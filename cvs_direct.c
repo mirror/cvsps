@@ -560,7 +560,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 
 void cvs_rdiff(CvsServerCtx * ctx, 
 	       const char * rep, const char * file, 
-	       const char * rev1, const char * rev2, const char * opts)
+	       const char * rev1, const char * rev2)
 {
     /* NOTE: opts are ignored for rdiff, '-u' is always used */
 
