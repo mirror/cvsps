@@ -24,7 +24,7 @@
 #include "stats.h"
 #include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.72 2003/03/19 23:06:24 david Exp $");
+RCSID("$Id: cvsps.c,v 4.73 2003/03/19 23:12:22 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -443,9 +443,17 @@ static void load_from_cvs()
     }
     
     if (test_log_file)
+    {
 	fclose(cvsfp);
+    }
     else 
-	pclose(cvsfp);
+    {
+	if (pclose(cvsfp) < 0)
+	{
+	    debug(DEBUG_APPERROR, "cvs rlog command exited with error. aborting");
+	    exit(1);
+	}
+    }
 }
 
 static void usage(const char * str1, const char * str2)
@@ -1464,7 +1472,11 @@ static void do_cvs_diff(PatchSet * ps)
 		     norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, use_rep_path, psm->file->filename);
 	}
 
-	system(cmdbuff);
+	if (system(cmdbuff))
+	{
+	    debug(DEBUG_APPERROR, "system command returned non-zero exit status. aborting");
+	    exit(1);
+	}
     }
 }
 
