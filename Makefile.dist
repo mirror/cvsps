@@ -8,6 +8,8 @@ OBJS=\
 	cbtcommon/text_util.o\
 	cvsps.o
 
+all: cvsps
+
 cvsps: $(OBJS)
 	$(CC) -o cvsps $(OBJS)
 
