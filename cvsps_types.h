@@ -103,6 +103,8 @@ struct _PatchSet
 {
     int psid;
     time_t date;
+    time_t min_date;
+    time_t max_date;
     char *descr;
     char *author;
     char *tag;

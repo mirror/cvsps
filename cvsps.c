@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.90 2003/03/28 15:25:54 david Exp $");
+RCSID("$Id: cvsps.c,v 4.91 2003/03/31 23:06:18 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1099,6 +1099,14 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	    free(retval->descr);
 	}
 
+	if (retval->date < (*find)->min_date)
+	{
+	    (*find)->min_date = retval->date;
+	    debug(DEBUG_APPMSG1, "WARNING: non-increasing dates in encountered patchset members");
+	}
+	else if (retval->date > (*find)->max_date)
+	    (*find)->max_date = retval->date;
+
 	free(retval);
 	retval = *find;
     }
@@ -1106,6 +1114,9 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     {
 	debug(DEBUG_STATUS, "new patch set!");
 	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
+
+	retval->min_date = retval->max_date = retval->date;
+
 	if (tsearch(retval, &ps_tree_bytime, cmp2) == retval)
 		abort();
     }
@@ -1443,12 +1454,11 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     const PatchSet * ps2 = (const PatchSet *)v_ps2;
     long diff;
     int ret;
+    time_t d, min, max;
 
     /* We order by (author, descr, date), but because of the fuzz factor
      * we treat times within a certain distance as equal IFF the author
-     * and descr match.  If we allow the fuzz, but then the author or
-     * descr don't match, return the date diff (if any) in order to get
-     * the ordering right.
+     * and descr match.  
      */
 
     ret = strcmp(ps1->author, ps2->author);
@@ -1463,10 +1473,37 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     if (ret)
 	return ret;
 
+    /* 
+     * one of ps1 or ps2 is new.  the other should have the min_date
+     * and max_date set
+     */
+    if (ps1->min_date == 0)
+    {
+	d = ps1->date;
+	min = ps2->min_date;
+	max = ps2->max_date;
+    } 
+    else if (ps2->min_date == 0)
+    {
+	d = ps2->date;
+	min = ps1->min_date;
+	max = ps1->max_date;
+    }
+    else
+    {
+	debug(DEBUG_APPERROR, "how can we have both patchsets New?");
+	exit(1);
+    }
+
+    if ((min <= d && d <= max) || labs(min - d) <= timestamp_fuzz_factor || labs(d - max) <= timestamp_fuzz_factor)
+	return 0;
+
     diff = ps1->date - ps2->date;
 
     if (labs(diff) > timestamp_fuzz_factor)
 	return (diff < 0) ? -1 : 1;
+
+    debug(DEBUG_APPERROR, "don't expect to have fuzz matter here");
     return 0;
 }
 
@@ -1831,6 +1868,9 @@ static PatchSet * create_patch_set()
     {
 	INIT_LIST_HEAD(&ps->members);
 	ps->psid = -1;
+	ps->date = 0;
+	ps->min_date = 0;
+	ps->max_date = 0;
 	ps->descr = NULL;
 	ps->author = NULL;
 	ps->tag = NULL;
