@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.80 2003/03/24 23:57:03 david Exp $");
+RCSID("$Id: cvsps.c,v 4.81 2003/03/25 00:02:08 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -102,7 +102,7 @@ static CvsServerCtx * cvs_direct_ctx;
 static int compress;
 static char compress_arg[8];
 
-static void parse_args(int, char *[]);
+static int parse_args(int, char *[]);
 static void load_from_cvs();
 static void init_strip_path();
 static CvsFile * parse_file(const char *);
@@ -136,7 +136,9 @@ int main(int argc, char *argv[])
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
-    parse_args(argc, argv);
+    if (parse_args(argc, argv) < 0)
+	exit(1);
+
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
 
@@ -470,7 +472,7 @@ static void load_from_cvs()
     }
 }
 
-static void usage(const char * str1, const char * str2)
+static int usage(const char * str1, const char * str2)
 {
     if (str1)
 	debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
@@ -514,10 +516,10 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
-    exit(1);
+    return -1;
 }
 
-static void parse_args(int argc, char *argv[])
+static int parse_args(int argc, char *argv[])
 {
     int i = 1;
     while (i < argc)
@@ -525,7 +527,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-z") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -z missing", "");
+		return usage("argument to -z missing", "");
 
 	    timestamp_fuzz_factor = atoi(argv[i++]);
 	    continue;
@@ -544,7 +546,7 @@ static void parse_args(int argc, char *argv[])
 	    char * min_str, * max_str;
 
 	    if (++i >= argc)
-		usage("argument to -s missing", "");
+		return usage("argument to -s missing", "");
 
 	    min_str = strtok(argv[i++], ",");
 	    do
@@ -574,7 +576,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-a") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -a missing", "");
+		return usage("argument to -a missing", "");
 
 	    restrict_author = argv[i++];
 	    continue;
@@ -585,13 +587,13 @@ static void parse_args(int argc, char *argv[])
 	    int err;
 
 	    if (++i >= argc)
-		usage("argument to -l missing", "");
+		return usage("argument to -l missing", "");
 
 	    if ((err = regcomp(&restrict_log, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
 	    {
 		char errbuf[256];
 		regerror(err, &restrict_log, errbuf, 256);
-		usage("bad regex to -l", errbuf);
+		return usage("bad regex to -l", errbuf);
 	    }
 
 	    have_restrict_log = 1;
@@ -604,13 +606,13 @@ static void parse_args(int argc, char *argv[])
 	    int err;
 
 	    if (++i >= argc)
-		usage("argument to -f missing", "");
+		return usage("argument to -f missing", "");
 
 	    if ((err = regcomp(&restrict_file, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
 	    {
 		char errbuf[256];
 		regerror(err, &restrict_file, errbuf, 256);
-		usage("bad regex to -f", errbuf);
+		return usage("bad regex to -f", errbuf);
 	    }
 
 	    have_restrict_file = 1;
@@ -623,7 +625,7 @@ static void parse_args(int argc, char *argv[])
 	    time_t *pt;
 
 	    if (++i >= argc)
-		usage("argument to -d missing", "");
+		return usage("argument to -d missing", "");
 
 	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
 	    convert_date(pt, argv[i++]);
@@ -633,7 +635,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-r") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -r missing", "");
+		return usage("argument to -r missing", "");
 
 	    if (restrict_tag_start)
 		restrict_tag_end = argv[i];
@@ -662,7 +664,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-b") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -b missing", "");
+		return usage("argument to -b missing", "");
 
 	    restrict_branch = argv[i++];
 	    /* Warn if the user tries to use TRUNK. Should eventually
@@ -676,7 +678,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-p") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -p missing", "");
+		return usage("argument to -p missing", "");
 	    
 	    patch_set_dir = argv[i++];
 	    continue;
@@ -704,7 +706,7 @@ static void parse_args(int argc, char *argv[])
 	}
 
 	if (strcmp(argv[i], "-h") == 0)
-	    usage(NULL, NULL);
+	    return usage(NULL, NULL);
 
 	if (strcmp(argv[i], "--norc") == 0)
 	{
@@ -716,7 +718,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--test-log") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to --test-log missing", "");
+		return usage("argument to --test-log missing", "");
 
 	    test_log_file = argv[i++];
 	    continue;
@@ -725,7 +727,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--diff-opts") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to --diff-opts missing", "");
+		return usage("argument to --diff-opts missing", "");
 
 	    diff_opts = argv[i++];
 	    continue;
@@ -755,7 +757,7 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--debuglvl") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to --debuglvl missing", "");
+		return usage("argument to --debuglvl missing", "");
 
 	    debuglvl = atoi(argv[i++]);
 	    continue;
@@ -764,18 +766,18 @@ static void parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-Z") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -Z", "");
+		return usage("argument to -Z", "");
 
 	    compress = atoi(argv[i++]);
 
 	    if (compress < 1 || compress > 9)
-		usage("-Z level must be between 1 and 9 inclusive", argv[i-1]);
+		return usage("-Z level must be between 1 and 9 inclusive", argv[i-1]);
 
 	    snprintf(compress_arg, 8, "-z%d", compress);
 	    continue;
 	}
 
-	usage("invalid argument", argv[i]);
+	return usage("invalid argument", argv[i]);
     }
 
     if (diff_opts && !cvs_direct && do_diff)
@@ -787,6 +789,8 @@ static void parse_args(int argc, char *argv[])
 	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
 	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
     }
+
+    return 0;
 }
 
 static void init_strip_path()
