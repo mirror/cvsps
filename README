@@ -24,6 +24,9 @@ with it.  For now, just try 'make' and 'make install'.
 Running.
 -------
 
+Note: not all options are necessarily discussed here.  Please check the
+output of 'cvsps -h' and/or the manual page for the most up-to-date info.
+
 CVSps operates by parsing the 'cvs log' output.  So to run it, you must
 be in the working directory of a cvs project.  CVSps handles
 subdirectories fine, so run it in the top directory of your project.
@@ -38,7 +41,10 @@ cvsps
 
 and will begin reading and parsing the cvs log.  When it is finished it
 will output all of the patchset information to stdout, and it will also
-generate the '~/.cvsps/cvsps.cache' file.
+generate the '~/.cvsps/cvsps.cache' file.  Note: for historical reasons
+this file is still called the cvsps.cache file, but in reality it is named
+based on the CVS/Root and CVS/Repository contents, and thus is shared for
+the same repository checked out in multiple places.
 
 If the cache file exists, it won't ever be automatically updated.  To
 update the cache with cvs activity that has occurred since the ~/.cvsps/cvsps.cache
@@ -59,25 +65,27 @@ CVSps's output is information about patchsets.  A patchset looks like:
 PatchSet 1701
 Date: 2001/11/06 19:49:04
 Author: joe
+Branch: v4_1-production-patches
+Tag: v4_1_1
 Log:
 this release completes line summary find
 
 Members: 
-   Makefile:1.3.4.9->1.3.4.10 [v4_1-production-patches]
-   apache_mod/lineSummary.C:1.66.2.2->1.66.2.3 [v4_1-production-patches]
-   apache_mod/tbill_sql.C:1.59.2.5->1.59.2.6 [v4_1-production-patches]
+   Makefile:1.3.4.9->1.3.4.10
+   apache_mod/lineSummary.C:1.66.2.2->1.66.2.3
+   apache_mod/tbill_sql.C:1.59.2.5->1.59.2.6
 
 ---------------------
 
 This patchset is taken from an internal project.  It shows the date, the
 author, log message and each file that was modified.  For each file the
 pre-commit and post-commit revisions are given.  In this case, you can see
-that the files are on a branch, and the branch tag is shown (for each
-file) inside square brackets.
+that the files are on a branch, and the branch is shown, as well as the
+tag (see TAGS below).
 
 Patchsets are ordered by commit timestamp, so as long as the clock on your
 cvs server is monotonic, the numbering of patchsets should be invariant
-across cache-rebuilds.
+across cache-rebuilds. (see COMPATIBILITY below).
 
 c) Limiting the patchset output.
 
@@ -112,6 +120,12 @@ case changes made to a given file before the branch point affect the file
 as it exists in the head of the branch.  If you want to restrict to the
 main branch, use a branch of 'HEAD'.
 
+By log comment.  With the -l <regex> flag you can limit the ouptut to
+patchsets with the commit message matching the regex.
+
+By tag.  With the -t <tag1> -t <tag2> you can limit the patchsets to
+commits after a given tag1 and, optionally, before tag2.
+
 d) viewing the changes made by a patchset.
 
 To show the 'diff' output for a given patchset, use:
@@ -134,6 +148,49 @@ will differ from that of the last file by 60 seconds.
 The fuzz factor attempts to workaround this by saying: commits by the same
 author, using the same log message, within <fuzz> seconds are considered
 part of the same patchset.  The default fuzz is 300 seconds (5 minutes).
+
+TAGS
+----
+
+As of version 2.0 cvsps supports tags.  What does this mean?  It's actually
+quite horrendous.  Intuitively, cvsps now supports the 'what has changed since
+release XYZ of my code?' where XYZ is a symbolic tag.  Another way of saying
+this would be 'what commits have been made since version XYZ of my code?'.
+
+This question assumes that XYZ is a 'sane' tag.  A 'sane' tag is the only 
+kind of tag cvsps really supports in a meaningful way.  A 'sane' tag is one
+applied to the entire repository at a time.  This will always be consistent.
+However, if you tag part of the repository, commit some changes, wait 6 months,
+and then tag the rest with the same tag, then the question: 'what commits have
+been made since version XYZ of my code?' is a bit difficult to answer.  A single
+commit may have changed a version pre-XYZ of file 'A' and a version post-XYZ of
+file 'B', and cvsps won't know what to do.
+
+Fortunately, cvsps detects these 'insane' tags, and they're labeled INVALID
+in the output.  Using 'cvs diff' is recommended in these cases.
+
+COMPATIBILITY
+-------------
+
+One of the main goals of cvsps was to make the patchset numbering stable across
+all time, as long as no funny-business is done to the repository files themselves.
+
+Unfortunately, as bugs have been fixed, the numbering has changed.  This is most
+regrettable, but unavoidable.
+
+Additionally, in version 2.0, two changes have been made which will 'renumber'
+the patch sets.  
+
+1) The false 'globbing' of two commits from nearly the exact same time, by the
+same person, with the same log description but to different branches.  Now,
+these will be reported as 2 patchsets instead of one.
+
+2) The creation of a large volume of patchsets for 'file xyz was originally added on
+branch' log messages.  This occurs whenever a file is originally born on a branch,
+and is exacerbated by the fact that even when all of these files are created with
+a single commit, the 'file xyz...' messages, which contains the actual file name,
+are different, causing a proliferation of these unwanted patchsets.  These patchsets
+are now silently eliminated from the output.
 
 Reporting bugs / submitting patches.
 -----------------------------------

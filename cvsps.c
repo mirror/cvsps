@@ -18,7 +18,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.40 2003/02/25 18:05:35 david Exp $");
+RCSID("$Id: cvsps.c,v 4.41 2003/02/25 20:36:15 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -69,6 +69,11 @@ struct _CvsFileRevision
      * for linking this 'branch head' into the parent revision list
      */
     struct list_head link;
+    /*
+     * temporary link used by internal functions building lists
+     * on the stack.  use with caution.
+     */
+    struct list_head tmp_link;
 };
 
 struct _CvsFile
@@ -86,6 +91,7 @@ struct _PatchSet
     char *descr;
     char *author;
     char *tag;
+    int valid_tag;
     char *branch;
     struct list_head members;
 };
@@ -131,6 +137,10 @@ static int do_write_cache;
 static int statistics;
 static const char * norc = "";
 static const char * patchset_dir;
+static const char * restrict_tag_start;
+static const char * restrict_tag_end;
+static int restrict_tag_ps_start;
+static int restrict_tag_ps_end;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -504,6 +514,9 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
+    debug(DEBUG_APPERROR, "  -r <tag1> -r <tag2> if just one tag specified, show");
+    debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
+    debug(DEBUG_APPERROR, "     revisions between the two tags.");
     debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
     debug(DEBUG_APPERROR, "  -p <directory> output patchsets to individual files in <directory>");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
@@ -609,6 +622,20 @@ static void parse_args(int argc, char *argv[])
 
 	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
 	    convert_date(pt, argv[i++]);
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-r") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -r missing", "");
+
+	    if (restrict_tag_start)
+		restrict_tag_end = argv[i];
+	    else
+		restrict_tag_start = argv[i];
+
+	    i++;
 	    continue;
 	}
 
@@ -971,6 +998,35 @@ static void check_print_patch_set(PatchSet * ps)
     if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
 	return;
     
+    /* resolve the ps.id of the start and end tag restrictions if necessary */
+    if (restrict_tag_start && restrict_tag_ps_start == 0) 
+    {
+	if (ps->tag && strcmp(ps->tag, restrict_tag_start) == 0)
+	    restrict_tag_ps_start = ps_counter;
+    }
+
+    if (restrict_tag_end && restrict_tag_ps_end == 0)
+    {
+	if (ps->tag && strcmp(ps->tag, restrict_tag_end) == 0)
+	    restrict_tag_ps_end = ps_counter;
+    }
+
+    /* check the restriction, note: these id's may not be resolved, and
+     * that comes into play here.  keep in mind we may pass through
+     *  the tree multiple times.
+     *
+     * FIXME: should the start restriction be >= comparison? (yes?)
+     * I.e. Do we want to see the diff leading up to the tag? (no?)
+     */
+    if (restrict_tag_start)
+    {
+	if (restrict_tag_ps_start == 0 || restrict_tag_ps_start > ps_counter)
+	    return;
+
+	if (restrict_tag_end && restrict_tag_ps_end > 0 && restrict_tag_ps_end < ps_counter)
+	    return;
+    }
+
     if (!list_empty(&show_patch_set_ranges))
     {
 	struct list_head * next = show_patch_set_ranges.next;
@@ -1040,7 +1096,7 @@ static void print_patch_set(PatchSet * ps)
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
     printf("Branch: %s\n", ps->branch ? ps->branch : "HEAD");
-    printf("Tag: %s\n", ps->tag ? ps->tag : "(none)");
+    printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", ps->valid_tag ? "" : "**INVALID**");
     printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
     
@@ -1726,6 +1782,7 @@ static PatchSet * create_patchset()
 	ps->descr = NULL;
 	ps->author = NULL;
 	ps->tag = NULL;
+	ps->valid_tag = 1;
     }
 
     return ps;
@@ -2054,22 +2111,30 @@ static void resolve_global_symbols()
     while ((he_sym = next_hash_entry(global_symbols)))
     {
 	struct hash_entry * he;
-	/* FIXME: this is possibly bad, but how can we do this? */
+	/* FIXME: LONG_MAX is possibly bad, but how can we do this? */
 	time_t valid_until = LONG_MAX;
+	PatchSet * ps;
 
+	/* build a list of revisions at this tag - used below */
+	struct list_head revisions;
+	    
+	INIT_LIST_HEAD(&revisions);
 	reset_hash_iterator(file_hash);
+
+	debug(DEBUG_STATUS, "resolving global symbol %s", he_sym->he_key);
 
 	while ((he = next_hash_entry(file_hash)))
 	{
 	    CvsFile * file = (CvsFile*)he->he_obj;
 	    CvsFileRevision * rev = (CvsFileRevision*)get_hash_object(file->symbols, (char*)he_sym->he_key);
-	    PatchSet * ps;
 
 	    if (!rev)
 	    {
 		debug(DEBUG_STATUS, "no rev for %s in %s", he_sym->he_key, file->filename);
 		continue;
 	    }
+
+	    list_add(&rev->tmp_link, &revisions);
 
 	    ps = rev->post_psm->ps;
 
@@ -2078,41 +2143,58 @@ static void resolve_global_symbols()
 		PatchSet * ps2 = (PatchSet*)he_sym->he_obj;
 		if (ps->date < ps2->date)
 		    ps = ps2;
-
-		ps2->tag = NULL;
 	    }
 
 	    he_sym->he_obj = ps;
-	    ps->tag = he_sym->he_key;
 
 	    /*
-	     * The revisions pre_psm->ps SHOULD be the PatchSet
-	     * where the revision became invalid.  Every revision
-	     * could theoretically become invalid at a different PatchSet.
-	     * However, we want for all of these to be beyond the PatchSet
-	     * we are considering to be the 'tagged' PatchSet. (or on a 
-	     * separate branch)
+	     * The revision's pre_psm->ps SHOULD be the PatchSet
+	     * where the revision became obsolete.  Every tagged 
+	     * revision for each file it the set could theoretically become 
+	     * obsolete at a different PatchSet. However, we want 
+	     * for all of these 'obsoleting PatchSets' to be beyond
+	     * the PatchSet we are considering to be the 'tagged' 
+	     * PatchSet. (or on a separate branch)
 	     */
 	    if (rev->pre_psm)
 	    {
 		time_t t = rev->pre_psm->ps->date;
 
-		if (t < valid_until)
+		if (t < valid_until && revision_affects_branch(rev->pre_psm->post_rev, ps->branch))
+		    valid_until = t;
+	    }
+	}
+
+	ps = (PatchSet*)he_sym->he_obj;
+
+	if (!ps)
+	    debug(DEBUG_APPERROR, "no patchset for tag %s", he_sym->he_key);
+	else
+	    ps->tag = he_sym->he_key;
+
+	/* 
+	 * if this is an invalid patchset, check which members
+	 * are invalid.  (for reporting only at this point).
+	 */
+	if (valid_until < ps->date)
+	{
+	    struct list_head * next;
+
+	    ps->valid_tag = 0;
+
+	    for (next = revisions.next; next != &revisions; next = next->next)
+	    {
+		CvsFileRevision * rev = list_entry(next, CvsFileRevision, tmp_link);
+
+		if (!rev->pre_psm)
+		    continue;
+		
+		if (rev->pre_psm->ps->date < ps->date)
 		{
-		    /* if there is patch_set that is possibly a 'tag violation' 
-		     * we need to check that the new revision was on the same
-		     * branch-path as the one we're tracking (a commit on a different
-		     * branch doesn't cause a violation)
-		     */
-		    if (t < ps->date && revision_affects_branch(rev->pre_psm->post_rev, ps->branch))
-		    {
+		    CvsFileRevision * next_rev = rev->pre_psm->post_rev;
+		    if (revision_affects_branch(next_rev, ps->branch))
 			debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
 			      rev->file->filename, rev->rev, (char*)he_sym->he_key);
-		    }
-		    else
-		    {
-			valid_until = t;
-		    }
 		}
 	    }
 	}

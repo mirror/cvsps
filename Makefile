@@ -2,11 +2,9 @@ DEP_OBJS=cvsps.o
 CBT_DIR=/cobite
 include $(CBT_DIR)/share/libversions/Makefile.include-1
 
-#
-# use if trying to debug inline functions
-#
-#CFLAGS+=-fno-inline -fno-default-inline 
-#
+ifeq ($(DEBUG_INLINING), y)
+CFLAGS+=-fno-inline -fno-default-inline -O0 -g
+endif
 
 OBJS=$(DEP_OBJS)
 LIBS=-lcbtcommon
