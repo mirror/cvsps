@@ -121,7 +121,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	send_string(ctx, "Root %s\n", ctx->root);
 
 	/* this is taken from 1.11.1p1 trace - but with Mbinary removed. we can't handle it (yet!) */
-	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M E F MT\n", ctx->root);
+	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M E F\n", ctx->root);
 
 	send_string(ctx, "valid-requests\n");
 
@@ -889,6 +889,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     }
     else if (strcmp(lbuff, "ok") == 0 ||strcmp(lbuff, "error") == 0)
     {
+	debug(DEBUG_TCP, "cvs_direct: rlog: got command completion");
 	return NULL;
     }
 
