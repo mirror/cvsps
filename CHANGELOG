@@ -1,3 +1,9 @@
+2.0rc1
+- resolve -r symbols during global symbol resolution
+- using two -r arguments implicitly sets -b with branch
+  from second -r (if you can speak cvsps arguments, you'll
+  understand this)
+
 2.0b10
 - fix bug where filenames with 'bad' characters (such as ' ')
   were being sent unescaped to a shell

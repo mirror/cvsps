@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.96 2003/04/04 20:50:43 david Exp $");
+RCSID("$Id: cvsps.c,v 4.97 2003/04/11 14:02:00 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	timestamp_fuzz_factor = save_fuzz_factor;
     }
 
-    if (cvs_direct && (do_diff || update_cache))
+    if (cvs_direct && (do_diff || (update_cache && !test_log_file)))
 	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
     if (update_cache)
@@ -249,7 +249,7 @@ static void load_from_cvs()
     char use_rep_buff[PATH_MAX];
     char * ltype;
 
-    if (!no_rlog && cvs_check_cap(CAP_HAVE_RLOG))
+    if (!no_rlog && !test_log_file && cvs_check_cap(CAP_HAVE_RLOG))
     {
 	ltype = "rlog";
 	snprintf(use_rep_buff, PATH_MAX, "%s", repository_path);
@@ -286,6 +286,7 @@ static void load_from_cvs()
 
     cache_date = time(NULL);
 
+    /* FIXME: this is ugly, need to virtualize the accesses away from here */
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
     else if (cvs_direct_ctx)
@@ -1000,7 +1001,12 @@ static void init_paths()
 
     /* the 'strip_path' will be used whenever the CVS server gives us a
      * path to an 'rcs file'.  the strip_path portion of these paths is
-     * stripped off, leaving us with the working file
+     * stripped off, leaving us with the working file.
+     *
+     * NOTE: because of some bizarre 'feature' in cvs, when 'rlog' is used
+     * (instead of log) it gives the 'real' RCS file path, which can be different
+     * from the 'nominal' repository path because of symlinks in the server and 
+     * the like.  See also the 'parse_file' routine
      */
     strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
 
@@ -1020,6 +1026,7 @@ static CvsFile * parse_file(const char * buff)
     int len = strlen(buff + 10);
     char * p;
 
+    /* once a single file has been parsed ok we set this */
     static int path_ok;
     
     /* chop the ",v" string and the "LF" */
@@ -1033,19 +1040,28 @@ static CvsFile * parse_file(const char * buff)
 	 * then maybe we need to try for an alternate.
 	 * this will happen if symlinks are being used
 	 * on the server.  our best guess is to look
-	 * for the initial occurance of the repository
-	 * path in the filename and use that.  oh well.
+	 * for the final occurance of the repository
+	 * path in the filename and use that.  it should work
+	 * except in the case where:
+	 * 1) the project has no files in the top-level directory
+	 * 2) the project has a directory with the same name as the project
+	 * 3) that directory sorts alphabetically before any other directory
+	 * in which case, you are scr**ed
 	 */
 	if (!path_ok)
 	{
-	    char * p = strstr(fn, repository_path);
-	    if (p)
+	    char * p = fn, *lastp = NULL;
+
+	    while ((p = strstr(p, repository_path)))
+		lastp = p++;
+      
+	    if (lastp)
 	    {
 		int len = strlen(repository_path);
-		memcpy(strip_path, fn, p - fn + len + 1);
-		strip_path_len = p - fn + len + 1;
+		memcpy(strip_path, fn, lastp - fn + len + 1);
+		strip_path_len = lastp - fn + len + 1;
 		strip_path[strip_path_len] = 0;
-		debug(DEBUG_STATUS, "used alt strip path %s", strip_path);
+		debug(DEBUG_APPMSG1, "NOTICE: used alternate strip path %s", strip_path);
 		goto ok;
 	    }
 	}
