@@ -31,7 +31,7 @@ install:
 	install cvsps $(CBT_DIR)/bin/
 
 this_clean:
-	rm -f *.o cvsps core
+	rm -f *.o *.d cvsps core
 	rm -fr dist/ htdocs/
 
 dist:
