@@ -17,7 +17,7 @@
 
 #define CACHE_DESCR_BOUNDARY "-=-END CVSPS DESCR-=-\n"
 
-/* the tree walk pretty much requries use of globals :-( */
+/* the tree walk API pretty much requries use of globals :-( */
 static FILE * cache_fp;
 static int ps_counter;
 
@@ -68,55 +68,19 @@ static FILE *cache_open(char const *mode)
     return fp;
 }
 
-static void write_tree_node_to_cache(const void * nodep, const VISIT which, const int depth)
-{
-    PatchSet * ps;
-
-    switch(which)
-    {
-    case postorder:
-    case leaf:
-	ps = *(PatchSet**)nodep;
-	dump_patch_set(cache_fp, ps);
-	break;
-
-    default:
-	break;
-    }
-}
-
-static void dump_patch_set(FILE * fp, PatchSet * ps)
-{
-    struct list_head * next = ps->members.next;
-
-    ps_counter++;
-    fprintf(fp, "patchset: %d\n", ps_counter);
-    fprintf(fp, "date: %d\n", (int)ps->date);
-    fprintf(fp, "author: %s\n", ps->author);
-    fprintf(fp, "descr:\n%s", ps->descr); /* descr is guaranteed to end with LF */
-    fprintf(fp, CACHE_DESCR_BOUNDARY);
-    fprintf(fp, "members:\n");
-
-    while (next != &ps->members)
-    {
-	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	fprintf(fp, "file: %s; pre_rev: %s; post_rev: %s; dead: %d\n", 
-		psm->file->filename, 
-		psm->pre_rev ? psm->pre_rev->rev : "INITIAL", psm->post_rev->rev, psm->post_rev->dead);
-	next = next->next;
-    }
-
-    fprintf(fp, "\n");
-}
+/* ************ Reading ************ */
 
 enum
 {
     CACHE_NEED_FILE,
-    CACHE_NEED_REV,
     CACHE_NEED_BRANCHES,
+    CACHE_NEED_SYMBOLS,
+    CACHE_NEED_REV,
     CACHE_NEED_PS,
     CACHE_NEED_PS_DATE,
     CACHE_NEED_PS_AUTHOR,
+    CACHE_NEED_PS_TAG,
+    CACHE_NEED_PS_VALID_TAG,
     CACHE_NEED_PS_BRANCH,
     CACHE_NEED_PS_DESCR,
     CACHE_NEED_PS_EOD,
@@ -133,7 +97,9 @@ time_t read_cache()
     PatchSet * ps = NULL;
     char datebuff[20] = "";
     char authbuff[AUTH_STR_MAX] = "";
-    char branchbuff[AUTH_STR_MAX] = "";
+    char tagbuff[LOG_STR_MAX] = "";
+    int valid_tag = 0;
+    char branchbuff[LOG_STR_MAX] = "";
     char logbuff[LOG_STR_MAX] = "";
     time_t cache_date;
 
@@ -164,23 +130,12 @@ time_t read_cache()
 		f->filename = xstrdup(buff + 6);
 		f->filename[len-1] = 0; /* Remove the \n at the end of line */
 		debug(DEBUG_STATUS, "read cache filename '%s'", f->filename);
-		put_hash_object(file_hash, f->filename, f);
-		state = CACHE_NEED_REV;
+		put_hash_object_ex(file_hash, f->filename, f, HT_NO_KEYCOPY, NULL, NULL);
+		state = CACHE_NEED_BRANCHES;
 	    }
 	    else
 	    {
 		state = CACHE_NEED_PS;
-	    }
-	    break;
-	case CACHE_NEED_REV:
-	    if (isdigit(buff[0]))
-	    {
-		buff[len-1] = 0;
-		cvs_file_add_revision(f, buff);
-	    }
-	    else
-	    {
-		state = CACHE_NEED_BRANCHES;
 	    }
 	    break;
 	case CACHE_NEED_BRANCHES:
@@ -195,6 +150,47 @@ time_t read_cache()
 		    tag += 2;
 		    buff[len - 1] = 0;
 		    cvs_file_add_branch(f, buff, tag);
+		}
+	    }
+	    else
+	    {
+		f->have_branches = 1;
+		state = CACHE_NEED_SYMBOLS;
+	    }
+	    break;
+	case CACHE_NEED_SYMBOLS:
+	    if (buff[0] != '\n')
+	    {
+		char * rev;
+
+		rev = strchr(buff, ':');
+		if (rev)
+		{
+		    *rev = 0;
+		    rev += 2;
+		    buff[len - 1] = 0;
+		    cvs_file_add_symbol(f, rev, buff);
+		}
+	    }
+	    else
+	    {
+		state = CACHE_NEED_REV;
+	    }
+	    break;
+	case CACHE_NEED_REV:
+	    if (isdigit(buff[0]))
+	    {
+		char * p = strchr(buff, ' ');
+		if (p)
+		{
+		    CvsFileRevision * rev;
+		    *p++ = 0;
+		    buff[len-1] = 0;
+		    rev = cvs_file_add_revision(f, buff);
+		    if (strcmp(rev->branch, p) != 0)
+		    {
+			debug(DEBUG_APPERROR, "branch mismatch %s != %s", rev->branch, p);
+		    }
 		}
 	    }
 	    else
@@ -221,6 +217,24 @@ time_t read_cache()
 		/* remove prefix "author: " and LF from len */
 		len -= 8;
 		strzncpy(authbuff, buff + 8, MIN(len, AUTH_STR_MAX));
+		state = CACHE_NEED_PS_TAG;
+	    }
+	    break;
+	case CACHE_NEED_PS_TAG:
+	    if (strncmp(buff, "tag:", 4) == 0)
+	    {
+		/* remove prefix "tag: " and LF from len */
+		len -= 5;
+		strzncpy(tagbuff, buff + 5, MIN(len, LOG_STR_MAX));
+		state = CACHE_NEED_PS_VALID_TAG;
+	    }
+	    break;
+	case CACHE_NEED_PS_VALID_TAG:
+	    if (strncmp(buff, "valid_tag:", 10) == 0)
+	    {
+		/* remove prefix "valid_tag: " and LF from len */
+		len -= 11;
+		valid_tag = atoi(buff + 11);
 		state = CACHE_NEED_PS_BRANCH;
 	    }
 	    break;
@@ -229,7 +243,7 @@ time_t read_cache()
 	    {
 		/* remove prefix "branch: " and LF from len */
 		len -= 8;
-		strzncpy(branchbuff, buff + 8, MIN(len, AUTH_STR_MAX));
+		strzncpy(branchbuff, buff + 8, MIN(len, LOG_STR_MAX));
 		state = CACHE_NEED_PS_DESCR;
 	    }
 	    break;
@@ -242,6 +256,10 @@ time_t read_cache()
 	    {
 		debug(DEBUG_STATUS, "patch set %s %s %s %s", datebuff, authbuff, logbuff, branchbuff);
 		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff);
+		/* the tag and valid_tag will be assigned by the resolve_global_symbols code 
+		 * ps->tag = (strlen(tagbuff)) ? get_string(tagbuff) : NULL;
+		 * ps->valid_tag = valid_tag;
+		 */
 		state = CACHE_NEED_PS_MEMBERS;
 	    }
 	    else
@@ -260,6 +278,9 @@ time_t read_cache()
 	    {
 		datebuff[0] = 0;
 		authbuff[0] = 0;
+		tagbuff[0] = 0;
+		valid_tag = 0;
+		branchbuff[0] = 0;
 		logbuff[0] = 0;
 		state = CACHE_NEED_PS;
 	    }
@@ -277,41 +298,90 @@ time_t read_cache()
     return cache_date;
 }
 
-static void parse_cache_revision(PatchSetMember * psm, const char * buff)
+enum
+{
+    CR_FILENAME,
+    CR_PRE_REV,
+    CR_POST_REV,
+    CR_DEAD,
+    CR_BRANCH_POINT
+};
+
+static void parse_cache_revision(PatchSetMember * psm, const char * p_buff)
 {
     /* The format used to generate is:
-     * "file: %s; pre_rev: %s; post_rev: %s; dead: %d\n"
+     * "file:%s; pre_rev:%s; post_rev:%s; dead:%d; branch_point:%d\n"
      */
-    const char *s, *p;
-    char fn[PATH_MAX];
+    char filename[PATH_MAX];
     char pre[REV_STR_MAX];
     char post[REV_STR_MAX];
-    
-    s = buff + 6;
-    p = strchr(buff, ';');
-    strzncpy(fn, s,  p - s + 1);
-    
-    psm->file = (CvsFile*)get_hash_object(file_hash, fn);
+    int dead = 0;
+    int bp = 0;
+    char buff[BUFSIZ];
+    int state = CR_FILENAME;
+    const char *s;
+    char * p = buff;
+
+    strcpy(buff, p_buff);
+
+    while ((s = strsep(&p, ";")))
+    {
+	char * c = strchr(s, ':');
+
+	if (!c)
+	{
+	    debug(DEBUG_APPERROR, "invalid cache revision line '%s'|'%s'", p_buff, s);
+	    exit(1);
+	}
+
+	*c++ = 0;
+
+	switch(state)
+	{
+	case CR_FILENAME:
+	    strcpy(filename, c);
+	    break;
+	case CR_PRE_REV:
+	    strcpy(pre, c);
+	    break;
+	case CR_POST_REV:
+	    strcpy(post, c);
+	    break;
+	case CR_DEAD:
+	    dead = atoi(c);
+	    break;
+	case CR_BRANCH_POINT:
+	    bp = atoi(c);
+	    break;
+	}
+	state++;
+    }
+
+    psm->file = (CvsFile*)get_hash_object(file_hash, filename);
 
     if (!psm->file)
     {
-	debug(DEBUG_APPERROR, "file %s not found in hash", fn);
-	return;
+	debug(DEBUG_APPERROR, "file '%s' not found in hash", filename);
+	exit(1);
     }
-
-    s = p + 11;
-    p = strchr(s, ';');
-    strzncpy(pre, s, p - s + 1);
-
-    s = p + 12;
-    p = strchr(s, ';');
-    strzncpy(post, s, p - s + 1);
 
     psm->pre_rev = file_get_revision(psm->file, pre);
     psm->post_rev = file_get_revision(psm->file, post);
-    psm->post_rev->dead = atoi(p + 8);
+    psm->post_rev->dead = dead;
     psm->post_rev->post_psm = psm;
+
+    if (!bp)
+    {
+	if (psm->pre_rev)
+	    psm->pre_rev->pre_psm = psm;
+    }
+    else
+    {
+	list_add(&psm->post_rev->link, &psm->pre_rev->branch_children);
+    }
 }
+
+/************ Writing ************/
 
 void write_cache(time_t cache_date, void * ps_tree_bytime)
 {
@@ -335,17 +405,8 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
 	struct hash_entry * rev_iter;
 
 	fprintf(cache_fp, "file: %s\n", file->filename);
-	reset_hash_iterator(file->revisions);
-	
-	while ((rev_iter = next_hash_entry(file->revisions)))
-	{
-	    CvsFileRevision * rev = (CvsFileRevision*)rev_iter->he_obj;
-	    fprintf(cache_fp, "%s\n", rev->rev);
-	}
 
-	fprintf(cache_fp, "branches:\n");
 	reset_hash_iterator(file->branches);
-	
 	while ((rev_iter = next_hash_entry(file->branches)))
 	{
 	    char * rev = (char *)rev_iter->he_key;
@@ -355,7 +416,24 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
 
 	fprintf(cache_fp, "\n");
 
-	
+	reset_hash_iterator(file->symbols);
+	while ((rev_iter = next_hash_entry(file->symbols)))
+	{
+	    char * tag = (char *)rev_iter->he_key;
+	    CvsFileRevision * rev = (CvsFileRevision*)rev_iter->he_obj;
+	    fprintf(cache_fp, "%s: %s\n", tag, rev->rev);
+	}
+
+	fprintf(cache_fp, "\n");
+
+	reset_hash_iterator(file->revisions);
+	while ((rev_iter = next_hash_entry(file->revisions)))
+	{
+	    CvsFileRevision * rev = (CvsFileRevision*)rev_iter->he_obj;
+	    fprintf(cache_fp, "%s %s\n", rev->rev, rev->branch);
+	}
+
+	fprintf(cache_fp, "\n");
     }
 
     fprintf(cache_fp, "\n");
@@ -364,3 +442,57 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
     cache_fp = NULL;
 }
 
+static void write_tree_node_to_cache(const void * nodep, const VISIT which, const int depth)
+{
+    PatchSet * ps;
+
+    switch(which)
+    {
+    case postorder:
+    case leaf:
+	ps = *(PatchSet**)nodep;
+	dump_patch_set(cache_fp, ps);
+	break;
+
+    default:
+	break;
+    }
+}
+
+static void dump_patch_set(FILE * fp, PatchSet * ps)
+{
+    struct list_head * next = ps->members.next;
+
+    ps_counter++;
+    fprintf(fp, "patchset: %d\n", ps_counter);
+    fprintf(fp, "date: %d\n", (int)ps->date);
+    fprintf(fp, "author: %s\n", ps->author);
+    fprintf(fp, "tag: %s\n", ps->tag ? ps->tag : "");
+    fprintf(fp, "valid_tag: %d\n", ps->valid_tag);
+    fprintf(fp, "branch: %s\n", ps->branch);
+    fprintf(fp, "descr:\n%s", ps->descr); /* descr is guaranteed to end with LF */
+    fprintf(fp, CACHE_DESCR_BOUNDARY);
+    fprintf(fp, "members:\n");
+
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	int bp = 1;
+	
+	/* this actually deduces if this revision is a branch point... */
+	if (!psm->pre_rev || (psm->pre_rev->pre_psm && psm->pre_rev->pre_psm == psm))
+	    bp = 0;
+
+	fflush(fp);
+    
+	fprintf(fp, "file:%s; pre_rev:%s; post_rev:%s; dead:%d; branch_point:%d\n", 
+		psm->file->filename, 
+		psm->pre_rev ? psm->pre_rev->rev : "INITIAL", psm->post_rev->rev, 
+		psm->post_rev->dead, bp);
+	next = next->next;
+    }
+
+    fprintf(fp, "\n");
+}
+
+/* where's arithmetic?... */

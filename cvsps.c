@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.45 2003/02/26 22:36:05 david Exp $");
+RCSID("$Id: cvsps.c,v 4.46 2003/02/28 02:41:14 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -92,6 +92,7 @@ static void parse_sym(CvsFile *, char *);
 static void print_statistics(void);
 static void resolve_global_symbols();
 static int revision_affects_branch(CvsFileRevision *, const char *);
+static int is_vendor_branch(const char *);
 
 int main(int argc, char *argv[])
 {
@@ -190,6 +191,7 @@ static void load_from_cvs()
 
     cache_date = time(NULL);
     cvsfp = popen(cmd, "r");
+    //cvsfp = fopen("/local/david/cvs.log", "r");
 
     if (!cvsfp)
     {
@@ -344,14 +346,31 @@ static void load_from_cvs()
 		 */
 		if (have_log || !is_revision_metadata(buff))
 		{
-		    int len;
+		    /* if the log buffer is full, that's it.  keep
+		     * track of the room for the \0 
+		     * 
+		     * Also, read lines (fgets) always have \n in them
+		     * which we count on.  So if truncation happens,
+		     * be careful to put a \n on.
+		     */
+		    if (loglen < LOG_STR_MAX)
+		    {
+			int len = strlen(buff);
+			
+			if (len >= LOG_STR_MAX - loglen)
+			{
+			    debug(DEBUG_APPERROR, "maximum log length exceeded, truncating log");
+			    len = LOG_STR_MAX - loglen;
+			    buff[len - 2] = '\n';
+			    buff[len - 1] = '\0';
+			}
 
-		    debug(DEBUG_STATUS, "appending %s to log", buff);
-		    len = MIN(LOG_STR_MAX - loglen, strlen(buff));
-		    memcpy(logbuff + loglen, buff, len);
-		    loglen += len;
-		    logbuff[loglen] = 0;
-		    have_log = 1;
+			debug(DEBUG_STATUS, "appending %s to log", buff);
+			memcpy(logbuff + loglen, buff, len);
+			loglen += len;
+			logbuff[loglen] = 0;
+			have_log = 1;
+		    }
 		}
 		else 
 		{
@@ -377,6 +396,7 @@ static void load_from_cvs()
     }
     
     pclose(cvsfp);
+    //fclose(cvsfp);
 }
 
 static void usage(const char * str1, const char * str2)
@@ -708,7 +728,7 @@ static CvsFile * parse_file(const char * buff)
 	if ((retval = create_cvsfile()))
 	{
 	    retval->filename = xstrdup(fn);
-	    put_hash_object(file_hash, retval->filename, retval);
+	    put_hash_object_ex(file_hash, retval->filename, retval, HT_NO_KEYCOPY, NULL, NULL);
 	}
 	else
 	{
@@ -1206,7 +1226,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	INIT_LIST_HEAD(&rev->branch_children);
 	INIT_LIST_HEAD(&rev->tags);
 	
-	put_hash_object(file->revisions, rev_str, rev);
+	put_hash_object_ex(file->revisions, rev->rev, rev, HT_NO_KEYCOPY, NULL, NULL);
 
 	debug(DEBUG_STATUS, "added revision %s to file %s", rev_str, file->filename);
     }
@@ -1229,7 +1249,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	/* determine the branch this revision was committed on */
 	if (!get_branch(branch_str, rev->rev))
 	{
-	    debug(DEBUG_APPERROR, "invalid rev format", rev->rev);
+	    debug(DEBUG_APPERROR, "invalid rev format %s", rev->rev);
 	    exit(1);
 	}
 	
@@ -1240,7 +1260,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPERROR, "warning: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+		//debug(DEBUG_APPERROR, "warning: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
 		rev->branch = "#CVSPS_NO_BRANCH";
 	    }
 	    else
@@ -1261,10 +1281,10 @@ CvsFile * create_cvsfile()
     if (!f)
 	return NULL;
 
-    f->revisions = create_hash_table(1);
-    f->branches = create_hash_table(1);
-    f->branches_sym = create_hash_table(1);
-    f->symbols = create_hash_table(1);
+    f->revisions = create_hash_table(53);
+    f->branches = create_hash_table(13);
+    f->branches_sym = create_hash_table(13);
+    f->symbols = create_hash_table(253);
     f->have_branches = 0;
 
     if (!f->revisions || !f->branches || !f->branches_sym)
@@ -1385,8 +1405,11 @@ static void parse_sym(CvsFile * file, char * sym)
 	strcpy(rev, eot);
 	chop(rev);
 
-	cvs_file_add_symbol(file, rev, tag);
-
+	/* see cvs manual: what is this vendor tag? */
+	if (is_vendor_branch(rev))
+	    cvs_file_add_branch(file, rev, tag);
+	else
+	    cvs_file_add_symbol(file, rev, tag);
     }
 }
 
@@ -1401,7 +1424,7 @@ void cvs_file_add_symbol(CvsFile * file, const char * rev_str, const char * p_ta
 
     debug(DEBUG_STATUS, "adding symbol to file: %s %s->%s", file->filename, tag_str, rev_str);
     rev = cvs_file_add_revision(file, rev_str);
-    put_hash_object(file->symbols, tag_str, rev);
+    put_hash_object_ex(file->symbols, tag_str, rev, HT_NO_KEYCOPY, NULL, NULL);
     
     /*
      * check the global_symbols
@@ -1414,7 +1437,7 @@ void cvs_file_add_symbol(CvsFile * file, const char * rev_str, const char * p_ta
 	sym->ps = NULL;
 	INIT_LIST_HEAD(&sym->tags);
 
-	put_hash_object(global_symbols, tag_str, sym);
+	put_hash_object_ex(global_symbols, sym->tag, sym, HT_NO_KEYCOPY, NULL, NULL);
     }
 
     tag = (Tag*)malloc(sizeof(*tag));
@@ -1437,11 +1460,12 @@ char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
 	return NULL;
     }
 
+    /* get permanent storage for the strings */
     new_tag = get_string(tag);
     new_rev = get_string(rev); 
 
-    put_hash_object(file->branches, new_rev, new_tag);
-    put_hash_object(file->branches_sym, new_tag, new_rev);
+    put_hash_object_ex(file->branches, new_rev, new_tag, HT_NO_KEYCOPY, NULL, NULL);
+    put_hash_object_ex(file->branches_sym, new_tag, new_rev, HT_NO_KEYCOPY, NULL, NULL);
     
     return new_tag;
 }
@@ -1472,6 +1496,7 @@ static void stat_ps_tree_node(const void * nodep, const VISIT which, const int d
     PatchSet * ps;
     struct list_head * next;
     int counter;
+    void * old;
 
     /* Make sure we have it if we do statistics */
     if (!author_hash)
@@ -1485,7 +1510,7 @@ static void stat_ps_tree_node(const void * nodep, const VISIT which, const int d
 	num_patchsets++;
 
 	/* Author statistics */
-	if (!put_hash_object(author_hash, ps->author, ps->author))
+	if (put_hash_object_ex(author_hash, ps->author, ps->author, HT_NO_KEYCOPY, NULL, &old) >= 0 && old)
 	{
 	    int len = strlen(ps->author);
 	    num_authors++;
@@ -1703,4 +1728,21 @@ static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
     }
 
     return 0;
+}
+
+/*
+ * When importing vendor sources, (apparently people do this)
+ * the code is added on a 'vendor' branch, which, for some reason
+ * doesn't use the magic-branch-tag format.  Try to detect that now
+ */
+static int is_vendor_branch(const char * rev)
+{
+    int dots = 0;
+    const char *p = rev;
+
+    while (*p)
+	if (*p++ == '.')
+	    dots++;
+
+    return !(dots&1);
 }
