@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.93 2003/04/03 19:38:47 david Exp $");
+RCSID("$Id: cvsps.c,v 4.94 2003/04/03 19:45:01 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -2226,7 +2226,7 @@ static void set_psm_initial(PatchSetMember * psm)
 	 * but there can only be one such member in a given patchset
 	 */
 	if (psm->ps->branch_add)
-	    debug(DEBUG_APPMSG1, "branch_add already set!");
+	    debug(DEBUG_APPMSG1, "WARNING: branch_add already set!");
 	psm->ps->branch_add = 1;
     }
 }
