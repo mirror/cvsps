@@ -1,5 +1,19 @@
 2.0b7
-- 
+- implement compression in cvs_direct
+- add command line -Z to specify compression level.
+  applies to cvs-direct and external cvs
+- implement 'cvs_diff' in cvs-direct
+- use cvs_diff instead of cvs_rdiff because it allows
+  us to specify all of the lovely diff options
+- change system to my_system so ctrl-c will get
+  through.  indirectly, this is necessary because
+  cvs has loused up the exit codes with the 'cvs diff'
+  command, making it impossible to determine whether
+  the program exited abnormally
+- add parsing of ~/.cvsps/cvspsrc file at startup
+  where command line arguments can be listed, one
+  per line (parameters to arguments on the same line
+  as the argument).  command line overrides.
 
 2.0b6
 - fix bug where if -r was specified along with other
