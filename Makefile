@@ -1,25 +1,22 @@
+include /cobite/share/libversions/Makefile.include-1
+
+#
 # use if trying to debug inline functions
 #
-#CFLAGS=-fno-inline -fno-default-inline -g -Wall -I..
-#
-# otherwise...
-CFLAGS=-O2 -g -Wall -I..
+#CFLAGS+=-fno-inline -fno-default-inline 
 #
 
-CC=gcc
-OBJS=\
-	cvsps.o\
-	../libcommon/hash.o\
-	../libcommon/text_util.o\
-	../libcommon/debug.o
+OBJS=cvsps.o
+LIBS=-lcbtcommon
 
 all: cvsps
 
 cvsps: $(OBJS)
-	gcc -o cvsps $(OBJS)
+	gcc -Wl,-rpath,/cobite/lib $(LDFLAGS) -o cvsps $(OBJS) $(LIBS)
 
-clean:
+clean: this_clean
+
+this_clean:
 	rm -f *.o cvsps core
 
-
-.PHONY: clean
+.PHONY: clean this_clean all

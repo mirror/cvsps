@@ -1,2 +1,6 @@
 log
 cvsps
+.debug
+.release
+cobite
+cvsps.cache*

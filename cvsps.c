@@ -5,10 +5,10 @@
 #include <unistd.h>
 #include <search.h>
 #include <time.h>
-#include <common/hash.h>
-#include <common/list.h>
-#include <common/text_util.h>
-#include <common/debug.h>
+#include <cbtcommon/hash.h>
+#include <cbtcommon/list.h>
+#include <cbtcommon/text_util.h>
+#include <cbtcommon/debug.h>
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
