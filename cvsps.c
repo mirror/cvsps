@@ -25,7 +25,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.74 2003/03/20 02:06:10 david Exp $");
+RCSID("$Id: cvsps.c,v 4.75 2003/03/20 03:55:26 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1473,18 +1473,33 @@ static void do_cvs_diff(PatchSet * ps)
 	 */
 	if (!psm->pre_rev || psm->pre_rev->dead)
 	{
-	    /* a 'create file' diff */
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s /dev/null - | sed -e '2 s|^+++ -|+++ %s%s|g'",
-		     norc, utype, psm->post_rev->rev, use_rep_path, psm->file->filename, dopts, 
-		     use_rep_path, psm->file->filename);
+	    if (cvs_direct && rcmd)
+	    {
+		strcpy(cmdbuff, "true");
+		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->post_rev->rev, 1, dopts);
+	    }
+	    else
+	    {
+		/* a 'create file' diff */
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s /dev/null - | sed -e '2 s|^+++ -|+++ %s%s|g'",
+			 norc, utype, psm->post_rev->rev, use_rep_path, psm->file->filename, dopts, 
+			 use_rep_path, psm->file->filename);
+	    }
 	}
 	else if (psm->post_rev->dead)
 	{
-	    /* a 'remove file' diff */
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s%s|g'",
-		     norc, utype, psm->pre_rev->rev, use_rep_path, psm->file->filename, dopts, 
-		     use_rep_path, psm->file->filename);
-	    
+	    if (cvs_direct && rcmd)
+	    {
+		strcpy(cmdbuff, "true");
+		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, psm->pre_rev->rev, 0, dopts);
+	    }
+	    else
+	    {
+		/* a 'remove file' diff */
+		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s%s|g'",
+			 norc, utype, psm->pre_rev->rev, use_rep_path, psm->file->filename, dopts, 
+			 use_rep_path, psm->file->filename);
+	    }
 	}
 	else
 	{

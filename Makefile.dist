@@ -10,7 +10,8 @@ OBJS=\
 	cache.o\
 	util.o\
 	stats.o\
-	cap.o
+	cap.o\
+	cvs_direct.o
 
 all: cvsps
 

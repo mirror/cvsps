@@ -1,3 +1,12 @@
+2.0b6
+- fix bug where if -r was specified along with other
+  filter options, the other filter options were
+  applied first, and the start/end tags were
+  never found.
+- change -f from strstr to regex
+- change regex to EXTENDED regex
+- add the cvs_direct options
+
 2.0b5
 - add a cvs_check_cap for capability checking. 
 - use cvs_check_cap to check whether rlog is 

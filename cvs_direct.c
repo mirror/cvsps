@@ -15,7 +15,8 @@ struct _CvsServerCtx
 {
     int fd;
     char read_buff[RD_BUFF_SIZE];
-    int read_pos;
+    char * head;
+    char * tail;
 };
 
 static void get_cvspass(char *, const char *);
@@ -39,13 +40,13 @@ CvsServerCtx * open_cvs_server(char * p_root)
     strcpy(root, p_root);
 
     tok = strsep(&p, ":");
-    debug(DEBUG_APPERROR, "1st token '%s'", tok);
+    debug(DEBUG_TCP, "1st token '%s'", tok);
 
     tok = strsep(&p, ":");
-    debug(DEBUG_APPERROR, "2nd token '%s'", tok);
+    debug(DEBUG_TCP, "2nd token '%s'", tok);
 
     tok = strsep(&p, ":");
-    debug(DEBUG_APPERROR, "3rd token '%s'", tok);
+    debug(DEBUG_TCP, "3rd token '%s'", tok);
 
     tok2 = strsep(&tok, "@");
     strcpy(user, tok2);
@@ -65,7 +66,7 @@ CvsServerCtx * open_cvs_server(char * p_root)
     snprintf(fake_root, PATH_MAX, ":pserver:%s@%s:%s%s", user, server, port, tok);
     get_cvspass(pass, fake_root);
 
-    debug(DEBUG_APPERROR, "user:%s server:%s port:%s pass:%s", user, server, port, pass);
+    debug(DEBUG_TCP, "user:%s server:%s port:%s pass:%s", user, server, port, pass);
 
     if ((ctx->fd = tcp_create_socket(REUSE_ADDR)) < 0)
     {
@@ -79,8 +80,7 @@ CvsServerCtx * open_cvs_server(char * p_root)
 	return NULL;
     }
     
-    ctx->read_pos = RD_BUFF_SIZE;
-
+    ctx->head = ctx->tail = ctx->read_buff;
 
     send_string(ctx, "BEGIN AUTH REQUEST\n");
     send_string(ctx, "%s\n", tok);
@@ -102,7 +102,7 @@ void close_cvs_server(CvsServerCtx * ctx)
 {
     if (ctx->fd)
     {
-	debug(DEBUG_APPERROR, "closing cvs server connection %d", ctx->fd);
+	debug(DEBUG_TCP, "closing cvs server connection %d", ctx->fd);
 	close(ctx->fd);
     }
     free(ctx);
@@ -167,17 +167,35 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 	debug(DEBUG_APPERROR, "bad write return");
 	exit(1);
     }
-    debug(DEBUG_APPERROR, "string: '%s' sent", buff);
+    debug(DEBUG_TCP, "string: '%s' sent", buff);
 }
+
+static int refill_buffer(CvsServerCtx * ctx)
+{
+    int len = ctx->read_buff + RD_BUFF_SIZE - ctx->tail;
+    if (len == 0)
+    {
+	ctx->head = ctx->read_buff;
+	len = RD_BUFF_SIZE;
+    }
+    len = read(ctx->fd, ctx->head, len);
+    if (len <= 0)
+	return len;
+    ctx->tail = ctx->head + len;
+    return len;
+}
+
 
 static int read_line(CvsServerCtx * ctx, char * p)
 {
-    /* FIXME: more than 1 char at a time */
     int len = 0;
     while (1)
     {
-	if (read(ctx->fd, p, 1) != 1)
-	    return -1;
+	if (ctx->head == ctx->tail)
+	    if (refill_buffer(ctx) <= 0)
+		return -1;
+
+	*p = *ctx->head++;
 
 	if (*p == '\n')
 	{
@@ -196,16 +214,34 @@ static int read_response(CvsServerCtx * ctx, const char * str)
     /* FIXME: more than 1 char at a time */
     char resp[BUFSIZ];
     read_line(ctx, resp);
-    debug(DEBUG_APPERROR, "response '%s' read", resp);
+    debug(DEBUG_TCP, "response '%s' read", resp);
     return (strcmp(resp, str) == 0);
+}
+
+static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
+{
+    char line[BUFSIZ];
+
+    while (1)
+    {
+	read_line(ctx, line);
+	if (line[0] == 'M')
+	{
+	    fprintf(fp, "%s\n", line + 2);
+	}
+	else if (strcmp(line, "ok") == 0)
+	{
+	    break;
+	}
+    }
+
+    fflush(fp);
 }
 
 void cvs_rdiff(CvsServerCtx * ctx, 
 	       const char * rep, const char * file, 
 	       const char * rev1, const char * rev2, const char * opts)
 {
-    char line[BUFSIZ];
-
     send_string(ctx, "Argument -u\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev1);
@@ -214,18 +250,32 @@ void cvs_rdiff(CvsServerCtx * ctx,
     send_string(ctx, "Argument %s%s\n", rep, file);
     send_string(ctx, "rdiff\n");
 
-    while (1)
+    ctx_to_fp(ctx, stdout);
+}
+
+void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, int create, const char * opts)
+{
+    FILE * fp;
+    char cmdbuff[BUFSIZ];
+    
+    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^+++ -|+++ %s%s|g'",
+	     opts, create?"":"-", create?"-":"", create?"2":"1", rep, file);
+
+    debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff);
+
+    if (!(fp = popen(cmdbuff, "w")))
     {
-	read_line(ctx, line);
-	if (line[0] == 'M')
-	{
-	    printf("%s\n", line + 2);
-	}
-	else
-	{
-	    break;
-	}
+	debug(DEBUG_APPERROR, "popen for diff failed: %s", cmdbuff);
+	exit(1);
     }
 
-    fflush(stdout);
+    send_string(ctx, "Argument -p\n");
+    send_string(ctx, "Argument -r\n");
+    send_string(ctx, "Argument %s\n", rev);
+    send_string(ctx, "Argument %s%s\n", rep, file);
+    send_string(ctx, "co\n");
+
+    ctx_to_fp(ctx, fp);
+
+    pclose(fp);
 }
