@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.61 2003/03/17 22:49:38 david Exp $");
+RCSID("$Id: cvsps.c,v 4.62 2003/03/18 01:29:45 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -90,6 +90,7 @@ static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end;
 static const char * diff_opts = "-u";
+static int bkcvs;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -101,6 +102,7 @@ static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
 static void set_ps_id(const void *, const VISIT, const int);
 static void show_ps_tree_node(const void *, const VISIT, const int);
+static int compare_patch_sets_bk(const void *, const void *);
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime(const void *, const void *);
 static int is_revision_metadata(const char *);
@@ -673,6 +675,13 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "--bkcvs") == 0)
+	{
+	    bkcvs = 1;
+	    i++;
+	    continue;
+	}
+	
 	usage("invalid argument", argv[i]);
     }
 }
@@ -840,6 +849,8 @@ static CvsFile * parse_file(const char * buff)
 PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch)
 {
     PatchSet * retval = NULL, **find = NULL;
+    int (*cmp1)(const void *,const void*) = (bkcvs) ? compare_patch_sets_bk : compare_patch_sets;
+    int (*cmp2)(const void *,const void*) = (bkcvs) ? compare_patch_sets_bk : compare_patch_sets_bytime;
 
     if (!(retval = create_patch_set()))
     {
@@ -852,12 +863,22 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     retval->descr = xstrdup(log);
     retval->branch = get_string(branch);
 
-    find = (PatchSet**)tsearch(retval, &ps_tree, compare_patch_sets);
+    find = (PatchSet**)tsearch(retval, &ps_tree, cmp1);
 
     if (*find != retval)
     {
 	debug(DEBUG_STATUS, "found existing patch set");
-	free(retval->descr);
+
+	if (bkcvs && strstr(retval->descr, "BKrev:"))
+	{
+	    free((*find)->descr);
+	    (*find)->descr = retval->descr;
+	}
+	else
+	{
+	    free(retval->descr);
+	}
+
 	free(retval);
 	retval = *find;
     }
@@ -865,7 +886,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     {
 	debug(DEBUG_STATUS, "new patch set!");
 	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
-	if (tsearch(retval, &ps_tree_bytime, compare_patch_sets_bytime) == retval)
+	if (tsearch(retval, &ps_tree_bytime, cmp2) == retval)
 		abort();
     }
 
@@ -1183,6 +1204,17 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
     default:
 	break;
     }
+}
+
+static int compare_patch_sets_bk(const void * v_ps1, const void * v_ps2)
+{
+    const PatchSet * ps1 = (const PatchSet *)v_ps1;
+    const PatchSet * ps2 = (const PatchSet *)v_ps2;
+    long diff;
+
+    diff = ps1->date - ps2->date;
+
+    return (diff < 0) ? -1 : ((diff > 0) ? 1 : 0);
 }
 
 static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
