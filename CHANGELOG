@@ -1,3 +1,15 @@
+2.0b3
+- add the --diff-opts for explicitly setting the diff 
+  options.  important for setting increased context for 
+  example. 
+- use 'cvs rlog' instead of 'cvs log'.  important if 
+  there are empty directory pruned with cvs update -P
+  for getting consistent patchset numbering
+- clean up patch_set_affects_branch for handling INVALID
+  tags and the -r especially around a branch point
+- add the bkcvs proof-of-concept hack
+
+
 2.0b2
 - change the way INVALID tags are reported - show the exact
   patchsets and revisions that conflict, and don't print 
