@@ -130,6 +130,8 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    send_string(ctx, "Gzip-stream %d\n", compress);
 	    ctx->compressed = 1;
 	}
+
+	debug(DEBUG_APPMSG1, "cvs_direct initialized to CVSROOT %s", ctx->root);
     }
 
     return ctx;
@@ -609,6 +611,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 	{
 	    if (fp)
 		fprintf(fp, "%s\n", line + 2);
+	    debug(DEBUG_TCP, "ctx_to_fp: %s", line);
 	}
 	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
 	{
@@ -641,7 +644,7 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     FILE * fp;
     char cmdbuff[BUFSIZ];
     
-    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^+++ -|+++ %s%s|g'",
+    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^+++ -|+++ %s/%s|g'",
 	     opts, create?"":"-", create?"-":"", create?"2":"1", rep, file);
 
     debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff);
@@ -655,7 +658,7 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     send_string(ctx, "Argument -p\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev);
-    send_string(ctx, "Argument %s%s\n", rep, file);
+    send_string(ctx, "Argument %s/%s\n", rep, file);
     send_string(ctx, "co\n");
 
     ctx_to_fp(ctx, fp);

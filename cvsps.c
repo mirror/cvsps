@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.84 2003/03/25 05:18:13 david Exp $");
+RCSID("$Id: cvsps.c,v 4.85 2003/03/25 19:33:27 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1582,7 +1582,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    if (cvs_direct_ctx)
 	    {
 		/* cvs_rupdate does the pipe through diff thing internally */
-		cvs_rupdate(cvs_direct_ctx, use_rep_path, psm->file->filename, rev, cr, dopts);
+		cvs_rupdate(cvs_direct_ctx, repository_path, psm->file->filename, rev, cr, dopts);
 	    }
 	    else
 	    {
