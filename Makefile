@@ -38,6 +38,7 @@ dist:
 	cp README dist/
 	cp COPYING dist/
 	cp cvsps.1 dist/
+	cp CHANGELOG dist/
 	@echo "NOTE: Using $(CBTCOMMON_DIST) for dist files"
 	cat copyright.head $(CBTCOMMON_DIST)/list.h >dist/cbtcommon/list.h
 	cat copyright.head $(CBTCOMMON_DIST)/hash.h >dist/cbtcommon/hash.h
@@ -53,6 +54,7 @@ htdocs: dist
 	rm -fr htdocs/
 	mkdir htdocs/
 	cp README htdocs/
+	cp CHANGELOG htdocs/
 	cp site/*.html site/*.gif htdocs/
 	mv dist cvsps-$(MAJOR).$(MINOR)
 	tar cvzf htdocs/cvsps-$(MAJOR).$(MINOR).tar.gz cvsps-$(MAJOR).$(MINOR)

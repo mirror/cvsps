@@ -1,0 +1,14 @@
+1.2
+
+- Moved cache file location to CVS/ subdirectory.  This is where CVS keeps
+  it's meta-data, and putting the cache there keeps it out of the way of
+  other CVS operations. (thanks to Amitai Schlair for suggestion)
+
+- Added manual page.  (thanks to Amitai Schlair for suggestion)
+
+- Fixed the '-b' option to take a special branch name 'TRUNK' which
+  will restrict the output to patchsets made on the main trunk.
+
+
+1.1 Initial public release.
+-------- end of changelog ---------
