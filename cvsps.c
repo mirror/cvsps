@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.82 2003/03/25 03:38:02 david Exp $");
+RCSID("$Id: cvsps.c,v 4.83 2003/03/25 04:05:21 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -185,14 +185,13 @@ int main(int argc, char *argv[])
     if (statistics)
 	print_statistics(ps_tree);
 
-    if (cvs_direct)
+    if (cvs_direct && do_diff)
 	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
     twalk(ps_tree_bytime, show_ps_tree_node);
 
     if (summary_first++)
 	twalk(ps_tree_bytime, show_ps_tree_node);
-
 
     if (cvs_direct_ctx)
 	close_cvs_server(cvs_direct_ctx);
