@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.87 2003/03/27 13:52:08 david Exp $");
+RCSID("$Id: cvsps.c,v 4.88 2003/03/27 14:02:42 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -255,6 +255,7 @@ static void load_from_cvs()
     }
     else
     {
+	date_str[0] = 0;
 	snprintf(cmd, BUFSIZ, "cvs %s %s %s %s", compress_arg, norc, ltype, use_rep_buff);
     }
     
@@ -265,7 +266,7 @@ static void load_from_cvs()
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
     else if (cvs_direct_ctx)
-	cvsfp = cvs_rlog_open(cvs_direct_ctx, repository_path);
+	cvsfp = cvs_rlog_open(cvs_direct_ctx, repository_path, date_str);
     else
 	cvsfp = popen(cmd, "r");
 
