@@ -7,13 +7,14 @@
 #include <time.h>
 #include <ctype.h>
 #include <assert.h>
+#include <regex.h>
 #include <cbtcommon/hash.h>
 #include <cbtcommon/list.h>
 #include <cbtcommon/text_util.h>
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.32 2003/02/24 20:08:00 david Exp $");
+RCSID("$Id: cvsps.c,v 4.33 2003/02/24 20:20:54 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -92,7 +93,8 @@ static void * string_tree;
 
 static int timestamp_fuzz_factor = 300;
 static const char * restrict_author;
-static const char * restrict_log;
+static int have_restrict_log;
+static regex_t restrict_log;
 static const char * restrict_file;
 static time_t restrict_date_start;
 static time_t restrict_date_end;
@@ -453,7 +455,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
     debug(DEBUG_APPERROR, "  -s <patchset> generate a diff for a given patchset");
     debug(DEBUG_APPERROR, "  -a <author> restrict output to patchsets created by author");
-    debug(DEBUG_APPERROR, "  -l <text> restrict output to patchsets with <text> in log message");
+    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patchsets matching <regex> in log message");
     debug(DEBUG_APPERROR, "  -f <file> restrict output to patchsets involving file");
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
@@ -526,10 +528,20 @@ static void parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-l") == 0)
 	{
+	    int err;
+
 	    if (++i >= argc)
 		usage("argument to -l missing", "");
 
-	    restrict_log = argv[i++];
+	    if ((err = regcomp(&restrict_log, argv[i++], REG_NOSUB)) != 0)
+	    {
+		char errbuf[256];
+		regerror(err, &restrict_log, errbuf, 256);
+		usage("bad regex to -l", errbuf);
+	    }
+
+	    have_restrict_log = 1;
+
 	    continue;
 	}
 
@@ -872,7 +884,7 @@ static void check_print_patch_set(PatchSet * ps)
     if (restrict_author && strcmp(restrict_author, ps->author) != 0)
 	return;
 
-    if (restrict_log && strstr(ps->descr, restrict_log) != 0)
+    if (have_restrict_log && regexec(&restrict_log, ps->descr, 0, NULL, 0) != 0)
 	return;
 
     if (restrict_file && !patch_set_contains_member(ps, restrict_file))
