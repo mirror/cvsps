@@ -15,10 +15,12 @@ struct _CvsServerCtx
 {
     int read_fd;
     int write_fd;
+    char repository[PATH_MAX];
+
+    /* buffered reads from descriptor */
     char read_buff[RD_BUFF_SIZE];
     char * head;
     char * tail;
-    char repository[PATH_MAX];
 };
 
 static void get_cvspass(char *, const char *);
@@ -26,7 +28,7 @@ static void send_string(CvsServerCtx *, const char *, ...);
 static int read_response(CvsServerCtx *, const char *);
 
 static CvsServerCtx * open_ctx_pserver(CvsServerCtx *, const char *);
-static CvsServerCtx * open_ctx_other(CvsServerCtx *, const char *);
+static CvsServerCtx * open_ctx_forked(CvsServerCtx *, const char *);
 
 CvsServerCtx * open_cvs_server(char * p_root)
 {
@@ -42,15 +44,32 @@ CvsServerCtx * open_cvs_server(char * p_root)
 
     strcpy(root, p_root);
 
-    debuglvl |= DEBUG_TCP;
-
     tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "1st token '%s'", tok);
 
+    /* if root string looks like :pserver:... then the first token will be empty */
     if (strlen(tok) == 0)
-	ctx = open_ctx_pserver(ctx, p_root);
+    {
+	char * method = strsep(&p, ":");
+	if (strcmp(method, "pserver") == 0)
+	{
+	    ctx = open_ctx_pserver(ctx, p);
+	}
+	else if (strstr(method, "local:ext:fork:server"))
+	{
+	    /* handle all of these via fork, even local */
+	    ctx = open_ctx_forked(ctx, p);
+	}
+	else
+	{
+	    debug(DEBUG_APPERROR, "cvs_direct: unsupported cvs access method: %s", method);
+	    free(ctx);
+	    ctx = NULL;
+	}
+    }
     else
-	ctx = open_ctx_other(ctx, p_root);
+    {
+	ctx = open_ctx_forked(ctx, p_root);
+    }
 
     if (ctx)
 	send_string(ctx, "Root %s\n", ctx->repository);
@@ -61,76 +80,86 @@ CvsServerCtx * open_cvs_server(char * p_root)
 static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 {
     char root[PATH_MAX];
+    char full_root[PATH_MAX];
     char * p = root, *tok, *tok2;
     char user[BUFSIZ];
     char server[BUFSIZ];
     char pass[BUFSIZ];
     char port[8];
-    char fake_root[PATH_MAX];
 
     strcpy(root, p_root);
 
     tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "1st token (pserver) '%s'", tok);
-
-    tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "2nd token '%s'", tok);
-
-    tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "3rd token '%s'", tok);
+    if (strlen(tok) == 0 || !p)
+    {
+	debug(DEBUG_APPERROR, "parse error on third token");
+	goto out_free_err;
+    }
 
     tok2 = strsep(&tok, "@");
+    if (!strlen(tok2) || (!tok || !strlen(tok)))
+    {
+	debug(DEBUG_APPERROR, "parse error on user@server in pserver");
+	goto out_free_err;
+    }
+
     strcpy(user, tok2);
     strcpy(server, tok);
-
-    tok = strsep(&p, ":");
-    if (!p)
+    
+    if (*p != '/')
     {
-	strcpy(port, "2401");
+	tok = strchr(p, '/');
+	if (!tok)
+	{
+	    debug(DEBUG_APPERROR, "parse error: expecting / in root");
+	    goto out_free_err;
+	}
+	
+	memset(port, 0, sizeof(port));
+	memcpy(port, p, tok - p);
+
+	p = tok;
     }
     else
     {
-	strcpy(port, tok);
-	tok = strsep(&p, ":");
+	strcpy(port, "2401");
     }
 
-    snprintf(fake_root, PATH_MAX, ":pserver:%s@%s:%s%s", user, server, port, tok);
-    get_cvspass(pass, fake_root);
+    /* the line from .cvspass is fully qualified, so rebuild */
+    snprintf(full_root, PATH_MAX, ":pserver:%s@%s:%s%s", user, server, port, p);
+    get_cvspass(pass, full_root);
 
-    debug(DEBUG_TCP, "user:%s server:%s port:%s pass:%s", user, server, port, pass);
+    debug(DEBUG_TCP, "user:%s server:%s port:%s pass:%s full_root:%s", user, server, port, pass, full_root);
 
     if ((ctx->read_fd = tcp_create_socket(REUSE_ADDR)) < 0)
-    {
-	free(ctx);
-	return NULL;
-    }
+	goto out_free_err;
 
     ctx->write_fd = ctx->read_fd;
 
     if (tcp_connect(ctx->read_fd, server, atoi(port)) < 0)
-    {
-	free(ctx);
-	return NULL;
-    }
+	goto out_close_err;
     
     send_string(ctx, "BEGIN AUTH REQUEST\n");
-    send_string(ctx, "%s\n", tok);
+    send_string(ctx, "%s\n", p);
     send_string(ctx, "%s\n", user);
     send_string(ctx, "%s\n", pass);
     send_string(ctx, "END AUTH REQUEST\n");
 
     if (!read_response(ctx, "I LOVE YOU"))
-    {
-	debug(DEBUG_APPERROR, "cvs server auth failed");
-	exit(1);
-    }
+	goto out_close_err;
 
-    strcpy(ctx->repository, tok);
+    strcpy(ctx->repository, p);
 
     return ctx;
+
+ out_close_err:
+    close(ctx->read_fd);
+ out_free_err:
+    free(ctx);
+    return NULL;
 }
 
-static CvsServerCtx * open_ctx_other(CvsServerCtx * ctx, const char * p_root)
+static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 {
     char root[PATH_MAX];
     char * p = root, *tok, *tok2, *rep;
@@ -138,51 +167,56 @@ static CvsServerCtx * open_ctx_other(CvsServerCtx * ctx, const char * p_root)
     int to_cvs[2];
     int from_cvs[2];
     pid_t pid;
+    const char * cvs_server = getenv("CVS_SERVER");
+
+    if (!cvs_server)
+	cvs_server = "cvs";
 
     strcpy(root, p_root);
 
+    /* if there's a ':', it's remote */
     tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "1st token (other) '%s'", tok);
 
     if (p)
     {
 	const char * cvs_rsh = getenv("CVS_RSH");
 
+	if (!cvs_rsh)
+	    cvs_rsh = "rsh";
+
 	tok2 = strsep(&tok, "@");
+
 	if (tok)
-	{
-	    snprintf(execcmd, PATH_MAX, "%s -l %s %s cvs server", cvs_rsh, tok2, tok);
-	}
+	    snprintf(execcmd, PATH_MAX, "%s -l %s %s %s server", cvs_rsh, tok2, tok, cvs_server);
 	else
-	{
-	    snprintf(execcmd, PATH_MAX, "%s %s cvs server", cvs_rsh, tok2);
-	}
+	    snprintf(execcmd, PATH_MAX, "%s %s %s server", cvs_rsh, tok2, cvs_server);
 
 	rep = p;
     }
     else
     {
-	strcpy(execcmd, "cvs server");
+	snprintf(execcmd, PATH_MAX, "%s server", cvs_server);
 	rep = tok;
     }
 
     if (pipe(to_cvs) < 0)
     {
-	debug(DEBUG_SYSERROR, "pipe to_cvs");
-	exit(1);
+	debug(DEBUG_SYSERROR, "cvs_direct: failed to create pipe to_cvs");
+	goto out_free_err;
     }
 
     if (pipe(from_cvs) < 0)
     {
-	debug(DEBUG_SYSERROR, "pipe from_cvs");
-	exit(1);
+	debug(DEBUG_SYSERROR, "cvs_direct: failed to create pipe from_cvs");
+	goto out_close_err;
     }
 
-    debug(DEBUG_APPERROR, "other cmdline: %s", execcmd);
+    debug(DEBUG_TCP, "forked cmdline: %s", execcmd);
 
     if ((pid = fork()) < 0)
     {
-	debug(DEBUG_SYSERROR, "can't fork");
+	debug(DEBUG_SYSERROR, "cvs_direct: can't fork");
+	goto out_close2_err;
     }
     else if (pid == 0) /* child */
     {
@@ -202,7 +236,7 @@ static CvsServerCtx * open_ctx_other(CvsServerCtx * ctx, const char * p_root)
 
 	execv("/bin/sh",argp);
 
-	debug(DEBUG_APPERROR, "shouldn't be reached");
+	debug(DEBUG_APPERROR, "cvs_direct: fatal: shouldn't be reached");
 	exit(1);
     }
 
@@ -214,18 +248,31 @@ static CvsServerCtx * open_ctx_other(CvsServerCtx * ctx, const char * p_root)
     strcpy(ctx->repository, rep);
 
     return ctx;
+
+ out_close2_err:
+    close(from_cvs[0]);
+    close(from_cvs[1]);
+ out_close_err:
+    close(to_cvs[0]);
+    close(to_cvs[1]);
+ out_free_err:
+    free(ctx);
+    return NULL;
 }
 
 void close_cvs_server(CvsServerCtx * ctx)
 {
     if (ctx->read_fd >= 0)
     {
-	debug(DEBUG_TCP, "closing cvs server connection %d", ctx->read_fd);
+	debug(DEBUG_TCP, "cvs_direct: closing cvs server connection %d", ctx->read_fd);
 	close(ctx->read_fd);
     }
 
     if (ctx->write_fd >= 0 && ctx->write_fd != ctx->read_fd)
+    {
+	debug(DEBUG_TCP, "cvs_direct: closing cvs server connection %d", ctx->write_fd);
 	close(ctx->write_fd);
+    }
 
     free(ctx);
 }
@@ -257,6 +304,7 @@ static void get_cvspass(char * pass, const char * root)
 
 	while (fgets(buff, BUFSIZ, fp))
 	{
+	    /* FIXME: what does /1 mean? */
 	    if (strncmp(buff, "/1 ", 3) != 0)
 		continue;
 
@@ -283,12 +331,18 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
     va_start(ap, str);
 
     len = vsnprintf(buff, BUFSIZ, str, ap);
+    if (len >= BUFSIZ)
+    {
+	debug(DEBUG_APPERROR, "cvs_direct: command send string overflow");
+	exit(1);
+    }
 
     if (writen(ctx->write_fd, buff, len)  != len)
     {
-	debug(DEBUG_APPERROR, "bad write return");
+	debug(DEBUG_SYSERROR, "cvs_direct: can't send command");
 	exit(1);
     }
+
     debug(DEBUG_TCP, "string: '%s' sent", buff);
 }
 
@@ -300,13 +354,12 @@ static int refill_buffer(CvsServerCtx * ctx)
 	ctx->head = ctx->read_buff;
 	len = RD_BUFF_SIZE;
     }
+
     len = read(ctx->read_fd, ctx->head, len);
-    if (len <= 0)
-	return len;
-    ctx->tail = ctx->head + len;
+    ctx->tail = (len <= 0) ? ctx->head : ctx->head + len;
+
     return len;
 }
-
 
 static int read_line(CvsServerCtx * ctx, char * p)
 {
@@ -335,8 +388,12 @@ static int read_response(CvsServerCtx * ctx, const char * str)
 {
     /* FIXME: more than 1 char at a time */
     char resp[BUFSIZ];
-    read_line(ctx, resp);
+
+    if (read_line(ctx, resp) < 0)
+	return 0;
+
     debug(DEBUG_TCP, "response '%s' read", resp);
+
     return (strcmp(resp, str) == 0);
 }
 
@@ -348,13 +405,9 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
     {
 	read_line(ctx, line);
 	if (line[0] == 'M')
-	{
 	    fprintf(fp, "%s\n", line + 2);
-	}
-	else if (strcmp(line, "ok") == 0)
-	{
+	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
 	    break;
-	}
     }
 
     fflush(fp);
@@ -387,7 +440,7 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
 
     if (!(fp = popen(cmdbuff, "w")))
     {
-	debug(DEBUG_APPERROR, "popen for diff failed: %s", cmdbuff);
+	debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
 	exit(1);
     }
 
