@@ -15,6 +15,11 @@
   trees of the same repository (patch adopted from Baruch Even)
 - change the magic name TRUNK (for -b option) to HEAD to be 
   consistent with cvs.  (patch from Henrik Nordstrom)
+- when parsing 'cvs log' output, look for the exact strings
+  that separate the log entries and the files, instead of 
+  just the first 8 characters.  this allows a wider variety
+  of stuff to be in the log format (including actual patchsets).
+  Inspired by Andy Isaacson.
 
 
 1.3.3 (why isn't this 1.4 again?)

@@ -15,7 +15,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.37 2003/02/24 22:10:49 david Exp $");
+RCSID("$Id: cvsps.c,v 4.38 2003/02/25 02:39:54 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -24,6 +24,8 @@ RCSID("$Id: cvsps.c,v 4.37 2003/02/24 22:10:49 david Exp $");
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CVSPS_PREFIX ".cvsps"
+#define CVS_LOG_BOUNDARY "----------------------------\n"
+#define CVS_FILE_BOUNDARY "=============================================================================\n"
 
 enum
 {
@@ -112,6 +114,7 @@ static int ignore_cache;
 static int do_write_cache;
 static int statistics;
 static const char * norc = "";
+static const char * patchset_dir = NULL;
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -296,7 +299,7 @@ static void load_from_cvs()
 		parse_sym(file, buff);
 	    break;
 	case NEED_START_LOG:
-	    if (strncmp(buff, "--------", 8) == 0)
+	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0)
 		state = NEED_REVISION;
 	    break;
 	case NEED_REVISION:
@@ -382,7 +385,7 @@ static void load_from_cvs()
 	    }
 	    break;
 	case NEED_EOM:
-	    if (strncmp(buff, "--------", 8) == 0)
+	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0)
 	    {
 		if (psm)
 		{
@@ -395,7 +398,7 @@ static void load_from_cvs()
 		have_log = 0;
 		state = NEED_REVISION;
 	    }
-	    else if (strncmp(buff, "========", 8) == 0)
+	    else if (strcmp(buff, CVS_FILE_BOUNDARY) == 0)
 	    {
 		if (psm)
 		{
@@ -919,7 +922,29 @@ static void check_print_patch_set(PatchSet * ps)
     if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
 	return;
     
-    print_patch_set(ps);
+    if (!list_empty(&show_patch_set_ranges))
+    {
+	struct list_head * next = show_patch_set_ranges.next;
+	
+	while (next != &show_patch_set_ranges)
+	{
+	    PatchSetRange *range = list_entry(next, PatchSetRange, link);
+	    if (range->min_counter <= ps_counter &&
+		ps_counter <= range->max_counter)
+	    {
+		goto found;
+	    }
+	    next = next->next;
+	}
+	
+	return;
+    }
+
+ found:
+    if (summary_first <= 1)
+	print_patch_set(ps);
+    if (summary_first != 1 && !list_empty(&show_patch_set_ranges))
+	do_cvs_diff(ps);
 }
 
 static void print_patch_set(PatchSet * ps)
@@ -930,6 +955,7 @@ static void print_patch_set(PatchSet * ps)
     tm = localtime(&ps->date);
     next = ps->members.next;
     
+    /* this '---...' is different from the 28 hyphens that separate cvs log output */
     printf("---------------------\n");
     printf("PatchSet %d\n", ps_counter);
     printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
@@ -972,29 +998,7 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
     case leaf:
 	ps = *(PatchSet**)nodep;
 	ps_counter++;
-
-	if (!list_empty(&show_patch_set_ranges))
-	{
-	    struct list_head * next = show_patch_set_ranges.next;
-
-	    while (next != &show_patch_set_ranges)
-	    {
-		PatchSetRange *range = list_entry(next, PatchSetRange, link);
-		if (range->min_counter <= ps_counter &&
-		    ps_counter <= range->max_counter)
-		{
-		    if (summary_first <= 1)
-			print_patch_set(ps);
-		    if (summary_first != 1)
-			do_cvs_diff(ps);
-		}
-		next = next->next;
-	    }
-	}
-	else
-	{
-	    check_print_patch_set(ps);
-	}
+	check_print_patch_set(ps);
 	break;
 
     default:

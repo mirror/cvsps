@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] [-l <text>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v] [-h]
+[-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] [-l <text>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-p <patchdir>] [-v] [-h]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -25,6 +25,9 @@ set the timestamp fuzz factor for identifying patch sets
 .TP
 .B \-s <patchset>[-<patchset>[,<patchset>[-<patchset>...]]]
 generate a diff for a given patchsets and patchset ranges
+.TP
+.B \-p <dir>
+output individual patchset files into <dir> as <dir>/<patchset>.patch
 .TP
 .B \-a <author>
 restrict output to patchsets created by author
