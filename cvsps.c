@@ -13,7 +13,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.29 2003/02/24 16:45:16 david Exp $");
+RCSID("$Id: cvsps.c,v 4.30 2003/02/24 17:40:03 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -33,18 +33,32 @@ enum
     NEED_EOM
 };
 
-
 typedef struct _CvsFile CvsFile;
 typedef struct _PatchSet PatchSet;
 typedef struct _PatchSetMember PatchSetMember;
 typedef struct _PatchSetRange PatchSetRange;
+typedef struct _CvsFileRevision CvsFileRevision;
+
+struct _CvsFileRevision
+{
+    char * rev;
+    int dead;
+    CvsFile * file;
+    /*
+     * A revision can be part of man PatchSets because it may
+     * be the branch point of many branches (as a pre_rev).  
+     * It should, however, be the 'post_rev' of only one 
+     * PatchSetMember, which is kept here.
+     */
+    PatchSetMember * psm;
+};
 
 struct _CvsFile
 {
     char *filename;
     struct hash_table * revisions;
-    struct hash_table * branches;
-    struct hash_table * branches_sym;
+    struct hash_table * branches;     /* branch to branch_sym map */
+    struct hash_table * branches_sym; /* branch_sym to branch map */
 };
 
 struct _PatchSet
@@ -57,11 +71,10 @@ struct _PatchSet
 
 struct _PatchSetMember
 {
-    char * pre_rev;
-    char * post_rev;
+    CvsFileRevision * pre_rev;
+    CvsFileRevision * post_rev;
     PatchSet * ps;
     CvsFile * file;
-    int dead_revision;
     struct list_head link;
 };
 
@@ -98,7 +111,7 @@ static void load_from_cvs();
 static void init_strip_path();
 static CvsFile * parse_file(const char *);
 static PatchSet * get_patch_set(const char *, const char *, const char *);
-static void assign_pre_revision(PatchSetMember *, char *);
+static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
 static void show_ps_tree_node(const void *, const VISIT, const int);
@@ -111,7 +124,7 @@ static int patch_set_affects_branch(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
 static void strzncpy(char *, const char *, int);
 static void write_cache();
-static char * cvs_file_add_revision(CvsFile *, char *);
+static CvsFileRevision * cvs_file_add_revision(CvsFile *, char *);
 static void write_tree_node_to_cache(const void *, const VISIT, const int);
 static void dump_patch_set(FILE *, PatchSet *);
 static int read_cache();
@@ -120,7 +133,7 @@ static PatchSet * create_patchset();
 static PatchSetMember * create_patchset_member();
 static PatchSetRange * create_patchset_range();
 static void parse_cache_revision(PatchSetMember *, const char *);
-static char * file_get_revision(CvsFile *, const char *);
+static CvsFileRevision * file_get_revision(CvsFile *, const char *);
 static void parse_sym(CvsFile *, char *);
 static char * cvs_file_add_branch(CvsFile *, const char *, const char *);
 static void print_statistics(void);
@@ -273,27 +286,34 @@ static void load_from_cvs()
 	case NEED_REVISION:
 	    if (strncmp(buff, "revision", 8) == 0)
 	    {
-		char new_rev[REV_STR_MAX], *rev;
+		char new_rev[REV_STR_MAX];
+		CvsFileRevision * rev;
 
 		strcpy(new_rev, buff + 9);
 		chop(new_rev);
 
+		/* 
+		 * rev may already exist (think cvsps -u), in which
+		 * case cvs_file_add_revision is a hash lookup
+		 */
 		rev = cvs_file_add_revision(file, new_rev);
 
-		/* in the simple case, we are copying rev to psm->pre_rev
+		/* 
+		 * in the simple case, we are copying rev to psm->pre_rev
 		 * (psm refers to last patch set processed at this point)
 		 * since generally speaking the log is reverse chronological.
 		 * This breaks down slightly when branches are introduced 
-		 *
-		 * Use new_rev instead of rev, since rev will be NULL for
-		 * existing revisions (i.e. cvsps -u).  assign_pre_revision
-		 * does hash lookup on new_rev to get actual rev str anyway
 		 */
-		assign_pre_revision(psm, new_rev);
 
-		if (rev)
+		assign_pre_revision(psm, rev);
+
+		/*
+		 * if this is a new revision, it will have no psm associated.
+		 * otherwise we are (probably?) hitting the overlap in cvsps -u 
+		 */
+		if (!rev->psm)
 		{
-		    psm = create_patchset_member();
+		    psm = rev->psm = create_patchset_member();
 		    psm->post_rev = rev;
 		    psm->file = file;
 		    state = NEED_DATE_AUTHOR_STATE;
@@ -339,7 +359,7 @@ static void load_from_cvs()
 		    op = strchr(p, ';');
 		    if (op)
 			if (strncmp(p, "dead", MIN(4, op - p)) == 0)
-			    psm->dead_revision = 1;
+			    psm->post_rev->dead = 1;
 		}
 
 		state = NEED_EOM;
@@ -770,7 +790,7 @@ static int get_branch(char * buff, const char * rev)
  * This all breaks down at branch points however
  */
 
-static void assign_pre_revision(PatchSetMember * psm, char * rev)
+static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 {
     char pre[REV_STR_MAX], post[REV_STR_MAX];
 
@@ -781,24 +801,24 @@ static void assign_pre_revision(PatchSetMember * psm, char * rev)
     {
 	/* if psm was last rev. for file, it's either an 
 	 * INITIAL, or head of a branch.  to test if it's 
-	 * the head of a branch, do get_branch twice
+	 * the head of a branch, do get_branch twice. 
 	 */
-	if (get_branch(post, psm->post_rev) && 
+	if (get_branch(post, psm->post_rev->rev) && 
 	    get_branch(pre, post))
 	    psm->pre_rev = file_get_revision(psm->file, pre);
 	else
-	    psm->pre_rev = "INITIAL";
+	    psm->pre_rev = NULL;
 	return;
     }
 
-    /* are the two revisions on the same branch? */
-    if (!get_branch(pre, rev))
+    /* is this canditate for 'pre' on the same branch as our 'post' ? */
+    if (!get_branch(pre, rev->rev))
     {
 	debug(DEBUG_APPERROR, "get_branch malformed input (1)");
 	return;
     }
 
-    if (!get_branch(post, psm->post_rev))
+    if (!get_branch(post, psm->post_rev->rev))
     {
 	debug(DEBUG_APPERROR, "get_branch malformed input (2)");
 	return;
@@ -806,7 +826,7 @@ static void assign_pre_revision(PatchSetMember * psm, char * rev)
 
     if (strcmp(pre, post) == 0)
     {
-	psm->pre_rev = file_get_revision(psm->file, rev);
+	psm->pre_rev = rev;
 	return;
     }
     
@@ -824,7 +844,7 @@ static void assign_pre_revision(PatchSetMember * psm, char * rev)
      */
     if (!get_branch(pre, post))
     {
-	psm->pre_rev = "INITIAL";
+	psm->pre_rev = NULL;
 	return;
     }
     
@@ -872,13 +892,18 @@ static void print_patch_set(PatchSet * ps)
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char branch[REV_STR_MAX + 2], *tag;
 
-	if (get_branch(branch, psm->post_rev) && 
+	if (get_branch(branch, psm->post_rev->rev) && 
 	    (tag = (char*)get_hash_object(psm->file->branches, branch)))
 	    snprintf(branch, REV_STR_MAX + 2, "[%s]", tag);
 	else
 	    branch[0] = 0;
 
-	printf("\t%s:%s->%s%s %s\n", psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision ? "(DEAD)": "", branch);
+	printf("\t%s:%s->%s%s %s\n", 
+	       psm->file->filename, 
+	       psm->pre_rev ? psm->pre_rev->rev : "INITIAL", 
+	       psm->post_rev->rev, 
+	       psm->post_rev->dead ? "(DEAD)": "", 
+	       branch);
 	next = next->next;
     }
     
@@ -1053,7 +1078,8 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
 	/* special case the branch called 'TRUNK' */
 	if (strcmp(branch, "TRUNK") == 0)
 	{
-	    char * p = strchr(psm->post_rev, '.');
+	    /* look for only one '.' in rev */
+	    char * p = strchr(psm->post_rev->rev, '.');
 	    if (p && !strchr(p + 1, '.'))
 		return 1;
 	}
@@ -1070,7 +1096,7 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
 		strcpy(branch, branch_rev);
 		
 		/* first get the branch the file rev is on */
-		if (get_branch_ext(post_rev, psm->post_rev, &file_leaf))
+		if (get_branch_ext(post_rev, psm->post_rev->rev, &file_leaf))
 		{
 		    branch_leaf = file_leaf;
 		    
@@ -1104,21 +1130,21 @@ static void do_cvs_diff(PatchSet * ps)
 	char cmdbuff[PATH_MAX * 2+1];
 	cmdbuff[PATH_MAX*2] = 0;
 
-	if (strcmp(psm->pre_rev, "INITIAL") == 0)
+	if (!psm->pre_rev == 0)
 	{
 	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff -u /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
-		     norc, psm->post_rev, psm->file->filename, psm->file->filename, psm->file->filename);
+		     norc, psm->post_rev->rev, psm->file->filename, psm->file->filename, psm->file->filename);
 	}
-	else if (psm->dead_revision)
+	else if (psm->post_rev->dead)
 	{
 	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff -u - /dev/null | sed -e '1 s|^--- -|--- %s|g' -e '2 s|^+++ /dev/null|+++ %s|g'",
-		     norc, psm->pre_rev, psm->file->filename, psm->file->filename, psm->file->filename);
+		     norc, psm->pre_rev->rev, psm->file->filename, psm->file->filename, psm->file->filename);
 	    
 	}
 	else
 	{
 	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s diff -u -r %s -r %s %s",
-		     norc, psm->pre_rev, psm->post_rev, psm->file->filename);
+		     norc, psm->pre_rev->rev, psm->post_rev->rev, psm->file->filename);
 	}
 
 	system(cmdbuff);
@@ -1159,8 +1185,8 @@ static void write_cache()
 	
 	while ((rev_iter = next_hash_entry(file->revisions)))
 	{
-	    char * rev = (char *)rev_iter->he_obj;
-	    fprintf(cache_fp, "%s\n", rev);
+	    CvsFileRevision * rev = (CvsFileRevision*)rev_iter->he_obj;
+	    fprintf(cache_fp, "%s\n", rev->rev);
 	}
 
 	fprintf(cache_fp, "branches:\n");
@@ -1184,31 +1210,35 @@ static void write_cache()
     cache_fp = NULL;
 }
 
-static char * cvs_file_add_revision(CvsFile * file, char * rev)
+static CvsFileRevision * cvs_file_add_revision(CvsFile * file, char * rev_str)
 {
-    char * new_rev, * p;
+    CvsFileRevision * rev;
+    char * p;
 
     /* The "revision" log line can include extra information 
      * including who is locking the file --- strip that out.
      */
     
-    p = rev;
+    p = rev_str;
     while (isdigit(*p) || *p == '.')
 	    p++;
     *p = 0;
 
-    if (get_hash_object(file->revisions, rev))
+    if (!(rev = (CvsFileRevision*)get_hash_object(file->revisions, rev_str)))
     {
-	debug(DEBUG_STATUS, "tried to add existing revision %s to file %s", 
-	      file->filename, rev);
-	return NULL;
+	rev = (CvsFileRevision*)calloc(1, sizeof(*rev));
+	rev->rev = get_string(rev_str);
+	rev->file = file;
+	put_hash_object(file->revisions, rev_str, rev);
+
+	debug(DEBUG_STATUS, "added revision %s to file %s", rev_str, file->filename);
+    }
+    else
+    {
+	debug(DEBUG_STATUS, "found revision %s to file %s", rev_str, file->filename);
     }
 
-    new_rev = get_string(rev);
-    put_hash_object(file->revisions, new_rev, new_rev);
-
-    debug(DEBUG_STATUS, "added revision %s to file %s", new_rev, file->filename);
-    return new_rev;
+    return rev;
 }
 
 static void write_tree_node_to_cache(const void * nodep, const VISIT which, const int depth)
@@ -1244,7 +1274,8 @@ static void dump_patch_set(FILE * fp, PatchSet * ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	fprintf(fp, "file: %s; pre_rev: %s; post_rev: %s; dead: %d\n", 
-		psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision);
+		psm->file->filename, 
+		psm->pre_rev ? psm->pre_rev->rev : "INITIAL", psm->post_rev->rev, psm->post_rev->dead);
 	next = next->next;
     }
 
@@ -1443,8 +1474,9 @@ static PatchSet * create_patchset()
 static PatchSetMember * create_patchset_member()
 {
     PatchSetMember * psm = (PatchSetMember*)calloc(1, sizeof(*psm));
-    psm->pre_rev = "UNKNOWN";
-    psm->post_rev = "UNKNOWN";
+    psm->pre_rev = NULL;
+    psm->post_rev = NULL;
+    psm->file = NULL;
     return psm;
 }
 
@@ -1486,17 +1518,18 @@ static void parse_cache_revision(PatchSetMember * psm, const char * buff)
 
     psm->pre_rev = file_get_revision(psm->file, pre);
     psm->post_rev = file_get_revision(psm->file, post);
-    psm->dead_revision = atoi(p + 8);
+    psm->post_rev->dead = atoi(p + 8);
+    psm->post_rev->psm = psm;
 }
 
-static char * file_get_revision(CvsFile * file, const char * r)
+static CvsFileRevision * file_get_revision(CvsFile * file, const char * r)
 {
-    char * rev;
+    CvsFileRevision * rev;
 
     if (strcmp(r, "INITIAL") == 0)
-	return "INITIAL";
+	return NULL;
 
-    rev = (char*)get_hash_object(file->revisions, r);
+    rev = (CvsFileRevision*)get_hash_object(file->revisions, r);
     
     if (!rev)
     {
@@ -1558,7 +1591,7 @@ static char * cvs_file_add_branch(CvsFile * file, const char * rev, const char *
 
     if (get_hash_object(file->branches, rev))
     {
-	debug(DEBUG_APPERROR, "attempt to add existing branch %s:%s to %s", 
+	debug(DEBUG_STATUS, "attempt to add existing branch %s:%s to %s", 
 	      rev, tag, file->filename);
 	return NULL;
     }
@@ -1694,3 +1727,4 @@ static void print_statistics(void)
     printf("Max desc len: %d, Avg. desc len: %.2f\n",
 	    max_descr_len, (float)total_descr_len/num_patchsets);
 }
+
