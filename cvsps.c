@@ -444,7 +444,15 @@ static void assign_pre_revision(PatchSetMember * last_psm, PatchSetMember * psm)
     
     if (!psm)
     {
-	strcpy(last_psm->pre_rev, "INITIAL");
+	/* if last_psm was last rev. for file, it's either an 
+	 * INITIAL, or head of a branch.  to test if it's 
+	 * the head of a branch, do get_branch twice
+	 */
+	if (get_branch(post, last_psm->post_rev) && 
+	    get_branch(pre, post))
+	    strcpy(last_psm->pre_rev, pre);
+	else
+	    strcpy(last_psm->pre_rev, "INITIAL");
 	return;
     }
 
@@ -628,13 +636,13 @@ static void do_cvs_diff(PatchSet * ps)
 
 	if (strcmp(psm->pre_rev, "INITIAL") == 0)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u /dev/null -",
-		     psm->post_rev, psm->file->filename);
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
+		     psm->post_rev, psm->file->filename, psm->file->filename, psm->file->filename);
 	}
 	else if (psm->dead_revision)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u - /dev/null",
-		     psm->pre_rev, psm->file->filename);
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs update -p -r %s %s | diff -u - /dev/null | sed -e '1 s|^--- -|--- %s|g' -e '2 s|^+++ /dev/null|+++ %s|g'",
+		     psm->pre_rev, psm->file->filename, psm->file->filename, psm->file->filename);
 	    
 	}
 	else
