@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.50 2003/03/12 17:54:03 david Exp $");
+RCSID("$Id: cvsps.c,v 4.51 2003/03/12 22:52:53 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -102,6 +102,9 @@ static void resolve_global_symbols();
 static int revision_affects_branch(CvsFileRevision *, const char *);
 static int is_vendor_branch(const char *);
 static void set_psm_initial(PatchSetMember * psm);
+static int check_rev_funk(PatchSet *, CvsFileRevision *);
+static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
+static int before_tag(CvsFileRevision * rev, const char * tag);
 
 int main(int argc, char *argv[])
 {
@@ -1657,9 +1660,6 @@ static void resolve_global_symbols()
 
 	debug(DEBUG_STATUS, "resolving global symbol %s", sym->tag);
 
-	if (strcmp(sym->tag, "version_1_2") == 0)
-	    debug(DEBUG_STATUS, "here");
-
 	/*
 	 * First pass, determine the most recent PatchSet with a 
 	 * revision tagged with the symbolic tag.  This is 'the'
@@ -1681,9 +1681,12 @@ static void resolve_global_symbols()
 	ps = sym->ps;
 
 	if (!ps)
+	{
 	    debug(DEBUG_APPERROR, "no patchset for tag %s", sym->tag);
-	else
-	    ps->tag = sym->tag;
+	    return;
+	}
+
+	ps->tag = sym->tag;
 
 	/* 
 	 * Second pass. 
@@ -1695,28 +1698,22 @@ static void resolve_global_symbols()
 	{
 	    Tag * tag = list_entry(next, Tag, global_link);
 	    CvsFileRevision * rev = tag->rev;
+	    CvsFileRevision * next_rev = rev_follow_branch(rev, ps->branch);
 	    
-	    /*
-	     * The revision's pre_psm->ps SHOULD be the PatchSet
-	     * where the revision became obsolete.  Every tagged 
-	     * revision for each file it the set could theoretically become 
-	     * obsolete at a different PatchSet. However, we want 
-	     * for all of these 'obsoleting PatchSets' to be beyond
-	     * the PatchSet we are considering to be the 'tagged' 
-	     * PatchSet. (or on a separate branch)
-	     */
-	    if (!rev->pre_psm)
+	    if (!next_rev)
 		continue;
 		
-	    if (rev->pre_psm->ps->date < ps->date)
+	    /*
+	     * we want the 'tagged revision' to be valid until after
+	     * the date of the 'tagged patchset' or else there's something
+	     * funky going on
+	     */
+	    if (next_rev->post_psm->ps->date < ps->date)
 	    {
-		CvsFileRevision * next_rev = rev->pre_psm->post_rev;
-		if (revision_affects_branch(next_rev, ps->branch))
-		{
-		    debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
-			  rev->file->filename, rev->rev, sym->tag);
-		    ps->tag_flags |= TAG_INVALID;
-		}
+		int flag = check_rev_funk(ps, next_rev);
+		debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
+		      rev->file->filename, rev->rev, sym->tag);
+		ps->tag_flags |= flag;
 	    }
 	}
     }
@@ -1785,8 +1782,6 @@ void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
 {
     psm->ps = ps;
     list_add(&psm->link, psm->ps->members.prev);
-
-    
 }
 
 static void set_psm_initial(PatchSetMember * psm)
@@ -1794,8 +1789,81 @@ static void set_psm_initial(PatchSetMember * psm)
     psm->pre_rev = NULL;
     if (psm->post_rev->dead)
     {
+	/* 
+	 * we expect a 'file xyz initially added on branch abc' here
+	 * but there can only be one such member in a given patchset
+	 */
 	if (psm->ps->branch_add)
 	    debug(DEBUG_APPERROR, "branch_add already set!");
 	psm->ps->branch_add = 1;
     }
+}
+
+/* 
+ * look at all revisions starting at rev and going forward until 
+ * ps->date and see whether they are invalid or just funky.
+ */
+static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
+{
+    while (rev)
+    {
+	PatchSet * next_ps = rev->post_psm->ps;
+	struct list_head * next;
+
+	if (next_ps->date > ps->date)
+	    break;
+
+	debug(DEBUG_STATUS, "ps->date %d next_ps->date %d rev->rev %s rev->branch %s", 
+	      ps->date, next_ps->date, rev->rev, rev->branch);
+
+	for (next = next_ps->members.next; next != &next_ps->members; next = next->next)
+	{
+	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	    if (before_tag(psm->post_rev, ps->tag))
+		return TAG_INVALID;
+	}
+
+	rev = rev_follow_branch(rev, ps->branch);
+    }
+
+    return TAG_FUNKY;
+}
+
+/* determine if the revision is before the tag */
+static int before_tag(CvsFileRevision * rev, const char * tag)
+{
+    CvsFileRevision * tagged_rev = (CvsFileRevision*)get_hash_object(rev->file->symbols, tag);
+    int retval = 0;
+
+    if (tagged_rev && 
+	revision_affects_branch(rev, tagged_rev->branch) && 
+	rev->post_psm->ps->date <= tagged_rev->post_psm->ps->date)
+	retval = 1;
+
+    debug(DEBUG_STATUS, "before_tag: %s %s %s %s %d", 
+	  rev->file->filename, tag, rev->rev, tagged_rev ? tagged_rev->rev : "N/A", retval);
+
+    return retval;
+}
+
+/* get the next revision from this one following branch if possible */
+/* FIXME: not sure if this needs to follow branches leading up to branches? */
+static CvsFileRevision * rev_follow_branch(CvsFileRevision * rev, const char * branch)
+{
+    struct list_head * next;
+
+    /* check for 'main line of inheritance' */
+    if (strcmp(rev->branch, branch) == 0)
+	return rev->pre_psm ? rev->pre_psm->post_rev : NULL;
+
+    /* look down branches */
+    for (next = rev->branch_children.next; next != &rev->branch_children; next = next->next)
+    {
+	CvsFileRevision * next_rev = list_entry(next, CvsFileRevision, link);
+	//debug(DEBUG_STATUS, "SCANNING BRANCH CHILDREN: %s %s", next_rev->branch, branch);
+	if (strcmp(next_rev->branch, branch) == 0)
+	    return next_rev;
+    }
+    
+    return NULL;
 }
