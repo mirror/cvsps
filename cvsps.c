@@ -13,6 +13,7 @@
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
 #define REV_STR_MAX 64
+#define CACHE_DESCR_BOUNDARY "-=-END CVSPS DESCR-=-\n"
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 enum
@@ -27,7 +28,7 @@ enum
 typedef struct _CvsFile
 {
     char filename[PATH_MAX];
-    struct list_head patch_sets;
+    struct hash_table * revisions;
 } CvsFile;
 
 typedef struct _PatchSet
@@ -42,11 +43,10 @@ typedef struct _PatchSetMember
 {
     char pre_rev[REV_STR_MAX];
     char post_rev[REV_STR_MAX];
-    PatchSet * cp;
+    PatchSet * ps;
     CvsFile * file;
     int dead_revision;
-    struct list_head file_link;
-    struct list_head patch_set_link;
+    struct list_head link;
 } PatchSetMember;
 
 static int ps_counter;
@@ -60,8 +60,12 @@ static time_t restrict_date_end;
 static int show_patch_set;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
+static time_t cache_date;
+static FILE * cache_fp;
+static int update_cache;
 
 static void parse_args(int, char *[]);
+static void load_from_cvs();
 static void init_strip_path();
 static CvsFile * parse_file(const char *);
 static PatchSetMember * parse_revision(const char *);
@@ -76,8 +80,37 @@ static int is_revision_metadata(const char *);
 static int patch_set_contains_member(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
 static void strzncpy(char *, const char *, int);
+static void write_cache();
+static void cvs_file_add_revision(CvsFile *, const char *);
+static void write_tree_node_to_cache(const void *, const VISIT, const int);
+static void dump_patch_set(FILE *, PatchSet *);
+static void read_cache();
+static CvsFile * create_cvsfile();
+static PatchSet * create_patchset();
+static PatchSetMember * create_patchset_member();
+static void parse_cache_revision(PatchSetMember *, const char *);
 
 int main(int argc, char *argv[])
+{
+    parse_args(argc, argv);
+    file_hash = create_hash_table(1023);
+    
+    if (update_cache)
+    {
+	load_from_cvs();
+	write_cache();
+    }
+    else
+    {
+	read_cache();
+    }
+
+    ps_counter = 0;
+    twalk(ps_tree, show_ps_tree_node);
+    exit(0);
+}
+
+static void load_from_cvs()
 {
     FILE * cvsfp;
     char buff[BUFSIZ];
@@ -89,12 +122,9 @@ int main(int argc, char *argv[])
     char logbuff[LOG_STR_MAX];
     int loglen = 0;
     int have_log = 0;
-    
-    parse_args(argc, argv);
-    file_hash = create_hash_table(1023);
-    ps_tree = NULL;
-    init_strip_path();
 
+    init_strip_path();
+    cache_date = time(NULL);
     cvsfp = popen("cvs log", "r");
 
     if (!cvsfp)
@@ -125,6 +155,7 @@ int main(int argc, char *argv[])
 	    {
 		psm = parse_revision(buff);
 		psm->file = file;
+		cvs_file_add_revision(file, psm->post_rev);
 
 		/* in the simple case, we are copying psm->post_rev to last_psm->pre_rev
 		 * since generally speaking the log is reverse chronological.
@@ -132,7 +163,6 @@ int main(int argc, char *argv[])
 		 */
 		assign_pre_revision(last_psm, psm);
 		last_psm = psm;
-		list_add(&psm->file_link, file->patch_sets.prev);
 		state = NEED_DATE_AUTHOR_STATE;
 	    }
 	    break;
@@ -176,8 +206,8 @@ int main(int argc, char *argv[])
 	case NEED_EOM:
 	    if (strncmp(buff, "--------", 8) == 0)
 	    {
-		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
-		list_add(&psm->patch_set_link, &psm->cp->members);
+		psm->ps = get_patch_set(datebuff, logbuff, authbuff);
+		list_add(&psm->link, psm->ps->members.prev);
 		logbuff[0] = 0;
 		loglen = 0;
 		psm = NULL;
@@ -186,8 +216,8 @@ int main(int argc, char *argv[])
 	    }
 	    else if (strncmp(buff, "========", 8) == 0)
 	    {
-		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
-		list_add(&psm->patch_set_link, &psm->cp->members);
+		psm->ps = get_patch_set(datebuff, logbuff, authbuff);
+		list_add(&psm->link, psm->ps->members.prev);
 		logbuff[0] = 0;
 		loglen = 0;
 		assign_pre_revision(last_psm, NULL);
@@ -224,9 +254,6 @@ int main(int argc, char *argv[])
     }
 
     pclose(cvsfp);
-    twalk(ps_tree, show_ps_tree_node);
-
-    exit(0);
 }
 
 static void usage(const char * str1, const char * str2)
@@ -288,6 +315,12 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "-u") == 0)
+	{
+	    update_cache = 1;
+	    i++;
+	    continue;
+	}
 	
 	usage("invalid argument", argv[i]);
     }
@@ -357,7 +390,7 @@ static CvsFile * parse_file(const char * buff)
 
     if (!retval)
     {
-	if ((retval = (CvsFile*)malloc(sizeof(*retval))))
+	if ((retval = create_cvsfile()))
 	{
 	    int len = strlen(buff + 10);
 	    char * p;
@@ -388,8 +421,12 @@ static CvsFile * parse_file(const char * buff)
 		retval->filename[len] = 0;
 	    }
 
-	    INIT_LIST_HEAD(&retval->patch_sets);
 	    put_hash_object(file_hash, retval->filename, retval);
+	}
+	else
+	{
+	    debug(DEBUG_SYSERROR, "malloc failed");
+	    exit(1);
 	}
     }
 
@@ -400,14 +437,10 @@ static CvsFile * parse_file(const char * buff)
 
 static PatchSetMember * parse_revision(const char * buff)
 {
-    PatchSetMember * retval = (PatchSetMember*)malloc(sizeof(*retval));
+    PatchSetMember * retval = create_patchset_member();
 
-    //FIXME: what about pre_rev?
-    strcpy(retval->pre_rev, "UNKNOWN");
     strzncpy(retval->post_rev, buff + 9, REV_STR_MAX);
     chop(retval->post_rev);
-    retval->cp = NULL;
-    retval->dead_revision = 0;
 
     debug(DEBUG_STATUS, "new rev: %s", retval->post_rev);
 
@@ -418,7 +451,7 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
 {
     PatchSet * retval = NULL, **find = NULL;
     
-    if (!(retval = (PatchSet*)malloc(sizeof(*retval))))
+    if (!(retval = create_patchset()))
     {
 	debug(DEBUG_SYSERROR, "malloc failed for PatchSet");
 	return NULL;
@@ -427,7 +460,6 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
     convert_date(&retval->date, dte);
     strzncpy(retval->author, author, AUTH_STR_MAX);
     strzncpy(retval->descr, log, LOG_STR_MAX);
-    INIT_LIST_HEAD(&retval->members);
 
     find = (PatchSet**)tsearch(retval, &ps_tree, compare_patch_sets);
 
@@ -535,12 +567,12 @@ static void print_patch_set(PatchSet * ps)
 	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
-    printf("Log:\n%s", ps->descr);
+    printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
     
     while (next != &ps->members)
     {
-	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	printf("\t%s:%s->%s%s\n", psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision ? "(DEAD)": "");
 	next = next->next;
     }
@@ -571,6 +603,7 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 	}
 
 	check_print_patch_set(ps);
+	break;
 
     default:
 	break;
@@ -599,18 +632,29 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 
 static void convert_date(time_t * t, const char * dte)
 {
-    struct tm tm;
-    int ret;
-    
-    memset(&tm, 0, sizeof(tm));
-    ret = sscanf(dte, "%d/%d/%d %d:%d:%d", 
-	   &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
-	   &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
-    
-    tm.tm_year -= 1900;
-    tm.tm_mon--;
-
-    *t = mktime(&tm);
+    /* HACK: this routine parses two formats,
+     * 1) 'cvslog' format YYYY/MM/DD HH:MM:SS
+     * 2) time_t formatted as %d
+     */
+       
+    if (strchr(dte, '/'))
+    {
+	struct tm tm;
+	
+	memset(&tm, 0, sizeof(tm));
+	sscanf(dte, "%d/%d/%d %d:%d:%d", 
+	       &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
+	       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+	
+	tm.tm_year -= 1900;
+	tm.tm_mon--;
+	
+	*t = mktime(&tm);
+    }
+    else
+    {
+	*t = atoi(dte);
+    }
 }
 
 static int is_revision_metadata(const char * buff)
@@ -641,7 +685,7 @@ static int patch_set_contains_member(PatchSet * ps, const char * file)
 
     while (next != &ps->members)
     {
-	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	
 	if (strstr(psm->file->filename, file))
 	    return 1;
@@ -661,7 +705,7 @@ static void do_cvs_diff(PatchSet * ps)
 
     while (next != &ps->members)
     {
-	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2];
 
 	if (strcmp(psm->pre_rev, "INITIAL") == 0)
@@ -693,3 +737,276 @@ static void strzncpy(char * dst, const char * src, int n)
     dst[n - 1] = 0;
 }
 
+static void write_cache()
+{
+    struct hash_entry * file_iter;
+
+    ps_counter = 0;
+
+    if ((cache_fp = fopen("cvsps.cache", "w")) == NULL)
+    {
+	debug(DEBUG_SYSERROR, "can't open cvsps.cache for write");
+	return;
+    }
+
+    fprintf(cache_fp, "cache date: %d\n", (int)cache_date);
+
+    reset_hash_iterator(file_hash);
+
+    while ((file_iter = next_hash_entry(file_hash)))
+    {
+	CvsFile * file = (CvsFile*)file_iter->he_obj;
+	struct hash_entry * rev_iter;
+
+	fprintf(cache_fp, "file: %s\n", file->filename);
+	reset_hash_iterator(file->revisions);
+	
+	while ((rev_iter = next_hash_entry(file->revisions)))
+	{
+	    char * rev = (char *)rev_iter->he_obj;
+	    fprintf(cache_fp, "%s\n", rev);
+	}
+	fprintf(cache_fp, "\n");
+    }
+
+    fprintf(cache_fp, "\n");
+    twalk(ps_tree, write_tree_node_to_cache);
+    fclose(cache_fp);
+    cache_fp = NULL;
+}
+
+static void cvs_file_add_revision(CvsFile * file, const char * rev)
+{
+    char * new_rev = strdup(rev);
+    put_hash_object(file->revisions, new_rev, new_rev);
+}
+
+static void write_tree_node_to_cache(const void * nodep, const VISIT which, const int depth)
+{
+    PatchSet * ps;
+
+    switch(which)
+    {
+    case postorder:
+    case leaf:
+	ps = *(PatchSet**)nodep;
+	dump_patch_set(cache_fp, ps);
+	break;
+
+    default:
+	break;
+    }
+}
+
+static void dump_patch_set(FILE * fp, PatchSet * ps)
+{
+    struct list_head * next = ps->members.next;
+
+    ps_counter++;
+    fprintf(fp, "patchset: %d\n", ps_counter);
+    fprintf(fp, "date: %d\n", (int)ps->date);
+    fprintf(fp, "author: %s\n", ps->author);
+    fprintf(fp, "descr:\n%s\n", ps->descr);
+    fprintf(fp, CACHE_DESCR_BOUNDARY);
+    fprintf(fp, "members:\n");
+
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	fprintf(fp, "file: %s; pre_rev: %s; post_rev: %s; dead: %d\n", 
+		psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision);
+	next = next->next;
+    }
+
+    fprintf(fp, "\n");
+}
+
+enum
+{
+    CACHE_NEED_FILE,
+    CACHE_NEED_REV,
+    CACHE_NEED_PS,
+    CACHE_NEED_PS_DATE,
+    CACHE_NEED_PS_AUTHOR,
+    CACHE_NEED_PS_DESCR,
+    CACHE_NEED_PS_EOD,
+    CACHE_NEED_PS_MEMBERS,
+    CACHE_NEED_PS_EOM
+};
+
+static void read_cache()
+{
+    FILE * fp;
+    char buff[BUFSIZ];
+    int state = CACHE_NEED_FILE;
+    CvsFile * f = NULL;
+    PatchSet * ps = NULL;
+    char datebuff[20];
+    char authbuff[AUTH_STR_MAX];
+    char logbuff[LOG_STR_MAX];
+
+    datebuff[0] = 0;
+    authbuff[0] = 0;
+    logbuff[0] = 0;
+
+    fp = fopen("cvsps.cache", "r");
+    if (!fp)
+	return;
+
+    /* first line is date cache was created, format "cache date: %d\n" */
+    fgets(buff, BUFSIZ, fp);
+    cache_date = atoi(buff + 12);
+
+    while (fgets(buff, BUFSIZ, fp))
+    {
+	int len = strlen(buff);
+
+	switch(state)
+	{
+	case CACHE_NEED_FILE:
+	    if (strncmp(buff, "file:", 5) == 0)
+	    {
+		len -= 6;
+		f = create_cvsfile();
+		strzncpy(f->filename, buff + 6, len);
+		debug(DEBUG_STATUS, "read cache filename '%s'", f->filename);
+		put_hash_object(file_hash, f->filename, f);
+		state = CACHE_NEED_REV;
+	    }
+	    else
+	    {
+		state = CACHE_NEED_PS;
+	    }
+	    break;
+	case CACHE_NEED_REV:
+	    if (buff[0] != '\n')
+	    {
+		buff[len-1] = 0;
+		cvs_file_add_revision(f, buff);
+		debug(DEBUG_STATUS, "added rev %s to %s", buff, f->filename);
+	    }
+	    else
+	    {
+		state = CACHE_NEED_FILE;
+	    }
+	    break;
+	case CACHE_NEED_PS:
+	    if (strncmp(buff, "patchset:", 9) == 0)
+		state = CACHE_NEED_PS_DATE;
+	    break;
+	case CACHE_NEED_PS_DATE:
+	    if (strncmp(buff, "date:", 5) == 0)
+	    {
+		/* remove prefix "date: " and LF from len */
+		len -= 6;
+		strzncpy(datebuff, buff + 6, len);
+		state = CACHE_NEED_PS_AUTHOR;
+	    }
+	    break;
+	case CACHE_NEED_PS_AUTHOR:
+	    if (strncmp(buff, "author:", 7) == 0)
+	    {
+		/* remove prefix "author: " and LF from len */
+		len -= 8;
+		strzncpy(authbuff, buff + 8, len);
+		state = CACHE_NEED_PS_DESCR;
+	    }
+	    break;
+	case CACHE_NEED_PS_DESCR:
+	    if (strncmp(buff, "descr:", 6) == 0)
+		state = CACHE_NEED_PS_EOD;
+	    break;
+	case CACHE_NEED_PS_EOD:
+	    if (strcmp(buff, CACHE_DESCR_BOUNDARY) == 0)
+	    {
+		debug(DEBUG_STATUS, "patch set %s %s %s", datebuff, authbuff, logbuff);
+		ps = get_patch_set(datebuff, logbuff, authbuff);
+		state = CACHE_NEED_PS_MEMBERS;
+	    }
+	    else
+	    {
+		strcat(logbuff, buff);
+	    }
+	    break;
+	case CACHE_NEED_PS_MEMBERS:
+	    if (strncmp(buff, "members:", 8) == 0)
+		state = CACHE_NEED_PS_EOM;
+	    break;
+	case CACHE_NEED_PS_EOM:
+	    if (buff[0] == '\n')
+	    {
+		datebuff[0] = 0;
+		authbuff[0] = 0;
+		logbuff[0] = 0;
+		state = CACHE_NEED_PS;
+	    }
+	    else
+	    {
+		PatchSetMember * psm = create_patchset_member();
+		parse_cache_revision(psm, buff);
+		psm->ps = ps;
+		list_add(&psm->link, psm->ps->members.prev);
+	    }
+	    break;
+	}
+    }
+}
+
+static CvsFile * create_cvsfile()
+{
+    CvsFile * f = (CvsFile*)malloc(sizeof(*f));;
+    
+    if (f)
+	f->revisions = create_hash_table(111);
+
+    return f;
+}
+
+static PatchSet * create_patchset()
+{
+    PatchSet * ps = (PatchSet*)malloc(sizeof(*ps));;
+    
+    if (ps)
+	INIT_LIST_HEAD(&ps->members);
+
+    return ps;
+}
+
+static PatchSetMember * create_patchset_member()
+{
+    PatchSetMember * psm = (PatchSetMember*)calloc(1, sizeof(*psm));
+    strcpy(psm->pre_rev, "UNKNOWN");
+    strcpy(psm->post_rev, "UNKNOWN");
+    return psm;
+}
+
+static void parse_cache_revision(PatchSetMember * psm, const char * buff)
+{
+    /* The format used to generate is:
+     * "file: %s; pre_rev: %s; post_rev: %s; dead: %d\n"
+     */
+    const char *s, *p;
+    char fn[PATH_MAX];
+    
+    s = buff + 6;
+    p = strchr(buff, ';');
+    strzncpy(fn, s,  p - s + 1);
+    
+    psm->file = (CvsFile*)get_hash_object(file_hash, fn);
+
+    if (!psm->file)
+    {
+	debug(DEBUG_APPERROR, "file %s not found in hash", fn);
+	return;
+    }
+
+    s = p + 11;
+    p = strchr(s, ';');
+    strzncpy(psm->pre_rev, s, p - s + 1);
+
+    s = p + 12;
+    p = strchr(s, ';');
+    strzncpy(psm->post_rev, s, p - s + 1);
+
+    psm->dead_revision = atoi(p + 8);
+}
