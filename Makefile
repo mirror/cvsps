@@ -48,7 +48,7 @@ htdocs: dist
 	rm -fr htdocs/
 	mkdir htdocs/
 	cp README htdocs/
-	cp site/*.html htdocs/
+	cp site/*.html site/*.gif htdocs/
 	mv dist cvsps-$(MAJOR).$(MINOR)
 	tar cvzf htdocs/cvsps-$(MAJOR).$(MINOR).tar.gz cvsps-$(MAJOR).$(MINOR)
 	mv cvsps-$(MAJOR).$(MINOR) dist
