@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.53 2003/03/13 00:18:20 david Exp $");
+RCSID("$Id: cvsps.c,v 4.54 2003/03/13 00:58:37 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -425,7 +425,9 @@ static void usage(const char * str1, const char * str2)
 
     debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] ");
     debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>]");
-    debug(DEBUG_APPERROR, "             [-v] [-h]");
+    debug(DEBUG_APPERROR, "             [-v] [-h] [-l <regex>] [-r <tag> [-r <tag>]]");
+    debug(DEBUG_APPERROR, "             [-p <directory>] [-t] [--no-rc] [--summary-first]");
+    debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
@@ -448,6 +450,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
     debug(DEBUG_APPERROR, "  -h display this informative message");
     debug(DEBUG_APPERROR, "  --summary-first when multiple patchsets are shown, put all summaries first");
+    debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);

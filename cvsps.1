@@ -52,6 +52,9 @@ revisions between the two tags.
 restrict output to patchsets affecting history of branch.
 If you want to restrict to the main branch, use a branch of 'HEAD'.
 .TP
+.B \-p <directory>
+Output patchsets to individual files in <directory>
+.TP
 .B \-v
 show verbose parsing messages
 .TP
@@ -64,6 +67,10 @@ when invoking cvs, ignore the .cvsrc file
 .B \--summary-first
 when multiple patchset diffs are being generated, put the patchset
 summary for all patchsets at the beginning of the output.
+.TP
+.B \--test-log <captured cvs log file>
+for testing changes, you can capture cvs log output, then test against
+this captured file instead of hammering some poor CVS server
 .TP
 .B \-h
 display usage summary
