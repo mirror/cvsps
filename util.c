@@ -213,7 +213,7 @@ int my_system (const char *command)
 
 int escape_filename(char * dst, int len, const char * src)
 {
-    char * naughty_chars = " \\\"'@<>=;|&()#$`?*[!:{";
+    static char * naughty_chars = " \\\"'@<>=;|&()#$`?*[!:{";
 
     if (len > 0)
     {
