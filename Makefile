@@ -7,7 +7,7 @@ CFLAGS+=-fno-inline -fno-default-inline -O0 -g
 endif
 
 OBJS=$(DEP_OBJS)
-LIBS=-lcbtcommon
+LIBS=-lcbtcommon -lz
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=2
 MINOR=0b6

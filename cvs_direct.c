@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <zlib.h>
 #include <cbtcommon/debug.h>
 #include <cbtcommon/text_util.h>
 #include <cbtcommon/tcpsocket.h>
@@ -21,11 +22,19 @@ struct _CvsServerCtx
     char read_buff[RD_BUFF_SIZE];
     char * head;
     char * tail;
+
+    int compressed;
+    z_stream zout;
+    z_stream zin;
+
+    /* when reading compressed data, the compressed data buffer */
+    char zread_buff[RD_BUFF_SIZE];
 };
 
 static void get_cvspass(char *, const char *);
 static void send_string(CvsServerCtx *, const char *, ...);
 static int read_response(CvsServerCtx *, const char *);
+static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp);
 
 static CvsServerCtx * open_ctx_pserver(CvsServerCtx *, const char *);
 static CvsServerCtx * open_ctx_forked(CvsServerCtx *, const char *);
@@ -41,6 +50,29 @@ CvsServerCtx * open_cvs_server(char * p_root)
 
     ctx->head = ctx->tail = ctx->read_buff;
     ctx->read_fd = ctx->write_fd = -1;
+    memset(&ctx->zout, 0, sizeof(z_stream));
+    memset(&ctx->zin, 0, sizeof(z_stream));
+    ctx->compressed = 0;
+
+    /* 
+     * to 'prime' the reads, make it look like there was output
+     * room available (i.e. we have processed all pending compressed 
+     * data
+     */
+    ctx->zin.avail_out = 1;
+
+    if (deflateInit(&ctx->zout, Z_DEFAULT_COMPRESSION) != Z_OK)
+    {
+	free(ctx);
+	return NULL;
+    }
+
+    if (inflateInit(&ctx->zin) != Z_OK)
+    {
+	deflateEnd(&ctx->zout);
+	free(ctx);
+	return NULL;
+    }
 
     strcpy(root, p_root);
 
@@ -72,7 +104,25 @@ CvsServerCtx * open_cvs_server(char * p_root)
     }
 
     if (ctx)
+    {
 	send_string(ctx, "Root %s\n", ctx->repository);
+
+	/* this is taken from 1.11.1p1 trace */
+	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT\n", ctx->repository);
+
+	send_string(ctx, "valid-requests\n");
+
+	/* FIXME: look at this and determine if it's good */
+	/* instead, discard the response */
+	ctx_to_fp(ctx, NULL);
+	
+	/* this is myterious but 'mandatory' */
+	send_string(ctx, "UseUnchanged\n");
+
+	/* FIXME: make compresison optional */
+	send_string(ctx, "Gzip-stream 4\n");
+	ctx->compressed = 1;
+    }
 
     return ctx;
 }
@@ -328,6 +378,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
     int len;
     char buff[BUFSIZ];
     va_list ap;
+
     va_start(ap, str);
 
     len = vsnprintf(buff, BUFSIZ, str, ap);
@@ -337,10 +388,53 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 	exit(1);
     }
 
-    if (writen(ctx->write_fd, buff, len)  != len)
+    if (ctx->compressed)
     {
-	debug(DEBUG_SYSERROR, "cvs_direct: can't send command");
-	exit(1);
+	char zbuff[BUFSIZ];
+
+	if  (ctx->zout.avail_in != 0)
+	{
+	    debug(DEBUG_APPERROR, "cvs_direct: zout: last output command not flushed");
+	    exit(1);
+	}
+
+	ctx->zout.next_in = buff;
+	ctx->zout.avail_in = len;
+	ctx->zout.avail_out = 0;
+
+	while (ctx->zout.avail_in > 0 || ctx->zout.avail_out == 0)
+	{
+	    int ret;
+
+	    ctx->zout.next_out = zbuff;
+	    ctx->zout.avail_out = BUFSIZ;
+	    
+	    /* FIXME: for the arguments before a command, flushing is counterproductive */
+	    ret = deflate(&ctx->zout, Z_SYNC_FLUSH);
+	    
+	    if (ret == Z_OK)
+	    {
+		len = BUFSIZ - ctx->zout.avail_out;
+		
+		if (writen(ctx->write_fd, zbuff, len) != len)
+		{
+		    debug(DEBUG_SYSERROR, "cvs_direct: zout: can't write");
+		    exit(1);
+		}
+	    }
+	    else
+	    {
+		debug(DEBUG_APPERROR, "cvs_direct: zout: error %d %s", ret, ctx->zout.msg);
+	    }
+	}
+    }
+    else
+    {
+	if (writen(ctx->write_fd, buff, len)  != len)
+	{
+	    debug(DEBUG_SYSERROR, "cvs_direct: can't send command");
+	    exit(1);
+	}
     }
 
     debug(DEBUG_TCP, "string: '%s' sent", buff);
@@ -348,15 +442,59 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 
 static int refill_buffer(CvsServerCtx * ctx)
 {
-    int len = ctx->read_buff + RD_BUFF_SIZE - ctx->tail;
-    if (len == 0)
+    int len;
+
+    if (ctx->head != ctx->tail)
     {
-	ctx->head = ctx->read_buff;
-	len = RD_BUFF_SIZE;
+	debug(DEBUG_APPERROR, "cvs_direct: refill_buffer called on non-empty buffer");
+	exit(1);
     }
 
-    len = read(ctx->read_fd, ctx->head, len);
-    ctx->tail = (len <= 0) ? ctx->head : ctx->head + len;
+    ctx->head = ctx->read_buff;
+    len = RD_BUFF_SIZE;
+	
+    if (ctx->compressed)
+    {
+	int zlen, ret;
+
+	/* if there was leftover buffer room, it's time to slurp more data */
+	do 
+	{
+	    if (ctx->zin.avail_out > 0)
+	    {
+		if (ctx->zin.avail_in != 0)
+		{
+		    debug(DEBUG_APPERROR, "cvs_direct: zin: expect 0 avail_in");
+		    exit(1);
+		}
+		zlen = read(ctx->read_fd, ctx->zread_buff, RD_BUFF_SIZE);
+		ctx->zin.next_in = ctx->zread_buff;
+		ctx->zin.avail_in = zlen;
+	    }
+	    
+	    ctx->zin.next_out = ctx->head;
+	    ctx->zin.avail_out = len;
+	    
+	    /* FIXME: we don't always need Z_SYNC_FLUSH, do we? */
+	    ret = inflate(&ctx->zin, Z_SYNC_FLUSH);
+	}
+	while (ctx->zin.avail_out == len);
+
+	if (ret == Z_OK)
+	{
+	    ctx->tail = ctx->head + (len - ctx->zin.avail_out);
+	}
+	else
+	{
+	    debug(DEBUG_APPERROR, "cvs_direct: zin: error %d %s", ret, ctx->zin.msg);
+	    exit(1);
+	}
+    }
+    else
+    {
+	len = read(ctx->read_fd, ctx->head, len);
+	ctx->tail = (len <= 0) ? ctx->head : ctx->head + len;
+    }
 
     return len;
 }
@@ -405,9 +543,14 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
     {
 	read_line(ctx, line);
 	if (line[0] == 'M')
-	    fprintf(fp, "%s\n", line + 2);
+	{
+	    if (fp)
+		fprintf(fp, "%s\n", line + 2);
+	}
 	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
+	{
 	    break;
+	}
     }
 
     fflush(fp);
