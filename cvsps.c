@@ -24,7 +24,7 @@
 #include "stats.h"
 #include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.71 2003/03/19 22:11:09 david Exp $");
+RCSID("$Id: cvsps.c,v 4.72 2003/03/19 23:06:24 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -78,7 +78,8 @@ static int do_diff;
 static const char * restrict_author;
 static int have_restrict_log;
 static regex_t restrict_log;
-static const char * restrict_file;
+static int have_restrict_file;
+static regex_t restrict_file;
 static time_t restrict_date_start;
 static time_t restrict_date_end;
 static const char * restrict_branch;
@@ -108,7 +109,7 @@ static int compare_patch_sets_bk(const void *, const void *);
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime(const void *, const void *);
 static int is_revision_metadata(const char *);
-static int patch_set_contains_member(PatchSet *, const char *);
+static int patch_set_member_regex(PatchSet * ps, regex_t * reg);
 static int patch_set_affects_branch(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
 static PatchSet * create_patch_set();
@@ -560,7 +561,7 @@ static void parse_args(int argc, char *argv[])
 	    if (++i >= argc)
 		usage("argument to -l missing", "");
 
-	    if ((err = regcomp(&restrict_log, argv[i++], REG_NOSUB)) != 0)
+	    if ((err = regcomp(&restrict_log, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
 	    {
 		char errbuf[256];
 		regerror(err, &restrict_log, errbuf, 256);
@@ -574,10 +575,20 @@ static void parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-f") == 0)
 	{
+	    int err;
+
 	    if (++i >= argc)
 		usage("argument to -f missing", "");
 
-	    restrict_file = argv[i++];
+	    if ((err = regcomp(&restrict_file, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
+	    {
+		char errbuf[256];
+		regerror(err, &restrict_file, errbuf, 256);
+		usage("bad regex to -f", errbuf);
+	    }
+
+	    have_restrict_file = 1;
+
 	    continue;
 	}
 	
@@ -1080,7 +1091,7 @@ static void check_print_patch_set(PatchSet * ps)
     if (have_restrict_log && regexec(&restrict_log, ps->descr, 0, NULL, 0) != 0)
 	return;
 
-    if (restrict_file && !patch_set_contains_member(ps, restrict_file))
+    if (have_restrict_file && !patch_set_member_regex(ps, &restrict_file))
 	return;
 
     if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
@@ -1327,7 +1338,7 @@ static int is_revision_metadata(const char * buff)
     return 0;
 }
 
-static int patch_set_contains_member(PatchSet * ps, const char * file)
+static int patch_set_member_regex(PatchSet * ps, regex_t * reg)
 {
     struct list_head * next = ps->members.next;
 
@@ -1335,7 +1346,7 @@ static int patch_set_contains_member(PatchSet * ps, const char * file)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	
-	if (strstr(psm->file->filename, file))
+	if (regexec(&restrict_file, psm->file->filename, 0, NULL, 0) == 0)
 	    return 1;
 
 	next = next->next;
