@@ -324,7 +324,7 @@ void close_cvs_server(CvsServerCtx * ctx)
 {
     if (ctx->compressed)
     {
-	int ret, len;
+	int ret, len, pass=0;
 	char buff[BUFSIZ];
 	    
 	do
@@ -345,7 +345,12 @@ void close_cvs_server(CvsServerCtx * ctx)
 
 	do
 	{
-	    if (ctx->zin.avail_in == 0)
+	    /* 
+	     * we don't want to do a 'read' unless we know that the end-of-stream
+	     * isn't already buffered somewhere (i.e. we already got it!). check
+	     * the 'pass' value
+	     */
+	    if (ctx->zin.avail_in == 0 && ctx->zin.avail_out != 0 && pass > 0)
 	    {
 		len = read(ctx->read_fd, ctx->zread_buff, RD_BUFF_SIZE);
 		if (len > 0)
@@ -358,6 +363,8 @@ void close_cvs_server(CvsServerCtx * ctx)
 		    debug(DEBUG_APPERROR, "cvs_direct: zin: EOF or ERROR waiting for Z_STREAM_END");
 		}
 	    }
+
+	    pass++;
 
 	    ctx->zin.next_out = buff;
 	    ctx->zin.avail_out = BUFSIZ;
@@ -607,11 +614,11 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
     while (1)
     {
 	read_line(ctx, line);
+	debug(DEBUG_TCP, "ctx_to_fp: %s", line);
 	if (line[0] == 'M')
 	{
 	    if (fp)
 		fprintf(fp, "%s\n", line + 2);
-	    debug(DEBUG_TCP, "ctx_to_fp: %s", line);
 	}
 	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
 	{
