@@ -52,7 +52,7 @@ char *strrep(char *s, char find, char replace)
     return s;
 }
 
-char *get_cvsrc_dir()
+char *get_cvsps_dir()
 {
     struct stat sbuf;
     static char prefix[PATH_MAX];

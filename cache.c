@@ -37,7 +37,7 @@ static FILE *cache_open(char const *mode)
     FILE * fp;
 
     /* Get the prefix */
-    prefix = get_cvsrc_dir();
+    prefix = get_cvsps_dir();
     if (!prefix)
 	return NULL;
     
