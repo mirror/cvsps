@@ -7,3 +7,4 @@ cvsps.cache*
 dist
 htdocs
 *.d
+usage.txt

@@ -34,6 +34,9 @@ this_clean:
 	rm -f *.o *.d cvsps core
 	rm -fr dist/ htdocs/
 
+usage.txt: cvsps
+	./cvsps -h 2>&1| sed -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/\(cvsps version .*\)_CBT/\1/g' > usage.txt
+
 dist:
 	rm -fr dist/
 	mkdir dist/
