@@ -5,35 +5,45 @@
 </STYLE>
 
 
-<title>cvsps - Patchsets for CVS</title>
+<title>CVSps - Patchsets for CVS</title>
 <body STYLE="color: rgb(255,255,255); background-color: rgb(0,0,0); :link: rgb(255,200,200)" bgColor="#000000" text="#ffffff" link="#64b8ff" vlink="#ff6464">
-<table width=600>
-<tr><td>
-Welcome to the website for cvsps.  This is the official ugliest website in the world.
-<p>
-<h3>about</h3>
-cvsps is a command line utility for Linux 
-and other UNIX type operating systems.  While cvs is a fantastic and widely
-used revision control system, it leaves some gaps.  cvsps attempts to fill 
-one of those gaps.  To quote the <a href="README">README</a>:
 
-<table>
-<tr><td width=100>&nbsp;<td>
-<pre>
-cvsps is a program for generating 'patchset' information from a CVS
-repository.  A patchset in this case is defined as a set of changes made
-to a collection of files, and all committed at the same time (using a
-single 'cvs commit' command).  This information is valuable to seeing the
-big picture of the evolution of a cvs project.  While cvs tracks revision
-information, it is often difficult to see what changes were committed
-'atomically' to the repository.
-</pre>
+
+<table border=0 cellspacing=0 cellpadding=1 width=730>
+<tr><td colspan=3>&nbsp;<tr>
+<td align=right valign=top bgcolor="#222222"><h3>about</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table border=0 cellpadding=3><tr><td colspan=3>
+Welcome to the website for CVSps.  CVSps stands for 'CVS patchsets'.  
+CVSps is a command line utility for Linux 
+and other UNIX type operating systems.  While cvs is a fantastic and widely
+used revision control system, it has some gaps is its functionality.
+CVSps attempts to fill one of those gaps.  
+To quote the <a href="README">README</a>:<br>
+<tr><td width=50>&nbsp;</td><td>
+CVSps is a program for generating 'patchset' information 
+from a CVS repository.  A patchset in this case is defined 
+as a set of changes made to a collection of files, and all 
+committed at the same time (using a single 'cvs commit' 
+command).  This information is valuable to seeing the big 
+picture of the evolution of a cvs project.  While cvs 
+tracks revision information, it is often difficult to see 
+what changes were committed 'atomically' to the repository.</td>
+<td width=50>&nbsp;
+<tr><td colspan=3>
+If you don't know what cvs is, try 
+<a href="http://www.cvshome.org">http://www.cvshome.org</a>.
+
 </table>
-<p>
-<h3>screen snapshots</h3>
+
+<tr><td colspan=3>&nbsp;<tr>
+<td valign=top align=right bgcolor="#222222"><h3>screen&nbsp;snapshots</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table cellpadding=3 border=0><tr><td colspan=3>
 Everyone loves screen snapshots, so here's a sample of what the output
-of cvsps looks like (also from the <a href="README">README</a>):
+of CVSps looks like:
 <br>
+<tr><td width=50>&nbsp;</td><td>
 <pre>
 ---------------------
 PatchSet 1701
@@ -43,24 +53,45 @@ Log:
 this release completes line summary find
 
 Members: 
-   Makefile:1.3.4.9->1.3.4.10 [v4_1-production-patches]
-   apache_mod/lineSummary.C:1.66.2.2->1.66.2.3 [v4_1-production-patches]
-   apache_mod/tbill_sql.C:1.59.2.5->1.59.2.6 [v4_1-production-patches]
+   Makefile:1.3.4.9->1.3.4.10 [v4_1-patches]
+   apache_mod/summary.C:1.66.2.2->1.66.2.3 [v4_1-patches]
+   apache_mod/sql.C:1.59.2.5->1.59.2.6 [v4_1-patches]
 
 ---------------------
-</pre>
-<h3>has anyone heard of the GPL?</h3>
-<p>
-cvsps is GPLed software.  If you want more information on the GPL, visit:<br>
+</pre></td><td width=50>&nbsp;
+<tr><td colspan=3>
+This snapshot shows the output of one patchset.  You can see it tracks all
+files changed, gives the pre- and post- version numbers, and (when 
+applicable, as in this example) indicates what branch the patchset was on.  
+It is also possible to generate a diff of the patchset using CVSps.  CVSps 
+essentially gives you the equivalent to tagging before and after each commit.
+</table>
+
+<tr><td colspan=3>&nbsp;<tr>
+<td valign=top align=right bgcolor="#222222"><h3>license</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table cellpadding=3><tr><td>
+CVSps is GPLed software.  If you want more information on the GPL, visit:<br>
 <a href="http://www.fsf.org/philosophy/philosophy.html">http://www.fsf.org/philosophy/philosophy.html</a>
-<h3>downloads</h3>
-<p>
-You can download the source tarball for cvsps here:
+</table>
+
+
+<tr><td colspan=3>&nbsp;<tr>
+<td valign=top align=right bgcolor="#222222"><h3>downloads</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table cellpadding=3><tr><td>
+You can download the source tarball for CVSps here:
 <br>
 <a href="cvsps-1.0.tar.gz">cvsps-1.0.tar.gz</a>
-<h3>contact</h3>
-<p>
-If you want to send comments to me, try <a href="mailto:cvsps@dm.cobite.com">cvsps@dm.cobite.com</a>
+</table>
+
+<tr><td colspan=3>&nbsp;<tr>
+<td valign=top align=right bgcolor="#222222"><h3>contact</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table cellpadding=3><tr><td>
+If you want to send comments, bug reports or feature requests to me, David 
+Mansfield, try <a href="mailto:CVSps@dm.cobite.com">cvsps@dm.cobite.com</a>.
+</table>
 </table>
 </body>
 </html>

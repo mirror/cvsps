@@ -1,9 +1,9 @@
-cvsps (c) 2001 David Mansfield
+CVSps (c) 2001 David Mansfield
 ------------------------------
 
 Overview.
 
-cvsps is a program for generating 'patchset' information from a CVS
+CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
 to a collection of files, and all committed at the same time (using a
 single 'cvs commit' command).  This information is valuable to seeing the
@@ -13,23 +13,23 @@ information, it is often difficult to see what changes were committed
 
 Compiling.
 
-cvsps is a simple program, all in one .c file, with a few utility modules.
+CVSps is a simple program, all in one .c file, with a few utility modules.
 The Makefile is very simple and should work in most GNU type environments.
 Unfortunately, I've only been able to test on Red Hat Linux, so YMMV.  As
-cvsps matures, I'm sure a more sophisticated build environment will evolve
+CVSps matures, I'm sure a more sophisticated build environment will evolve
 with in.  For now, just try 'make' and 'make install'.
 
 Running.
 
-cvsps operates by parsing the 'cvs log' output.  So to run it, you must
-be in the working directory of a cvs project.  cvsps handles
+CVSps operates by parsing the 'cvs log' output.  So to run it, you must
+be in the working directory of a cvs project.  CVSps handles
 subdirectories fine, so run it in the top directory of your project.
 
 a) the cvsps.cache file
 
 Because you may have a *lot* of revision history in your project, and/or
-your connection to the cvs server may be slow or congested, cvsps uses a
-cache file for most operations.  The first time you run cvsps, just issue:
+your connection to the cvs server may be slow or congested, CVSps uses a
+cache file for most operations.  The first time you run CVSps, just issue:
 
 cvsps
 
@@ -50,7 +50,7 @@ cvsps -x
 
 b) Reading the output.
 
-cvsps's output is information about patchsets.  A patchset looks like:
+CVSps's output is information about patchsets.  A patchset looks like:
 
 ---------------------
 PatchSet 1701
@@ -78,7 +78,7 @@ across cache-rebuilds.
 
 c) Limiting the patchset output.
 
-The default output of cvsps is to show all patchsets.  This can be
+The default output of CVSps is to show all patchsets.  This can be
 filtered in one of three ways.  These flags can be combined to really
 limit the output to what you're interested in.
 
@@ -89,7 +89,7 @@ By file.  With the -f <file> flag you limit the output to patchsets that
 have modified the given file.  File is given as the BASENAME of the file,
 not the entire path. (I think!)
 
-By date.  With one date specification, cvsps shows only patchsets newer
+By date.  With one date specification, CVSps shows only patchsets newer
 than the date given, and with two dates, it shows patchsets between the
 two dates.
 
@@ -97,9 +97,9 @@ two dates.
 currently acceptable. 'YYYY/MM/DD HH:MM:SS'  where time is given as
 localtime, and HH is in 24 hour format.  NOTE ALSO that cvs tends to
 display times as GMT, but parse dates as localtime, so when using the '-D'
-with cvs you need to convert from GMT to localtime in your head.  cvsps is
+with cvs you need to convert from GMT to localtime in your head.  CVSps is
 not as fancy.  It treats all dates as if in localtime, and therefore you
-give cvsps dates the same way it gives them to you.
+give CVSps dates the same way it gives them to you.
 
 d) viewing the changes made by a patchset.
 
@@ -130,8 +130,8 @@ bug reports, feature requests and patches to me at:
 
 cvsps@dm.cobite.com
 
-I will try to maintain cvsps and make releases regularly.  The most recent
-version of cvsps will always be available at http://www.cobite.com/cvsps
+I will try to maintain CVSps and make releases regularly.  The most recent
+version of CVSps will always be available at http://www.cobite.com/cvsps
 
 Special thanks to my employer Cobite and Robert Lippman, who've given me
 time to develop this tool.
