@@ -3,6 +3,10 @@
 - using two -r arguments implicitly sets -b with branch
   from second -r (if you can speak cvsps arguments, you'll
   understand this)
+- fix using cvsps against sourceforge where the actual
+  server repository path has many instances of the project
+  name in it and the 'strstr' was finding the wrong one.
+  instead use the equiv. of 'strrstr'
 
 2.0b10
 - fix bug where filenames with 'bad' characters (such as ' ')
