@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.97 2003/04/11 14:02:00 david Exp $");
+RCSID("$Id: cvsps.c,v 4.98 2004/06/21 14:58:09 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -950,7 +950,7 @@ static void init_paths()
 	    
 	    fclose(fp);
 	    
-	    /* chop the lf and optional '/' */
+	    /* chop the lf and optional trailing '/' */
 	    len = strlen(root_path) - 1;
 	    root_path[len] = 0;
 	    if (root_path[len - 1] == '/')
@@ -978,6 +978,7 @@ static void init_paths()
 	}
 	
 	chop(repository_path);
+	fclose(fp);
     }
 
     /* get the path portion of the root */
@@ -1010,7 +1011,7 @@ static void init_paths()
      */
     strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
 
-    if (strip_path_len < 0)
+    if (strip_path_len < 0 || strip_path_len >= PATH_MAX)
     {
 	debug(DEBUG_APPERROR, "strip_path overflow");
 	exit(1);

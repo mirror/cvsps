@@ -3,4 +3,4 @@ TODO/WISHLIST
 - add 'update' command to update working directory to patchset,
   and/or 'tag' command to place a tag at a patchset
 - store cache file in gzip format
-
+- handle true 'modules' (multiple strip-path?) in repository
