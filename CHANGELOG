@@ -1,3 +1,13 @@
+2.0b2
+- change the way INVALID tags are reported - show the exact
+  patchsets and revisions that conflict, and don't print 
+  anything for 'funky' tags/revisions
+- add psid to the patchset structure and pass through tree
+  once just to assign the numbers.  this allows reporting
+  psid when problems are found (above)
+- more code restructuring - move stats to own module
+- commenting cleanups
+
 2.0b1
 - major restructuring of source code.  single cvsps.c split into
   a few modules
