@@ -29,7 +29,6 @@ typedef struct _CvsFile
 
 typedef struct _PatchSet
 {
-    char id[16];
     time_t date;
     char author[64];
     char descr[CVS_LOG_MAX];
@@ -49,8 +48,9 @@ typedef struct _PatchSetMember
 static int ps_counter;
 static struct hash_table * file_hash;
 static void * ps_tree;
+static int timestamp_fuzz_factor = 300;
 
-
+static void parse_args(int, char *[]);
 static CvsFile * parse_file(const char *);
 static PatchSetMember * parse_revision(const char *);
 static PatchSet * get_patch_set(const char *, const char *, const char *);
@@ -60,7 +60,7 @@ static int compare_patch_sets(const void *, const void *);
 static void convert_date(time_t *, const char *);
 static int is_revision_metadata(const char *);
 
-int main()
+int main(int argc, char *argv[])
 {
     FILE * cvsfp;
     char buff[BUFSIZ];
@@ -72,7 +72,7 @@ int main()
     char logbuff[CVS_LOG_MAX];
     int have_log = 0;
     
-    //chdir("../pricing_engine");
+    parse_args(argc, argv);
 
     file_hash = create_hash_table(1023);
     ps_tree = NULL;
@@ -190,6 +190,30 @@ int main()
     exit(0);
 }
 
+static void usage(const char * str1, const char * str2)
+{
+    debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
+    exit(1);
+}
+
+static void parse_args(int argc, char *argv[])
+{
+    int i = 1;
+    while (i < argc)
+    {
+	if (strcmp(argv[i], "-f") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -f missing", "");
+
+	    timestamp_fuzz_factor = atoi(argv[i++]);
+	    continue;
+	}
+	
+	usage("invalid argument", argv[i]);
+    }
+}
+
 static CvsFile * parse_file(const char * buff)
 {
     CvsFile * retval;
@@ -237,7 +261,6 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
 	return NULL;
     }
 
-    sprintf(retval->id, "%d", ps_counter);
     convert_date(&retval->date, dte);
     strcpy(retval->author, author);
     strcpy(retval->descr, log);
@@ -255,7 +278,6 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
     {
 	debug(DEBUG_STATUS, "new patch set!");
 	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
-	ps_counter++;
     }
 
     return retval;
@@ -327,9 +349,9 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
 	tm = localtime(&ps->date);
 
 	printf("---------------------\n");
-	printf("PatchSet %s\n", ps->id);
+	printf("PatchSet %d\n", ps_counter++);
 	printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
-	       1900 + tm->tm_year, tm->tm_mon, tm->tm_mday, 
+	       1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	       tm->tm_hour, tm->tm_min, tm->tm_sec);
 	printf("Author: %s\n", ps->author);
 	printf("Log:\n%s", ps->descr);
@@ -352,25 +374,20 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 {
     const PatchSet * ps1 = (const PatchSet *)v_ps1;
     const PatchSet * ps2 = (const PatchSet *)v_ps2;
-    int ret;
     long diff;
+    int ret;
+
+    diff = ps1->date - ps2->date;
+
+    if (labs(diff) > timestamp_fuzz_factor)
+	return (diff < 0) ? -1 : 1;
 
     ret = strcmp(ps1->author, ps2->author);
 
     if (ret)
 	return ret;
 
-    ret = strcmp(ps1->descr, ps2->descr);
-
-    if (ret)
-	return ret;
-    
-    diff = ps1->date - ps2->date;
-
-    if (labs(diff) < 300)
-	return 0;
-
-    return (diff < 0) ? -1 : 1;
+    return strcmp(ps1->descr, ps2->descr);
 }
 
 static void convert_date(time_t * t, const char * dte)
@@ -384,6 +401,8 @@ static void convert_date(time_t * t, const char * dte)
 	   &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
     
     tm.tm_year -= 1900;
+    tm.tm_mon--;
+
     *t = mktime(&tm);
 }
 
