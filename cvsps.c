@@ -24,7 +24,7 @@
 #include "stats.h"
 #include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.70 2003/03/19 16:21:32 david Exp $");
+RCSID("$Id: cvsps.c,v 4.71 2003/03/19 22:11:09 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1029,23 +1029,6 @@ static void check_print_patch_set(PatchSet * ps)
     if (ps->psid < 0)
 	return;
 
-    if (restrict_date_start > 0 &&
-	(ps->date < restrict_date_start ||
-	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
-	return;
-
-    if (restrict_author && strcmp(restrict_author, ps->author) != 0)
-	return;
-
-    if (have_restrict_log && regexec(&restrict_log, ps->descr, 0, NULL, 0) != 0)
-	return;
-
-    if (restrict_file && !patch_set_contains_member(ps, restrict_file))
-	return;
-
-    if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
-	return;
-    
     /* the funk_factor overrides the restrict_tag_start and end */
     if (ps->funk_factor == FNK_SHOW_SOME || ps->funk_factor == FNK_SHOW_ALL)
 	goto ok;
@@ -1086,6 +1069,23 @@ static void check_print_patch_set(PatchSet * ps)
     }
 
  ok:
+    if (restrict_date_start > 0 &&
+	(ps->date < restrict_date_start ||
+	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
+	return;
+
+    if (restrict_author && strcmp(restrict_author, ps->author) != 0)
+	return;
+
+    if (have_restrict_log && regexec(&restrict_log, ps->descr, 0, NULL, 0) != 0)
+	return;
+
+    if (restrict_file && !patch_set_contains_member(ps, restrict_file))
+	return;
+
+    if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
+	return;
+    
     if (!list_empty(&show_patch_set_ranges))
     {
 	struct list_head * next = show_patch_set_ranges.next;
