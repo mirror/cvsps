@@ -692,3 +692,4 @@ static void strzncpy(char * dst, const char * src, int n)
     strncpy(dst, src, n);
     dst[n - 1] = 0;
 }
+
