@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.95 2003/04/03 19:48:02 david Exp $");
+RCSID("$Id: cvsps.c,v 4.96 2003/04/04 20:50:43 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -94,7 +94,7 @@ static const char * patch_set_dir;
 static const char * restrict_tag_start;
 static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
-static int restrict_tag_ps_end;
+static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
 static int bkcvs;
 static int no_rlog;
@@ -206,6 +206,20 @@ int main(int argc, char *argv[])
 
     if (statistics)
 	print_statistics(ps_tree);
+
+    /* check that the '-r' symbols (if specified) were resolved */
+    if (restrict_tag_start && restrict_tag_ps_start == 0 && 
+	strcmp(restrict_tag_start, "#CVSPS_EPOCH") != 0)
+    {
+	debug(DEBUG_APPERROR, "symbol given with -r: %s: not found", restrict_tag_start);
+	exit(1);
+    }
+
+    if (restrict_tag_end && restrict_tag_ps_end == INT_MAX)
+    {
+	debug(DEBUG_APPERROR, "symbol given with second -r: %s: not found", restrict_tag_end);
+	exit(1);
+    }
 
     twalk(ps_tree_bytime, show_ps_tree_node);
 
@@ -1266,37 +1280,16 @@ static void check_print_patch_set(PatchSet * ps)
     if (ps->funk_factor == FNK_HIDE_ALL)
 	return;
 
-    /* resolve the ps.id of the start and end tag restrictions if necessary */
-    if (restrict_tag_start && restrict_tag_ps_start == 0) 
+    if (ps->psid <= restrict_tag_ps_start)
     {
-	if (ps->tag && strcmp(ps->tag, restrict_tag_start) == 0)
-	    restrict_tag_ps_start = ps->psid;
+	if (ps->psid == restrict_tag_ps_start)
+	    debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps->psid, restrict_tag_start);
+	
+	return;
     }
-
-    if (restrict_tag_end && restrict_tag_ps_end == 0)
-    {
-	if (ps->tag && strcmp(ps->tag, restrict_tag_end) == 0)
-	    restrict_tag_ps_end = ps->psid;
-    }
-
-    /* 
-     * check the restriction, note: these id's may not be resolved, and
-     * that comes into play here.  keep in mind we may pass through
-     *  the tree multiple times.
-     */
-    if (restrict_tag_start)
-    {
-	if (restrict_tag_ps_start == 0 || ps->psid <= restrict_tag_ps_start)
-	{
-	    if (ps->psid == restrict_tag_ps_start)
-		debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps->psid, restrict_tag_start);
-
-	    return;
-	}
-
-	if (restrict_tag_end && restrict_tag_ps_end > 0 && ps->psid > restrict_tag_ps_end)
-	    return;
-    }
+    
+    if (ps->psid > restrict_tag_ps_end)
+	return;
 
  ok:
     if (restrict_date_start > 0 &&
@@ -2126,6 +2119,31 @@ static void resolve_global_symbols()
 	}
 
 	ps->tag = sym->tag;
+
+	/* check if this ps is one of the '-r' patchsets */
+	if (restrict_tag_start && strcmp(restrict_tag_start, ps->tag) == 0)
+	    restrict_tag_ps_start = ps->psid;
+
+	/* the second -r implies -b */
+	if (restrict_tag_end && strcmp(restrict_tag_end, ps->tag) == 0)
+	{
+	    restrict_tag_ps_end = ps->psid;
+
+	    if (restrict_branch)
+	    {
+		if (strcmp(ps->branch, restrict_branch) != 0)
+		{
+		    debug(DEBUG_APPMSG1, 
+			  "WARNING: -b option and second -r have conflicting branches: %s %s", 
+			  restrict_branch, ps->branch);
+		}
+	    }
+	    else
+	    {
+		debug(DEBUG_APPMSG1, "NOTICE: implicit branch restriction set to %s", ps->branch);
+		restrict_branch = ps->branch;
+	    }
+	}
 
 	/* 
 	 * Second pass. 
