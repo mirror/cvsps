@@ -12,6 +12,8 @@ typedef struct _PatchSet PatchSet;
 typedef struct _PatchSetMember PatchSetMember;
 typedef struct _PatchSetRange PatchSetRange;
 typedef struct _CvsFileRevision CvsFileRevision;
+typedef struct _GlobalSymbol GlobalSymbol;
+typedef struct _Tag Tag;
 
 struct _CvsFileRevision
 {
@@ -35,20 +37,26 @@ struct _CvsFileRevision
      * for linking this 'branch head' into the parent revision list
      */
     struct list_head link;
+
     /*
-     * temporary link used by internal functions building lists
-     * on the stack.  use with caution.
+     * A list of all Tag structures tagging this revision
      */
-    struct list_head tmp_link;
+    struct list_head tags;
 };
 
 struct _CvsFile
 {
     char *filename;
-    struct hash_table * revisions;
-    struct hash_table * branches;     /* branch to branch_sym map */
-    struct hash_table * branches_sym; /* branch_sym to branch map */
-    struct hash_table * symbols;
+    struct hash_table * revisions;    /* rev_str to revision [CvsFileRevision*] */
+    struct hash_table * branches;     /* branch to branch_sym map [char*]       */
+    struct hash_table * branches_sym; /* branch_sym to branch map [char*]       */
+    struct hash_table * symbols;      /* tag to revision [CvsFileRevision*]     */
+    /* 
+     * this is a hack. when we initially create entries in the symbol hash
+     * we don't have the branch info, so the CvsFileRevisions get created 
+     * with the branch attribute NULL.  Later we need to resolve these.
+     */
+    int have_branches;
 };
 
 struct _PatchSet
@@ -76,6 +84,22 @@ struct _PatchSetRange
     int min_counter;
     int max_counter;
     struct list_head link;
+};
+
+struct _GlobalSymbol
+{
+    char * tag;
+    PatchSet * ps;
+    struct list_head tags;
+};
+
+struct _Tag
+{
+    GlobalSymbol * sym;
+    CvsFileRevision * rev;
+    char * tag;
+    struct list_head global_link;
+    struct list_head rev_link;
 };
 
 #endif /* CVSPS_TYPES_H */

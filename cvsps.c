@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.44 2003/02/26 00:11:14 david Exp $");
+RCSID("$Id: cvsps.c,v 4.45 2003/02/26 22:36:05 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -75,6 +75,7 @@ static void parse_args(int, char *[]);
 static void load_from_cvs();
 static void init_strip_path();
 static CvsFile * parse_file(const char *);
+static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
@@ -89,7 +90,6 @@ static PatchSet * create_patchset();
 static PatchSetRange * create_patchset_range();
 static void parse_sym(CvsFile *, char *);
 static void print_statistics(void);
-static void resolve_file_symbols();
 static void resolve_global_symbols();
 static int revision_affects_branch(CvsFileRevision *, const char *);
 
@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
 	do_write_cache = 1;
     }
 
-    resolve_file_symbols();
     resolve_global_symbols();
 
     if (do_write_cache)
@@ -214,7 +213,11 @@ static void load_from_cvs()
 	    break;
 	case NEED_EOS:
 	    if (!isspace(buff[0]))
+	    {
+		/* see cvsps_types.h for commentary on have_branches */
+		file->have_branches = 1;
 		state = NEED_START_LOG;
+	    }
 	    else
 		parse_sym(file, buff);
 	    break;
@@ -233,9 +236,9 @@ static void load_from_cvs()
 
 		/* 
 		 * rev may already exist (think cvsps -u), in which
-		 * case cvs_file_add_revision is a hash lookup
+		 * case parse_revision is a hash lookup
 		 */
-		rev = cvs_file_add_revision(file, new_rev);
+		rev = parse_revision(file, new_rev);
 
 		/* 
 		 * in the simple case, we are copying rev to psm->pre_rev
@@ -977,7 +980,7 @@ static void print_patch_set(PatchSet * ps)
 	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
-    printf("Branch: %s\n", ps->branch ? ps->branch : "HEAD");
+    printf("Branch: %s\n", ps->branch);
     printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", ps->valid_tag ? "" : "**INVALID**");
     printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
@@ -1037,7 +1040,7 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     if (ret)
 	    return ret;
 
-    ret = strcmp(ps1->branch ? ps1->branch :"", ps2->branch ? ps2->branch : "");
+    ret = strcmp(ps1->branch, ps2->branch);
     if (ret)
 	return ret;
 
@@ -1072,7 +1075,7 @@ static int compare_patch_sets_bytime(const void * v_ps1, const void * v_ps2)
     if (ret)
 	return ret;
 
-    ret = strcmp(ps1->branch ? ps1->branch :"", ps2->branch ? ps2->branch : "");
+    ret = strcmp(ps1->branch, ps2->branch);
     return ret;
 }
 
@@ -1173,9 +1176,8 @@ static void do_cvs_diff(PatchSet * ps)
     }
 }
 
-CvsFileRevision * cvs_file_add_revision(CvsFile * file, char * rev_str)
+static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str)
 {
-    CvsFileRevision * rev;
     char * p;
 
     /* The "revision" log line can include extra information 
@@ -1187,18 +1189,42 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, char * rev_str)
 	    p++;
     *p = 0;
 
+    return cvs_file_add_revision(file, rev_str);
+}
+
+CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
+{
+    CvsFileRevision * rev;
+
     if (!(rev = (CvsFileRevision*)get_hash_object(file->revisions, rev_str)))
     {
-	char branch_str[REV_STR_MAX];
-
 	rev = (CvsFileRevision*)calloc(1, sizeof(*rev));
 	rev->rev = get_string(rev_str);
 	rev->file = file;
 	rev->pre_psm = NULL;
 	rev->post_psm = NULL;
 	INIT_LIST_HEAD(&rev->branch_children);
+	INIT_LIST_HEAD(&rev->tags);
 	
 	put_hash_object(file->revisions, rev_str, rev);
+
+	debug(DEBUG_STATUS, "added revision %s to file %s", rev_str, file->filename);
+    }
+    else
+    {
+	debug(DEBUG_STATUS, "found revision %s to file %s", rev_str, file->filename);
+    }
+
+    /* 
+     * note: we are guaranteed to get here at least once with 'have_branches' == 1.
+     * we may pass through once before this, because of symbolic tags, then once
+     * always when processing the actual revision logs
+     *
+     * rev->branch will always be set to something, maybe "HEAD"
+     */
+    if (!rev->branch && file->have_branches)
+    {
+	char branch_str[REV_STR_MAX];
 
 	/* determine the branch this revision was committed on */
 	if (!get_branch(branch_str, rev->rev))
@@ -1206,18 +1232,24 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, char * rev_str)
 	    debug(DEBUG_APPERROR, "invalid rev format", rev->rev);
 	    exit(1);
 	}
-
+	
 	rev->branch = (char*)get_hash_object(file->branches, branch_str);
 	
 	/* if there's no branch and it's not on the trunk, blab */
-	if (!rev->branch && get_branch(branch_str, branch_str))
-	    debug(DEBUG_APPERROR, "warning: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+	if (!rev->branch)
+	{
+	    if (get_branch(branch_str, branch_str))
+	    {
+		debug(DEBUG_APPERROR, "warning: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+		rev->branch = "#CVSPS_NO_BRANCH";
+	    }
+	    else
+	    {
+		rev->branch = "HEAD";
+	    }
+	}
 
-	debug(DEBUG_STATUS, "added revision %s to file %s branch %s", rev_str, file->filename, rev->branch ? rev->branch : "HEAD");
-    }
-    else
-    {
-	debug(DEBUG_STATUS, "found revision %s to file %s", rev_str, file->filename);
+	debug(DEBUG_STATUS, "revision %s of file %s on branch %s", rev->rev, rev->file->filename, rev->branch);
     }
 
     return rev;
@@ -1233,6 +1265,7 @@ CvsFile * create_cvsfile()
     f->branches = create_hash_table(1);
     f->branches_sym = create_hash_table(1);
     f->symbols = create_hash_table(1);
+    f->have_branches = 0;
 
     if (!f->revisions || !f->branches || !f->branches_sym)
     {
@@ -1296,6 +1329,17 @@ CvsFileRevision * file_get_revision(CvsFile * file, const char * r)
     return rev;
 }
 
+/*
+ * Parse lines in the format:
+ * 
+ * <white space>tag_name: <rev>;
+ *
+ * Handles both regular tags (these go into the symbols hash)
+ * and magic-branch-tags (second to last node of revision is 0)
+ * which go into branches and branches_sym hashes.  Magic-branch
+ * format is hidden in CVS everwhere except the 'cvs log' output.
+ */
+
 static void parse_sym(CvsFile * file, char * sym)
 {
     char * tag = sym, *eot;
@@ -1303,14 +1347,6 @@ static void parse_sym(CvsFile * file, char * sym)
     char rev[REV_STR_MAX];
     char rev2[REV_STR_MAX];
     
-    /* this routine looks for and parses lines formatted as:
-     * <white space>tag_name: <rev>;
-     * where rev is a sequence of integers separated by '.'
-     * Some have the second to last number is a 0.  This is
-     * the 'magic-branch-tag' format used internally to CVS
-     * and made visible in the 'cvs log' command.
-     */
-
     while (*tag && isspace(*tag))
 	tag++;
 
@@ -1349,15 +1385,44 @@ static void parse_sym(CvsFile * file, char * sym)
 	strcpy(rev, eot);
 	chop(rev);
 
-	debug(DEBUG_STATUS, "adding symbol to file: %s %s->%s", file->filename, tag, rev);
-	put_hash_object(file->symbols, tag, get_string(rev));
-	
-	/*
-	 * check the global_symbols
-	 */
-	if (!get_hash_object(global_symbols, tag))
-	    put_hash_object(global_symbols, tag, NULL);
+	cvs_file_add_symbol(file, rev, tag);
+
     }
+}
+
+void cvs_file_add_symbol(CvsFile * file, const char * rev_str, const char * p_tag_str)
+{
+    CvsFileRevision * rev;
+    GlobalSymbol * sym;
+    Tag * tag;
+
+    /* get a permanent storage string */
+    char * tag_str = get_string(p_tag_str);
+
+    debug(DEBUG_STATUS, "adding symbol to file: %s %s->%s", file->filename, tag_str, rev_str);
+    rev = cvs_file_add_revision(file, rev_str);
+    put_hash_object(file->symbols, tag_str, rev);
+    
+    /*
+     * check the global_symbols
+     */
+    sym = (GlobalSymbol*)get_hash_object(global_symbols, tag_str);
+    if (!sym)
+    {
+	sym = (GlobalSymbol*)malloc(sizeof(*sym));
+	sym->tag = tag_str;
+	sym->ps = NULL;
+	INIT_LIST_HEAD(&sym->tags);
+
+	put_hash_object(global_symbols, tag_str, sym);
+    }
+
+    tag = (Tag*)malloc(sizeof(*tag));
+    tag->tag = tag_str;
+    tag->rev = rev;
+    tag->sym = sym;
+    list_add(&tag->global_link, &sym->tags);
+    list_add(&tag->rev_link, &rev->tags);
 }
 
 char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
@@ -1373,7 +1438,8 @@ char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
     }
 
     new_tag = get_string(tag);
-    new_rev = get_string(rev);
+    new_rev = get_string(rev); 
+
     put_hash_object(file->branches, new_rev, new_tag);
     put_hash_object(file->branches_sym, new_tag, new_rev);
     
@@ -1505,32 +1571,6 @@ static void print_statistics(void)
 }
 
 /*
- * Resolve the entries in file->symbols from string
- * representations of the revision to pointers
- * to the revisions themselves.  This isn't done
- * at parsing time because the symbols are parsed before
- * the actual revision info in the 'cvs log' output.
- */
-
-static void resolve_file_symbols()
-{
-    struct hash_entry * he;
-    reset_hash_iterator(file_hash);
-    while ((he = next_hash_entry(file_hash)))
-    {
-	CvsFile * file = (CvsFile*)he->he_obj;
-	struct hash_entry * he_sym;
-	reset_hash_iterator(file->symbols);
-	while ((he_sym = next_hash_entry(file->symbols)))
-	{
-	    CvsFileRevision * rev = file_get_revision(file, (char*)he_sym->he_obj);
-	    he_sym->he_obj = rev;
-	    debug(DEBUG_STATUS, "resolved %s: %s->%s", file->filename, he_sym->he_key, rev->rev);
-	}
-    }
-}
-
-/*
  * Resolve each global symbol to a PatchSet.  This is
  * not necessarily doable, because tagging isn't 
  * necessarily done to the project as a whole, and
@@ -1549,42 +1589,24 @@ static void resolve_global_symbols()
     reset_hash_iterator(global_symbols);
     while ((he_sym = next_hash_entry(global_symbols)))
     {
-	struct hash_entry * he;
+	GlobalSymbol * sym = (GlobalSymbol*)he_sym->he_obj;
+
 	/* FIXME: LONG_MAX is possibly bad, but how can we do this? */
 	time_t valid_until = LONG_MAX;
 	PatchSet * ps;
+	struct list_head * next;
 
-	/* build a list of revisions at this tag - used below */
-	struct list_head revisions;
-	    
-	INIT_LIST_HEAD(&revisions);
-	reset_hash_iterator(file_hash);
+	debug(DEBUG_STATUS, "resolving global symbol %s", sym->tag);
 
-	debug(DEBUG_STATUS, "resolving global symbol %s", he_sym->he_key);
-
-	while ((he = next_hash_entry(file_hash)))
+	for (next = sym->tags.next; next != &sym->tags; next = next->next)
 	{
-	    CvsFile * file = (CvsFile*)he->he_obj;
-	    CvsFileRevision * rev = (CvsFileRevision*)get_hash_object(file->symbols, (char*)he_sym->he_key);
-
-	    if (!rev)
-	    {
-		debug(DEBUG_STATUS, "no rev for %s in %s", he_sym->he_key, file->filename);
-		continue;
-	    }
-
-	    list_add(&rev->tmp_link, &revisions);
+	    Tag * tag = list_entry(next, Tag, global_link);
+	    CvsFileRevision * rev = tag->rev;
 
 	    ps = rev->post_psm->ps;
 
-	    if (he_sym->he_obj)
-	    {
-		PatchSet * ps2 = (PatchSet*)he_sym->he_obj;
-		if (ps->date < ps2->date)
-		    ps = ps2;
-	    }
-
-	    he_sym->he_obj = ps;
+	    if (!sym->ps || ps->date > sym->ps->date)
+		sym->ps = ps;
 
 	    /*
 	     * The revision's pre_psm->ps SHOULD be the PatchSet
@@ -1604,12 +1626,12 @@ static void resolve_global_symbols()
 	    }
 	}
 
-	ps = (PatchSet*)he_sym->he_obj;
+	ps = sym->ps;
 
 	if (!ps)
-	    debug(DEBUG_APPERROR, "no patchset for tag %s", he_sym->he_key);
+	    debug(DEBUG_APPERROR, "no patchset for tag %s", sym->tag);
 	else
-	    ps->tag = he_sym->he_key;
+	    ps->tag = sym->tag;
 
 	/* 
 	 * if this is an invalid patchset, check which members
@@ -1621,9 +1643,10 @@ static void resolve_global_symbols()
 
 	    ps->valid_tag = 0;
 
-	    for (next = revisions.next; next != &revisions; next = next->next)
+	    for (next = sym->tags.next; next != &sym->tags; next = next->next)
 	    {
-		CvsFileRevision * rev = list_entry(next, CvsFileRevision, tmp_link);
+		Tag * tag = list_entry(next, Tag, global_link);
+		CvsFileRevision * rev = tag->rev;
 
 		if (!rev->pre_psm)
 		    continue;
@@ -1633,7 +1656,7 @@ static void resolve_global_symbols()
 		    CvsFileRevision * next_rev = rev->pre_psm->post_rev;
 		    if (revision_affects_branch(next_rev, ps->branch))
 			debug(DEBUG_APPERROR, "file %s revision %s tag %s: TAG VIOLATION",
-			      rev->file->filename, rev->rev, (char*)he_sym->he_key);
+			      rev->file->filename, rev->rev, sym->tag);
 		}
 	    }
 	}
@@ -1643,7 +1666,7 @@ static void resolve_global_symbols()
 static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
 {
     /* special case the branch called 'HEAD' */
-    if (!branch || strcmp(branch, "HEAD") == 0)
+    if (strcmp(branch, "HEAD") == 0)
     {
 	/* look for only one '.' in rev */
 	char * p = strchr(rev->rev, '.');
