@@ -24,7 +24,7 @@
 #include "stats.h"
 #include "cap.h"
 
-RCSID("$Id: cvsps.c,v 4.68 2003/03/18 23:29:30 david Exp $");
+RCSID("$Id: cvsps.c,v 4.69 2003/03/19 15:39:29 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -193,7 +193,6 @@ static void load_from_cvs()
     int have_log = 0;
     char cmd[BUFSIZ];
     char date_str[64];
-    int bk_log_border = 1;
     char use_rep_buff[PATH_MAX];
     char * ltype;
 
@@ -356,48 +355,7 @@ static void load_from_cvs()
 	    }
 	    break;
 	case NEED_EOM:
-	    /* adaptive crap filter mode (bkcvs only) :-( 
-	     *
-	     * There is no one way to parse the bk-cvs log files.
-	     * There are currently three three known aberrations
-	     * 1) The '(Logical change x.yyyy)' text is missing from
-	     *    the log message.  If this were always there, we 
-	     *    could always use the bk_log_border logic.
-	     * 2) Someone has committed 'cvs log' text into the log.
-	     *    this causes false 'end of log message' detection.
-	     *    We detect this by looking for 'revision %d.%d' 
-	     *    in the log text.
-	     * 3) Like 2) above, but where the very first line is the
-	     *    log separator, so we have no chance to detect 2).
-	     * 
-	     * Handling 2) and 3) is done by detection, then enabling
-	     * bk_log_border mode.  Hopefully there is no combination
-	     * of 1) with 2) or 3) or we are screwed.
-	     */
-	    {
-		int cr1, cr2;
-		if (bkcvs && sscanf(buff, "revision %d.%d", &cr1, &cr2) == 2)
-		    bk_log_border = 0;
-		if (bkcvs && !have_log && strncmp(buff, "----------", 10) == 0)
-		    bk_log_border = 0;
-	    }
-
-	    /* if bk_log_border is 0, we must find bk_log_border first */
-	    if (bkcvs && !bk_log_border)
-	    {
-		char * p = buff; 
-
-		/* deletes have '}' prefixing the logical change string */
-		if (*p == '}') p++;
-
-		if (strcmp(file->filename, "ChangeSet") == 0)
-		    bk_log_border = 1;
-		else if (strncmp(p, "(Logical change", 15) == 0)
-		    bk_log_border = 1;
-	    }
-
-	    /* normal log border detection */
-	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0 && (!bkcvs || bk_log_border))
+	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0)
 	    {
 		if (psm)
 		{
@@ -408,7 +366,6 @@ static void load_from_cvs()
 		logbuff[0] = 0;
 		loglen = 0;
 		have_log = 0;
-		bk_log_border = 1;
 		state = NEED_REVISION;
 	    }
 	    else if (strcmp(buff, CVS_FILE_BOUNDARY) == 0)
@@ -423,7 +380,6 @@ static void load_from_cvs()
 		logbuff[0] = 0;
 		loglen = 0;
 		have_log = 0;
-		bk_log_border = 1;
 		psm = NULL;
 		file = NULL;
 		state = NEED_FILE;
@@ -1418,6 +1374,7 @@ static void do_cvs_diff(PatchSet * ps)
     struct list_head * next;
     const char * dtype;
     const char * dopts;
+    const char * utype;
     char use_rep_path[PATH_MAX];
 
     fflush(stdout);
@@ -1427,12 +1384,14 @@ static void do_cvs_diff(PatchSet * ps)
     {
 	dopts = "-u";
 	dtype = "rdiff";
+	utype = "co";
 	sprintf(use_rep_path, "%s/", repository_path);
     }
     else
     {
 	dopts = diff_opts ? diff_opts : "-u";
 	dtype = "diff";
+	utype = "update";
 	use_rep_path[0] = 0;
     }
 
@@ -1460,23 +1419,36 @@ static void do_cvs_diff(PatchSet * ps)
 	    continue;
 	}
 
+	/* 
+	 * When creating diffs for INITIAL or DEAD revisions, we have to use 'cvs co'
+	 * or 'cvs update' to get the file, because cvs won't generate these diffs.
+	 * The problem is that this must be piped to diff, and so the resulting
+	 * diff doesn't contain the filename anywhere! (diff between - and /dev/null).
+	 * sed is used to replace the '-' with the filename. 
+	 */
+
 	/*
 	 * It's possible for pre_rev to be a 'dead' revision.
-	 * this happens when a file is added on a branch
+	 * this happens when a file is added on a branch.
 	 */
 	if (!psm->pre_rev || psm->pre_rev->dead)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff %s /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
-		     norc, psm->post_rev->rev, psm->file->filename, dopts, psm->file->filename, psm->file->filename);
+	    /* a 'create file' diff */
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s /dev/null - | sed -e '2 s|^+++ -|+++ %s%s|g'",
+		     norc, utype, psm->post_rev->rev, use_rep_path, psm->file->filename, dopts, 
+		     use_rep_path, psm->file->filename);
 	}
 	else if (psm->post_rev->dead)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s|g' -e '2 s|^+++ /dev/null|+++ %s|g'",
-		     norc, psm->pre_rev->rev, psm->file->filename, dopts, psm->file->filename, psm->file->filename);
+	    /* a 'remove file' diff */
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s -p -r %s %s%s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s%s|g'",
+		     norc, utype, psm->pre_rev->rev, use_rep_path, psm->file->filename, dopts, 
+		     use_rep_path, psm->file->filename);
 	    
 	}
 	else
 	{
+	    /* a regular diff */
 	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -r %s -r %s %s%s",
 		     norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, use_rep_path, psm->file->filename);
 	}
