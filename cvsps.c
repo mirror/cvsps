@@ -49,8 +49,16 @@ static int ps_counter;
 static struct hash_table * file_hash;
 static void * ps_tree;
 static int timestamp_fuzz_factor = 300;
+static const char * restrict_author;
+static const char * restrict_file;
+static time_t restrict_date_start;
+static time_t restrict_date_end;
+static int show_patch_set;
+static char strip_path[PATH_MAX];
+static int strip_path_len;
 
 static void parse_args(int, char *[]);
+static void init_strip_path();
 static CvsFile * parse_file(const char *);
 static PatchSetMember * parse_revision(const char *);
 static PatchSet * get_patch_set(const char *, const char *, const char *);
@@ -59,6 +67,8 @@ static void show_ps_tree_node(const void *, const VISIT, const int);
 static int compare_patch_sets(const void *, const void *);
 static void convert_date(time_t *, const char *);
 static int is_revision_metadata(const char *);
+static int patch_set_contains_member(PatchSet *, const char *);
+static void do_cvs_diff(PatchSet *);
 
 int main(int argc, char *argv[])
 {
@@ -73,9 +83,9 @@ int main(int argc, char *argv[])
     int have_log = 0;
     
     parse_args(argc, argv);
-
     file_hash = create_hash_table(1023);
     ps_tree = NULL;
+    init_strip_path();
 
     cvsfp = popen("cvs log", "r");
 
@@ -201,17 +211,107 @@ static void parse_args(int argc, char *argv[])
     int i = 1;
     while (i < argc)
     {
-	if (strcmp(argv[i], "-f") == 0)
+	if (strcmp(argv[i], "-z") == 0)
 	{
 	    if (++i >= argc)
-		usage("argument to -f missing", "");
+		usage("argument to -z missing", "");
 
 	    timestamp_fuzz_factor = atoi(argv[i++]);
 	    continue;
 	}
 	
+	if (strcmp(argv[i], "-s") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -s missing", "");
+
+	    show_patch_set = atoi(argv[i++]);
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-a") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -a missing", "");
+
+	    restrict_author = argv[i++];
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-f") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -f missing", "");
+
+	    restrict_file = argv[i++];
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-d") == 0)
+	{
+	    time_t *pt;
+
+	    if (++i >= argc)
+		usage("argument to -d missing", "");
+
+	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
+	    convert_date(pt, argv[i++]);
+	    continue;
+	}
+
+	
 	usage("invalid argument", argv[i]);
     }
+}
+
+static void init_strip_path()
+{
+    FILE * fp;
+    char root_buff[PATH_MAX], rep_buff[PATH_MAX], *p;
+    int len;
+
+    if (!(fp = fopen("CVS/Root", "r")))
+    {
+	debug(DEBUG_SYSERROR, "Can't open CVS/Root");
+	exit(1);
+    }
+    
+    if (!fgets(root_buff, PATH_MAX, fp))
+    {
+	debug(DEBUG_APPERROR, "Error reading CVSROOT");
+	exit(1);
+    }
+
+    fclose(fp);
+	
+    p = strrchr(root_buff, ':');
+
+    if (!p)
+	p = root_buff;
+    else 
+	p++;
+
+    len = strlen(root_buff) - 1;
+    root_buff[len] = 0;
+    if (root_buff[len - 1] == '/')
+	root_buff[--len] = 0;
+
+    if (!(fp = fopen("CVS/Repository", "r")))
+    {
+	debug(DEBUG_SYSERROR, "Can't open CVS/Repository");
+	exit(1);
+    }
+
+    if (!fgets(rep_buff, PATH_MAX, fp))
+    {
+	debug(DEBUG_APPERROR, "Error reading repository path");
+	exit(1);
+    }
+    
+    rep_buff[strlen(rep_buff) - 1] = 0;
+    strip_path_len = sprintf(strip_path, "%s/%s/", p, rep_buff);
+
+    debug(DEBUG_STATUS, "strip_path: %s", strip_path);
 }
 
 static CvsFile * parse_file(const char * buff)
@@ -224,8 +324,37 @@ static CvsFile * parse_file(const char * buff)
     {
 	if ((retval = (CvsFile*)malloc(sizeof(*retval))))
 	{
-	    strcpy(retval->filename, buff + 10);
-	    chop(retval->filename);
+	    int len = strlen(buff + 10);
+	    char * p;
+	    
+	    /* chop the ",v" string and the "LF" */
+	    len -= 3;
+	    memcpy(retval->filename, buff + 10, len);
+	    retval->filename[len] = 0;
+	    
+	    if (strncmp(retval->filename, strip_path, strip_path_len) != 0)
+	    {
+		debug(DEBUG_APPERROR, "filename %s doesn't match strip_path %s", 
+		      retval->filename, strip_path);
+		exit(1);
+	    }
+
+	    /* remove from beginning the 'strip_path' string */
+	    len -= strip_path_len;
+	    memmove(retval->filename, retval->filename + strip_path_len, len);
+	    retval->filename[len] = 0;
+
+	    /* check if file is in the 'Attic/' and remove it */
+	    if ((p = strrchr(retval->filename, '/')) && 
+		p - retval->filename >= 5 && strncmp(p - 5, "Attic", 5) == 0)
+	    {
+		printf("before Attic/ replace %s\n", retval->filename);
+		memmove(p - 5, p + 1, len - (p - retval->filename + 1));
+		len -= 6;
+		retval->filename[len] = 0;
+		printf("after Attic replace %s\n", retval->filename);
+	    }
+
 	    INIT_LIST_HEAD(&retval->patch_sets);
 	    put_hash_object(file_hash, retval->filename, retval);
 	}
@@ -345,11 +474,30 @@ static void show_ps_tree_node(const void * nodep, const VISIT which, const int d
     case postorder:
     case leaf:
 	ps = *(PatchSet**)nodep;
-	next = ps->members.next;
+	ps_counter++;
+
+	if (show_patch_set > 0 && ps_counter == show_patch_set)
+	{
+	    do_cvs_diff(ps);
+	    exit(0);
+	}
+
+	if (restrict_date_start > 0 && 
+	    (ps->date < restrict_date_start ||
+	     (restrict_date_end > 0 && ps->date > restrict_date_end)))
+	    break;
+
+	if (restrict_author && strcmp(restrict_author, ps->author) != 0)
+	    break;
+
+	if (restrict_file && !patch_set_contains_member(ps, restrict_file))
+	    break;
+
 	tm = localtime(&ps->date);
+	next = ps->members.next;
 
 	printf("---------------------\n");
-	printf("PatchSet %d\n", ps_counter++);
+	printf("PatchSet %d\n", ps_counter);
 	printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
 	       1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	       tm->tm_hour, tm->tm_min, tm->tm_sec);
@@ -426,4 +574,32 @@ static int is_revision_metadata(const char * buff)
 	return 1;
 
     return 0;
+}
+
+static int patch_set_contains_member(PatchSet * ps, const char * file)
+{
+    struct list_head * next = ps->members.next;
+
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	
+	if (strstr(psm->file->filename, file))
+	    return 1;
+
+	next = next->next;
+    }
+
+    return 0;
+}
+
+static void do_cvs_diff(PatchSet * ps)
+{
+    struct list_head * next = ps->members.next;
+
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	next = next->next;
+    }
 }
