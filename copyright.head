@@ -1,5 +1,5 @@
 /*
- * Copyright 2001, 2002 David Mansfield and Cobite, Inc.
+ * Copyright 2001, 2002, 2003 David Mansfield and Cobite, Inc.
  * See COPYING file for license information 
  */
 

@@ -6,7 +6,9 @@ OBJS=\
 	cbtcommon/debug.o\
 	cbtcommon/hash.o\
 	cbtcommon/text_util.o\
-	cvsps.o
+	cvsps.o\
+	cache.o\
+	util.o
 
 all: cvsps
 

@@ -44,6 +44,12 @@ dist:
 	echo "Version: $(MAJOR).$(MINOR)" >dist/cvsps.spec
 	cat cvsps.spec.dist >>dist/cvsps.spec
 	cat copyright.head cvsps.c >dist/cvsps.c
+	cat copyright.head cvsps.h >dist/cvsps.h
+	cat copyright.head cache.c >dist/cache.c
+	cat copyright.head cache.h >dist/cache.h
+	cat copyright.head util.c >dist/util.c
+	cat copyright.head util.h >dist/util.h
+	cat copyright.head cvsps_types.h >dist/cvsps_types.h
 	cp README dist/
 	cp COPYING dist/
 	cp cvsps.1 dist/
