@@ -1,3 +1,15 @@
+2.0b9
+- remove Mbinary from valid-response list - can't handle it
+- much more (pedantic?) clean-up/close path in cvs_direct
+  to fix all of the lost data and hanging problems at close
+- added rlog capability to cvs_direct, switched main code
+  to use it.
+- added version capability to cvs_direct, now cvsps is 
+  completely independant of cvs binary for all operations!
+- added --root and repository command-line arguments,
+  now cvsps is completely indepentant of having working
+  directory!
+
 2.0b8
 - fix the cvs_rupdate calls to use the real repository
   instead of the mangled use_rep_path.  This broke

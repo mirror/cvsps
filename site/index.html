@@ -87,13 +87,15 @@ essentially gives you the equivalent to tagging before and after each commit.
 A description of the usage of cvsps tersely describes a lot of its features:
 <pre>
 $ cvsps -h
-Usage: cvsps [-h] [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;range&gt;[,&lt;range&gt;]]
-             [-a &lt;author&gt;] [-f &lt;file&gt;] [-d &lt;date1&gt; [-d &lt;date2&gt;]]
-             [-b &lt;branch&gt;]  [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]]
+
+Usage: cvsps [-h] [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;range&gt;[,&lt;range&gt;]]  
+             [-a &lt;author&gt;] [-f &lt;file&gt;] [-d &lt;date1&gt; [-d &lt;date2&gt;]] 
+             [-b &lt;branch&gt;]  [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]] 
              [-p &lt;directory&gt;] [-v] [-t] [--norc] [--summary-first]
              [--test-log &lt;captured cvs log file&gt;] [--bkcvs]
              [--no-rlog] [--diff-opts &lt;option string&gt;] [--cvs-direct]
-             [--debuglvl &lt;bitmask&gt;] [-Z &lt;compression&gt;]
+             [--debuglvl &lt;bitmask&gt;] [-Z &lt;compression&gt;] [--root &lt;cvsroot&gt;]
+             [&lt;repository&gt;]
 
 Where:
   -h display this informative message
@@ -124,8 +126,10 @@ Where:
   --cvs-direct enable built-in cvs client code
   --debuglvl &lt;bitmask&gt; enable various debug channels.
   -Z &lt;compression&gt; A value 1-9 which specifies amount of compression
+  --root &lt;cvsroot&gt; specify cvsroot.  overrides env. and working directory
+  &lt;repository&gt; apply cvsps to repository.  overrides working directory
 
-cvsps version 2.0b8
+cvsps version 2.0b9
 </pre>
 </table>
 
@@ -144,7 +148,8 @@ CVSps is GPLed software.  If you want more information on the GPL, visit:<br>
 <table cellpadding=3><tr><td>
 You can download the source tarball for CVSps here:
 <br>
-<a href="cvsps-2.0b8.tar.gz">cvsps-2.0b8.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b9.tar.gz">cvsps-2.0b9.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b8.tar.gz">cvsps-2.0b8.tar.gz</a><br>
 <a href="cvsps-2.0b7.tar.gz">cvsps-2.0b7.tar.gz</a><br>
 <a href="cvsps-2.0b6.tar.gz">cvsps-2.0b6.tar.gz</a><br>
 <a href="cvsps-2.0b5.tar.gz">cvsps-2.0b5.tar.gz</a><br>

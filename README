@@ -1,4 +1,4 @@
-CVSps (c) 2001,2002 David Mansfield
+CVSps (c) 2001,2002,2003 David Mansfield
 ------------------------------
 
 Overview.
@@ -15,11 +15,12 @@ information, it is often difficult to see what changes were committed
 Compiling.
 ---------
 
-CVSps is a simple program, all in one .c file, with a few utility modules.
+CVSps is a relatively small program, with only a few modules.
 The Makefile is very simple and should work in most GNU type environments.
 Unfortunately, I've only been able to test on Red Hat Linux, so YMMV.  As
 CVSps matures, I'm sure a more sophisticated build environment will evolve
-with it.  For now, just try 'make' and 'make install'.
+with it.  For now, just try 'make' and 'make install'.  If you have any 
+problems let me know.
 
 Running.
 -------

@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rlog] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>] [-Z <compression>]
+[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rlog] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>] [<repository>]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -97,6 +97,12 @@ enable various debug output channels.
 .TP
 .B \-Z <compression>
 A value 1-9 which specifies amount of compression.
+.TP
+.B \--root <cvsroot>
+Override the setting of CVSROOT (overrides working dir. and environment)
+.TP
+.B \<repository>
+Operate on the specified repository (overrides working dir.)
 .SH "NOTE ON TAG HANDLING"
 Tags are fundamentally 'file at a time' in cvs, but like everything else,
 it would be nice to imagine that they are 'repository at a time.'  The
