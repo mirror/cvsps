@@ -79,7 +79,7 @@ across cache-rebuilds.
 c) Limiting the patchset output.
 
 The default output of CVSps is to show all patchsets.  This can be
-filtered in one of three ways.  These flags can be combined to really
+filtered in one of many ways.  These flags can be combined to really
 limit the output to what you're interested in.
 
 By author.  With the -a <author> flag you limit the output to patchsets
@@ -100,6 +100,13 @@ display times as GMT, but parse dates as localtime, so when using the '-D'
 with cvs you need to convert from GMT to localtime in your head.  CVSps is
 not as fancy.  It treats all dates as if in localtime, and therefore you
 give CVSps dates the same way it gives them to you.
+
+By branch.  With the -b <branch> flag you limit the output to patchsets
+that have modified the history of the given branch.  Note, this 
+doesn't necessarily mean the commit itself was made on the branch, since
+the files in question may have existed prior to the branch point, in which
+case changes made to a given file before the branch point affect the file
+as it exists in the head of the branch. 
 
 d) viewing the changes made by a patchset.
 

@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.17 2001/11/16 17:26:30 david Exp $");
+RCSID("$Id: cvsps.c,v 4.18 2001/11/26 22:24:58 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -36,6 +36,7 @@ typedef struct _CvsFile
     char filename[PATH_MAX];
     struct hash_table * revisions;
     struct hash_table * branches;
+    struct hash_table * branches_sym;
 } CvsFile;
 
 typedef struct _PatchSet
@@ -64,6 +65,7 @@ static const char * restrict_author;
 static const char * restrict_file;
 static time_t restrict_date_start;
 static time_t restrict_date_end;
+static const char * restrict_branch;
 static int show_patch_set;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
@@ -85,6 +87,7 @@ static int compare_patch_sets(const void *, const void *);
 static void convert_date(time_t *, const char *);
 static int is_revision_metadata(const char *);
 static int patch_set_contains_member(PatchSet *, const char *);
+static int patch_set_affects_branch(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
 static void strzncpy(char *, const char *, int);
 static void write_cache();
@@ -329,7 +332,7 @@ static void usage(const char * str1, const char * str2)
 {
     debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
     debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] ");
-    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-v]");
+    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
@@ -341,6 +344,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
+    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
 
     exit(1);
@@ -414,6 +418,15 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "-b") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to -b missing", "");
+
+	    restrict_branch = argv[i++];
+	    continue;
+	}
+	
 	if (strcmp(argv[i], "-v") == 0)
 	{
 	    debuglvl = ~0;
@@ -575,7 +588,12 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
 static int get_branch_ext(char * buff, const char * rev, int * leaf)
 {
     char * p;
-    strcpy(buff, rev);
+    int len = strlen(rev);
+    
+    /* allow get_branch(buff, buff) without destroying contents */
+    memmove(buff, rev, len);
+    buff[len] = 0;
+
     p = strrchr(buff, '.');
     if (!p)
 	return 0;
@@ -671,6 +689,9 @@ static void check_print_patch_set(PatchSet * ps)
 	return;
 
     if (restrict_file && !patch_set_contains_member(ps, restrict_file))
+	return;
+
+    if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
 	return;
     
     print_patch_set(ps);
@@ -837,6 +858,45 @@ static int patch_set_contains_member(PatchSet * ps, const char * file)
 	if (strstr(psm->file->filename, file))
 	    return 1;
 
+	next = next->next;
+    }
+
+    return 0;
+}
+
+static int patch_set_affects_branch(PatchSet * ps, const char * branch)
+{
+    struct list_head * next = ps->members.next;
+
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	char * branch_rev = (char*)get_hash_object(psm->file->branches_sym, branch);
+	
+	if (branch_rev)
+	{
+	    char post_rev[REV_STR_MAX];
+	    char branch[REV_STR_MAX];
+	    int file_leaf, branch_leaf;
+
+	    strcpy(branch, branch_rev);
+
+	    /* first get the branch the file rev is on */
+	    if (get_branch_ext(post_rev, psm->post_rev, &file_leaf))
+	    {
+		branch_leaf = file_leaf;
+
+		/* check against branch and all branch ancestor branches */
+		do 
+		{
+		    debug(DEBUG_STATUS, "check %s against %s for %s", branch, post_rev, psm->file->filename);
+		    if (strcmp(branch, post_rev) == 0)
+			return (file_leaf <= branch_leaf);
+		}
+		while(get_branch_ext(branch, branch, &branch_leaf));
+	    }
+	}
+	
 	next = next->next;
     }
 
@@ -1163,8 +1223,13 @@ static CvsFile * create_cvsfile()
     if (!(f->branches = create_hash_table(111)))
 	goto out_free2_err;
 
+    if (!(f->branches_sym = create_hash_table(111)))
+	goto out_free3_err;
+    
     return f;
-
+    
+ out_free3_err:
+    destroy_hash_table(f->branches, NULL);
  out_free2_err:
     destroy_hash_table(f->revisions, NULL);
  out_free_err:
@@ -1291,6 +1356,7 @@ static void parse_sym(CvsFile * file, char * sym)
 static char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
 {
     char * new_tag;
+    char * new_rev;
 
     if (get_hash_object(file->branches, rev))
     {
@@ -1300,7 +1366,9 @@ static char * cvs_file_add_branch(CvsFile * file, const char * rev, const char *
     }
 
     new_tag = strdup(tag);
-    put_hash_object(file->branches, rev, new_tag);
+    new_rev = strdup(rev);
+    put_hash_object(file->branches, new_rev, new_tag);
+    put_hash_object(file->branches_sym, new_tag, new_rev);
     
     return new_tag;
 }

@@ -24,6 +24,7 @@ install:
 
 this_clean:
 	rm -f *.o cvsps core
+	rm -fr dist/ htdocs/
 
 dist:
 	rm -fr dist/
