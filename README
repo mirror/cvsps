@@ -53,7 +53,7 @@ was last updated, use:
 cvsps -u
 
 If you question the integrity of the ~/.cvsps/cvsps.cache, or for some other reason
-want to force a full cache rebuild, use (you could alse 'rm' the cache):
+want to force a full cache rebuild, use (you could also 'rm' the cache file):
 
 cvsps -x
 
@@ -62,25 +62,37 @@ b) Reading the output.
 CVSps's output is information about patchsets.  A patchset looks like:
 
 ---------------------
-PatchSet 1701
-Date: 2001/11/06 19:49:04
-Author: joe
-Branch: v4_1-production-patches
-Tag: v4_1_1
+PatchSet 999
+Date: 2002/07/11 19:50:46
+Author: alan
+Branch: HEAD
+Tag: (none)
 Log:
-this release completes line summary find
+[PATCH] Fix several pdc202xx problems
 
-Members: 
-   Makefile:1.3.4.9->1.3.4.10
-   apache_mod/lineSummary.C:1.66.2.2->1.66.2.3
-   apache_mod/tbill_sql.C:1.59.2.5->1.59.2.6
+Misnaming of 20270 as 20268R
+Failure of LBA48 on 20262
+Incorrect speed detection because the old driver used host not drive side
+cable detect
+PDC202xx handling for quirks in udma reporting off some drives
+LBA48 for PIO mode
+
+BKrev: 3d2dd386wJMnehoOAhv3wL991IfXVQ
+
+Members:
+  ChangeSet:1.999->1.1000
+  MAINTAINERS:1.74->1.75
+  drivers/ide/ide-features.c:1.4->1.5
+  drivers/ide/ide-pci.c:1.18->1.19
+  drivers/ide/pdc202xx.c:1.11->1.12
+  include/linux/pci_ids.h:1.44->1.45
 
 ---------------------
 
-This patchset is taken from an internal project.  It shows the date, the
-author, log message and each file that was modified.  For each file the
-pre-commit and post-commit revisions are given.  In this case, you can see
-that the files are on a branch, and the branch is shown, as well as the
+This patchset is taken from the linux kernel BK->CVS tree.  It shows the date, 
+the author, log message and each file that was modified.  For each file the
+pre-commit and post-commit revisions are given.  You can also see (if 
+applicable, not in this case) if the files are on a branch, as well as the
 tag (see TAGS below).
 
 Patchsets are ordered by commit timestamp, so as long as the clock on your
@@ -93,12 +105,22 @@ The default output of CVSps is to show all patchsets.  This can be
 filtered in one of many ways.  These flags can be combined to really
 limit the output to what you're interested in.
 
+By id.  With the -s <ps range> you can specify individual PatchSets by
+number or by range.  Ranges can be of the form '<number>', '<number>-',
+'-<number>' and of course '<number>-<number>'.  Multiple ranges can be
+specified seperated by commas.  E.g.
+
+cvsps -s 999-1020,1025,4956-
+
 By author.  With the -a <author> flag you limit the output to patchsets
 committed by a given author.  The author is usually the UNIX login id.
 
-By file.  With the -f <file> flag you limit the output to patchsets that
-have modified the given file.  File is given as the BASENAME of the file,
-not the entire path. (I think!)
+By file.  With the -f <file regex> flag you limit the output to patchsets 
+that have modified the given file.  Because a regular expression can have
+many pieces 'or'ed together, you can specify many different files here,
+for example (note also the use of the ^ character):
+
+cvsps -f '^net/ipv4|^net/core'
 
 By date.  With one date specification, CVSps shows only patchsets newer
 than the date given, and with two dates, it shows patchsets between the
@@ -123,19 +145,18 @@ main branch, use a branch of 'HEAD'.
 By log comment.  With the -l <regex> flag you can limit the ouptut to
 patchsets with the commit message matching the regex.
 
-By tag.  With the -t <tag1> -t <tag2> you can limit the patchsets to
+By tag.  With the -r <tag1> -r <tag2> you can limit the patchsets to
 commits after a given tag1 and, optionally, before tag2.
 
 d) viewing the changes made by a patchset.
 
-To show the 'diff' output for a given patchset, use:
+To show the 'diff' output for a given patchset, use -g.
 
-cvsps -s <patchset number>[-<patchset number>[,<patchset-number>...]]
-
-It will show you the diff of changes made by the commit.  Some effort was
-made to ensure that the patches are valid, even in the case of removing or
-creating files, a case in which 'cvs diff' fails.  You can specify many
-patchsets using ranges, and many ranges separated by commas.
+It will show you the diff of changes made by the selected commits.
+Some effort was made to ensure that the patches are valid, even in the 
+case of removing or creating files, a case in which 'cvs diff' fails.  
+The patches generated are, generally speaking, applyable in the working
+directory with the '-p1' option to the patch command.
 
 e) what is timestamp fuzz factor (-z option)?
 
@@ -152,22 +173,7 @@ part of the same patchset.  The default fuzz is 300 seconds (5 minutes).
 TAGS
 ----
 
-As of version 2.0 cvsps supports tags.  What does this mean?  It's actually
-quite horrendous.  Intuitively, cvsps now supports the 'what has changed since
-release XYZ of my code?' where XYZ is a symbolic tag.  Another way of saying
-this would be 'what commits have been made since version XYZ of my code?'.
-
-This question assumes that XYZ is a 'sane' tag.  A 'sane' tag is the only 
-kind of tag cvsps really supports in a meaningful way.  A 'sane' tag is one
-applied to the entire repository at a time.  This will always be consistent.
-However, if you tag part of the repository, commit some changes, wait 6 months,
-and then tag the rest with the same tag, then the question: 'what commits have
-been made since version XYZ of my code?' is a bit difficult to answer.  A single
-commit may have changed a version pre-XYZ of file 'A' and a version post-XYZ of
-file 'B', and cvsps won't know what to do.
-
-Fortunately, cvsps detects these 'insane' tags, and they're labeled INVALID
-in the output.  Using 'cvs diff' is recommended in these cases.
+Please read the manual page.
 
 COMPATIBILITY
 -------------
@@ -221,5 +227,3 @@ all of the files in that subdirectory will be ignored.
 
 You can always run CVSps in that subdirectory, and since it IS a 
 separate repository, that does make a little bit of sense.
-
-
