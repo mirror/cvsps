@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.59 2003/03/17 15:17:00 david Exp $");
+RCSID("$Id: cvsps.c,v 4.60 2003/03/17 15:21:48 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -433,10 +433,10 @@ static void usage(const char * str1, const char * str2)
     if (str1)
 	debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
 
-    debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] ");
+    debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] ");
     debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>]");
-    debug(DEBUG_APPERROR, "             [-v] [-h] [-l <regex>] [-r <tag> [-r <tag>]]");
-    debug(DEBUG_APPERROR, "             [-p <directory>] [-t] [--no-rc] [--summary-first]");
+    debug(DEBUG_APPERROR, "             [-l <regex>] [-r <tag> [-r <tag>]] [-p <directory>]");
+    debug(DEBUG_APPERROR, "             [-v] [-h] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
@@ -446,15 +446,15 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -g generate diffs of the selected patch sets");
     debug(DEBUG_APPERROR, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
     debug(DEBUG_APPERROR, "  -a <author> restrict output to patch sets created by author");
-    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patch sets matching <regex> in log message");
     debug(DEBUG_APPERROR, "  -f <file> restrict output to patch sets involving file");
     debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
     debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
+    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patch sets affecting history of branch");
+    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patch sets matching <regex> in log message");
     debug(DEBUG_APPERROR, "  -r <tag1> -r <tag2> if just one tag specified, show");
     debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
     debug(DEBUG_APPERROR, "     revisions between the two tags.");
-    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patch sets affecting history of branch");
     debug(DEBUG_APPERROR, "  -p <directory> output patch sets to individual files in <directory>");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
