@@ -10,7 +10,7 @@ OBJS=$(DEP_OBJS)
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=2
-MINOR=0b1
+MINOR=0b2
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 

@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.56 2003/03/14 21:23:38 david Exp $");
+RCSID("$Id: cvsps.c,v 4.57 2003/03/16 21:45:03 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -47,6 +47,14 @@ const char * tag_flag_descr[] = {
     "**FUNKY**",
     "**INVALID**",
     "**INVALID**"
+};
+
+const char * fnk_descr[] = {
+    "",
+    "FNK_SHOW_SOME",
+    "FNK_SHOW_ALL",
+    "FNK_HIDE_ALL",
+    "FNK_HIDE_SOME"
 };
 
 /* static globals */
@@ -143,7 +151,9 @@ int main(int argc, char *argv[])
     ps_counter = 0;
     twalk(ps_tree_bytime, set_ps_id);
 
+    timing_start();
     resolve_global_symbols();
+    timing_stop("resolve_global_symbols()");
 
     if (do_write_cache)
 	write_cache(cache_date, ps_tree_bytime);
@@ -939,11 +949,11 @@ static void check_print_patch_set(PatchSet * ps)
 	return;
     
     /* the funk_factor overrides the restrict_tag_start and end */
-    if (ps->funk_factor < 0)
-	return;
-
-    if (ps->funk_factor > 0)
+    if (ps->funk_factor == FNK_SHOW_SOME || ps->funk_factor == FNK_SHOW_ALL)
 	goto ok;
+
+    if (ps->funk_factor == FNK_HIDE_ALL)
+	return;
 
     /* resolve the ps.id of the start and end tag restrictions if necessary */
     if (restrict_tag_start && restrict_tag_ps_start == 0) 
@@ -1035,13 +1045,16 @@ static void print_patch_set(PatchSet * ps)
 {
     struct tm * tm;
     struct list_head * next;
+    const char * funk = "";
 
     tm = localtime(&ps->date);
     next = ps->members.next;
     
+    funk = fnk_descr[ps->funk_factor];
+    
     /* this '---...' is different from the 28 hyphens that separate cvs log output */
     printf("---------------------\n");
-    printf("PatchSet %d %s\n", ps->psid, ps->funk_factor > 0 ? "(FUNKY)" :"");
+    printf("PatchSet %d %s\n", ps->psid, funk);
     printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
 	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
@@ -1054,12 +1067,20 @@ static void print_patch_set(PatchSet * ps)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	if (ps->funk_factor == FNK_SHOW_SOME && psm->bad_funk)
+	    funk = "(BEFORE START TAG)";
+	else if (ps->funk_factor == FNK_HIDE_SOME && !psm->bad_funk)
+	    funk = "(AFTER END TAG)";
+	else
+	    funk = "";
 
-	printf("\t%s:%s->%s%s\n", 
+	printf("\t%s:%s->%s%s %s\n", 
 	       psm->file->filename, 
 	       psm->pre_rev ? psm->pre_rev->rev : "INITIAL", 
 	       psm->post_rev->rev, 
-	       psm->post_rev->dead ? "(DEAD)": "");
+	       psm->post_rev->dead ? "(DEAD)": "",
+	       funk);
+
 	next = next->next;
     }
     
@@ -1399,7 +1420,9 @@ PatchSetMember * create_patch_set_member()
     PatchSetMember * psm = (PatchSetMember*)calloc(1, sizeof(*psm));
     psm->pre_rev = NULL;
     psm->post_rev = NULL;
+    psm->ps = NULL;
     psm->file = NULL;
+    psm->bad_funk = 0;
     return psm;
 }
 
@@ -1731,22 +1754,6 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	debug(DEBUG_STATUS, "ps->date %d next_ps->date %d rev->rev %s rev->branch %s", 
 	      ps->date, next_ps->date, rev->rev, rev->branch);
 
-	for (next = next_ps->members.next; next != &next_ps->members; next = next->next)
-	{
-	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	    if (before_tag(psm->post_rev, ps->tag))
-	    {
-		retval = TAG_INVALID;
-		debug(DEBUG_APPERROR, 
-		      "Invalid PatchSet %d, Tag %s:\n"
-		      "    %s:%s=after, %s:%s=before. Treated as 'before'", 
-		      next_ps->psid, ps->tag, 
-		      rev->file->filename, rev->rev, 
-		      psm->post_rev->file->filename, psm->post_rev->rev);
-		goto next;
-	    }
-	}
-
 	/*
 	 * If the ps->tag is one of the two possible '-r' tags
 	 * then the funkyness is even more important.
@@ -1756,13 +1763,44 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	 * be included.
 	 *
 	 * The restrict_tag_end case is similar, but backwards.
+	 *
+	 * Start assuming the HIDE/SHOW_ALL case, we will determine
+	 * below if we have a split ps case 
 	 */
 	if (restrict_tag_start && strcmp(ps->tag, restrict_tag_start) == 0)
-	    next_ps->funk_factor = 1;
+	    next_ps->funk_factor = FNK_SHOW_ALL;
 	if (restrict_tag_end && strcmp(ps->tag, restrict_tag_end) == 0)
-	    next_ps->funk_factor = -1;
+	    next_ps->funk_factor = FNK_HIDE_ALL;
 
-  next:
+	/*
+	 * if all of the other members of this patchset are also 'after' the tag
+	 * then this is a 'funky' patchset w.r.t. the tag.  however, if some are
+	 * before then the patchset is 'invalid' w.r.t. the tag, and we mark
+	 * the members individually with 'bad_funk' ,if this tag is the
+	 * '-r' tag.  Then we can actually split the diff on this patchset
+	 */
+	for (next = next_ps->members.next; next != &next_ps->members; next = next->next)
+	{
+	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	    if (before_tag(psm->post_rev, ps->tag))
+	    {
+		retval = TAG_INVALID;
+		/* only set bad_funk for one of the -r tags */
+		if (next_ps->funk_factor)
+		{
+		    psm->bad_funk = 1;
+		    next_ps->funk_factor = 
+			(next_ps->funk_factor == FNK_SHOW_ALL) ? FNK_SHOW_SOME : FNK_HIDE_SOME;
+		}
+		debug(DEBUG_APPERROR, 
+		      "Invalid PatchSet %d, Tag %s:\n"
+		      "    %s:%s=after, %s:%s=before. Treated as 'before'", 
+		      next_ps->psid, ps->tag, 
+		      rev->file->filename, rev->rev, 
+		      psm->post_rev->file->filename, psm->post_rev->rev);
+	    }
+	}
+
 	rev = rev_follow_branch(rev, ps->branch);
     }
 

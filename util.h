@@ -10,5 +10,7 @@ char *strrep(char *s, char find, char replace);
 char *get_cvsrc_dir();
 char *get_string(char const *str);
 void convert_date(time_t *, const char *);
+void timing_start();
+void timing_stop(const char *);
 
 #endif /* UTIL_H */

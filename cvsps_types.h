@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-#define LOG_STR_MAX 8192
+#define LOG_STR_MAX 32768
 #define AUTH_STR_MAX 64
 #define REV_STR_MAX 64
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -67,8 +67,30 @@ struct _PatchSetMember
     CvsFileRevision * post_rev;
     PatchSet * ps;
     CvsFile * file;
+    /*
+     * bad_funk is only set w.r.t the -r tags
+     */
+    int bad_funk;
     struct list_head link;
 };
+
+/* 
+ * these are bit flags for tag flags 
+ * they apply to any patchset that
+ * has an assoctiated tag
+ */
+#define TAG_FUNKY   0x1
+#define TAG_INVALID 0x2
+
+/* values for funk_factor. they apply
+ * only to the -r tags, to patchsets
+ * that have an odd relationship to the
+ * tag
+ */
+#define FNK_SHOW_SOME  1
+#define FNK_SHOW_ALL   2
+#define FNK_HIDE_ALL   3
+#define FNK_HIDE_SOME  4
 
 struct _PatchSet
 {
