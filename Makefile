@@ -11,6 +11,7 @@ LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=1
 MINOR=1
+CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 all: cvsps
 
@@ -30,7 +31,9 @@ dist:
 	rm -fr dist/
 	mkdir dist/
 	mkdir dist/cbtcommon
-	cp Makefile.dist dist/Makefile
+	echo MAJOR=$(MAJOR) >dist/Makefile
+	echo MINOR=$(MINOR) >>dist/Makefile
+	cat Makefile.dist >>dist/Makefile
 	cat copyright.head cvsps.c >dist/cvsps.c
 	cp README dist/
 	cp COPYING dist/

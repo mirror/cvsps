@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -O2 -Wall -I.
+CFLAGS=-g -O2 -Wall -I. -DVERSION=\"$(MAJOR).$(MINOR)\"
 OBJS=\
 	cbtcommon/debug.o\
 	cbtcommon/hash.o\
