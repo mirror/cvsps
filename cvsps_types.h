@@ -68,6 +68,13 @@ struct _PatchSet
     int valid_tag;
     char *branch;
     struct list_head members;
+    /*
+     * A 'branch add' patch set is a bogus patch set created automatically
+     * when a 'file xyz was initially added on branch abc'
+     * we want to ignore these.  fortunately, there's a way to detect them
+     * without resorting to looking at the log message.
+     */
+    int branch_add;
 };
 
 struct _PatchSetMember

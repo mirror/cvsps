@@ -82,6 +82,7 @@ enum
     CACHE_NEED_PS_TAG,
     CACHE_NEED_PS_VALID_TAG,
     CACHE_NEED_PS_BRANCH,
+    CACHE_NEED_PS_BRANCH_ADD,
     CACHE_NEED_PS_DESCR,
     CACHE_NEED_PS_EOD,
     CACHE_NEED_PS_MEMBERS,
@@ -100,6 +101,7 @@ time_t read_cache()
     char tagbuff[LOG_STR_MAX] = "";
     int valid_tag = 0;
     char branchbuff[LOG_STR_MAX] = "";
+    int branch_add = 0;
     char logbuff[LOG_STR_MAX] = "";
     time_t cache_date;
 
@@ -244,6 +246,15 @@ time_t read_cache()
 		/* remove prefix "branch: " and LF from len */
 		len -= 8;
 		strzncpy(branchbuff, buff + 8, MIN(len, LOG_STR_MAX));
+		state = CACHE_NEED_PS_BRANCH_ADD;
+	    }
+	    break;
+	case CACHE_NEED_PS_BRANCH_ADD:
+	    if (strncmp(buff, "branch_add:", 11) == 0)
+	    {
+		/* remove prefix "branch_add: " and LF from len */
+		len -= 12;
+		branch_add = atoi(buff + 12);
 		state = CACHE_NEED_PS_DESCR;
 	    }
 	    break;
@@ -260,6 +271,7 @@ time_t read_cache()
 		 * ps->tag = (strlen(tagbuff)) ? get_string(tagbuff) : NULL;
 		 * ps->valid_tag = valid_tag;
 		 */
+		ps->branch_add = branch_add;
 		state = CACHE_NEED_PS_MEMBERS;
 	    }
 	    else
@@ -281,6 +293,7 @@ time_t read_cache()
 		tagbuff[0] = 0;
 		valid_tag = 0;
 		branchbuff[0] = 0;
+		branch_add = 0;
 		logbuff[0] = 0;
 		state = CACHE_NEED_PS;
 	    }
@@ -288,8 +301,7 @@ time_t read_cache()
 	    {
 		PatchSetMember * psm = create_patch_set_member();
 		parse_cache_revision(psm, buff);
-		psm->ps = ps;
-		list_add(&psm->link, psm->ps->members.prev);
+		patch_set_add_member(ps, psm);
 	    }
 	    break;
 	}
@@ -470,6 +482,7 @@ static void dump_patch_set(FILE * fp, PatchSet * ps)
     fprintf(fp, "tag: %s\n", ps->tag ? ps->tag : "");
     fprintf(fp, "valid_tag: %d\n", ps->valid_tag);
     fprintf(fp, "branch: %s\n", ps->branch);
+    fprintf(fp, "branch_add: %d\n", ps->branch_add);
     fprintf(fp, "descr:\n%s", ps->descr); /* descr is guaranteed to end with LF */
     fprintf(fp, CACHE_DESCR_BOUNDARY);
     fprintf(fp, "members:\n");

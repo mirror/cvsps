@@ -10,5 +10,6 @@ char * cvs_file_add_branch(CvsFile *, const char *, const char *);
 PatchSet * get_patch_set(const char *, const char *, const char *, const char *);
 PatchSetMember * create_patch_set_member();
 CvsFileRevision * file_get_revision(CvsFile *, const char *);
+void patch_set_add_member(PatchSet * ps, PatchSetMember * psm);
 
 #endif /* CVSPS_H */

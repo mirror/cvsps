@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.48 2003/03/12 15:09:44 david Exp $");
+RCSID("$Id: cvsps.c,v 4.49 2003/03/12 16:13:43 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -94,6 +94,7 @@ static void print_statistics(void);
 static void resolve_global_symbols();
 static int revision_affects_branch(CvsFileRevision *, const char *);
 static int is_vendor_branch(const char *);
+static void set_psm_initial(PatchSetMember * psm);
 
 int main(int argc, char *argv[])
 {
@@ -257,7 +258,7 @@ static void load_from_cvs()
 		assign_pre_revision(psm, rev);
 
 		/*
-		 * if this is a new revision, it will have no psm associated.
+		 * if this is a new revision, it will have no post_psm associated.
 		 * otherwise we are (probably?) hitting the overlap in cvsps -u 
 		 */
 		if (!rev->post_psm)
@@ -319,8 +320,8 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    psm->ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
-		    list_add(&psm->link, psm->ps->members.prev);
+		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
+		    patch_set_add_member(ps, psm);
 		}
 
 		logbuff[0] = 0;
@@ -332,8 +333,8 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    psm->ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
-		    list_add(&psm->link, psm->ps->members.prev);
+		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
+		    patch_set_add_member(ps, psm);
 		    assign_pre_revision(psm, NULL);
 		}
 
@@ -824,7 +825,8 @@ static int get_branch(char * buff, const char * rev)
     return get_branch_ext(buff, rev, NULL);
 }
 
-/* the goal if this function is to determine what revision to assign to
+/* 
+ * the goal if this function is to determine what revision to assign to
  * the psm->pre_rev field.  usually, the log file is strictly 
  * reverse chronological, so rev is direct ancestor to psm, 
  * 
@@ -841,8 +843,9 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
     if (!rev)
     {
 	/* if psm was last rev. for file, it's either an 
-	 * INITIAL, or head of a branch.  to test if it's 
-	 * the head of a branch, do get_branch twice. 
+	 * INITIAL, or first rev of a branch.  to test if it's 
+	 * the first rev of a branch, do get_branch twice - 
+	 * this should be the bp.
 	 */
 	if (get_branch(post, psm->post_rev->rev) && 
 	    get_branch(pre, post))
@@ -852,7 +855,7 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 	}
 	else
 	{
-	    psm->pre_rev = NULL;
+	    set_psm_initial(psm);
 	}
 	return;
     }
@@ -894,7 +897,7 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
      */
     if (!get_branch(pre, post))
     {
-	psm->pre_rev = NULL;
+	set_psm_initial(psm);
 	return;
     }
     
@@ -904,6 +907,12 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 
 static void check_print_patch_set(PatchSet * ps)
 {
+    /*
+     * Ignore the 'BRANCH ADD' patchsets 
+     */
+    if (ps->branch_add)
+	return;
+
     ps_counter++;
 
     if (restrict_date_start > 0 &&
@@ -1330,6 +1339,7 @@ static PatchSet * create_patch_set()
 	ps->author = NULL;
 	ps->tag = NULL;
 	ps->valid_tag = 1;
+	ps->branch_add = 0;
     }
 
     return ps;
@@ -1764,4 +1774,23 @@ static int is_vendor_branch(const char * rev)
 	    dots++;
 
     return !(dots&1);
+}
+
+void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
+{
+    psm->ps = ps;
+    list_add(&psm->link, psm->ps->members.prev);
+
+    
+}
+
+static void set_psm_initial(PatchSetMember * psm)
+{
+    psm->pre_rev = NULL;
+    if (psm->post_rev->dead)
+    {
+	if (psm->ps->branch_add)
+	    debug(DEBUG_APPERROR, "branch_add already set!");
+	psm->ps->branch_add = 1;
+    }
 }
