@@ -13,7 +13,7 @@
 - add parsing of ~/.cvsps/cvspsrc file at startup
   where command line arguments can be listed, one
   per line (parameters to arguments on the same line
-  as the argument).  command line overrides.
+  as the argument). --norc prevents this
 
 2.0b6
 - fix bug where if -r was specified along with other

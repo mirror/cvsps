@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.83 2003/03/25 04:05:21 david Exp $");
+RCSID("$Id: cvsps.c,v 4.84 2003/03/25 05:18:13 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -137,11 +137,21 @@ int main(int argc, char *argv[])
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
-    if (parse_rc() < 0)
-	exit(1);
-
     if (parse_args(argc, argv) < 0)
 	exit(1);
+
+    if (strlen(norc) == 0 && parse_rc() < 0)
+	exit(1);
+
+    if (diff_opts && !cvs_direct && do_diff)
+    {
+	debug(DEBUG_APPMSG1, "\nWARNING: diff options are not supported by 'cvs rdiff'");
+	debug(DEBUG_APPMSG1, "         which is usually used to create diffs.  'cvs diff'");
+	debug(DEBUG_APPMSG1, "         will be used instead, but the resulting patches ");
+	debug(DEBUG_APPMSG1, "         will need to be applied using the '-p0' option");
+	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
+	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
+    }
 
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
@@ -781,16 +791,6 @@ static int parse_args(int argc, char *argv[])
 	}
 
 	return usage("invalid argument", argv[i]);
-    }
-
-    if (diff_opts && !cvs_direct && do_diff)
-    {
-	debug(DEBUG_APPMSG1, "\nWARNING: diff options are not supported by 'cvs rdiff'");
-	debug(DEBUG_APPMSG1, "         which is usually used to create diffs.  'cvs diff'");
-	debug(DEBUG_APPMSG1, "         will be used instead, but the resulting patches ");
-	debug(DEBUG_APPMSG1, "         will need to be applied using the '-p0' option");
-	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
-	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
     }
 
     return 0;
