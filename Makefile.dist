@@ -12,4 +12,7 @@ cvsps: $(OBJS)
 install:
 	install cvsps /usr/local/bin
 
-.PHONY: install
+clean:
+	rm -f cvsps *.o cbtcommon/*.o core
+
+.PHONY: install clean
