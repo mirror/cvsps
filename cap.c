@@ -101,15 +101,22 @@ int check_version_string(const char * str, int req_major, int req_minor, int req
 {
     char * p;
     int major, minor, extra;
+    int skip = 6;
 
     p = strstr(str, "(CVS) ");
+
+    if (!p) {
+	p = strstr(str, "(CVSNT)");
+	skip = 8;
+    }
+
     if (!p)
     {
 	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version str: %s", str);
 	return 0;
     }
 
-    p += 6;
+    p += skip;
     if (sscanf(p, "%d.%d.%d", &major, &minor, &extra) != 3)
     {	
 	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
