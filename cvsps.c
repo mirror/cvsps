@@ -14,7 +14,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.34 2003/02/24 20:44:32 david Exp $");
+RCSID("$Id: cvsps.c,v 4.35 2003/02/24 21:41:12 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -107,6 +107,7 @@ static time_t cache_date;
 static FILE * cache_fp;
 static int update_cache;
 static int ignore_cache;
+static int do_write_cache;
 static int statistics;
 static const char * norc = "";
 
@@ -200,8 +201,11 @@ int main(int argc, char *argv[])
     if (update_cache)
     {
 	load_from_cvs();
-	write_cache();
+	do_write_cache = 1;
     }
+
+    if (do_write_cache)
+	write_cache();
 
     if (statistics)
     {
