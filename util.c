@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <search.h>
+#include <time.h>
 #include <sys/stat.h>
 
 #include <cbtcommon/debug.h>
@@ -127,3 +128,29 @@ char *get_string(char const *str)
     return *res;
 }
 
+void convert_date(time_t * t, const char * dte)
+{
+    /* HACK: this routine parses two formats,
+     * 1) 'cvslog' format YYYY/MM/DD HH:MM:SS
+     * 2) time_t formatted as %d
+     */
+       
+    if (strchr(dte, '/'))
+    {
+	struct tm tm;
+	
+	memset(&tm, 0, sizeof(tm));
+	sscanf(dte, "%d/%d/%d %d:%d:%d", 
+	       &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
+	       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+	
+	tm.tm_year -= 1900;
+	tm.tm_mon--;
+	
+	*t = mktime(&tm);
+    }
+    else
+    {
+	*t = atoi(dte);
+    }
+}

@@ -9,5 +9,6 @@ char *readfile(char const *filename, char *buf, size_t size);
 char *strrep(char *s, char find, char replace);
 char *get_cvsrc_dir();
 char *get_string(char const *str);
+void convert_date(time_t *, const char *);
 
 #endif /* UTIL_H */

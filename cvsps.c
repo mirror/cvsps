@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.43 2003/02/25 21:28:12 david Exp $");
+RCSID("$Id: cvsps.c,v 4.44 2003/02/26 00:11:14 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -81,7 +81,6 @@ static void print_patch_set(PatchSet *);
 static void show_ps_tree_node(const void *, const VISIT, const int);
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime(const void *, const void *);
-static void convert_date(time_t *, const char *);
 static int is_revision_metadata(const char *);
 static int patch_set_contains_member(PatchSet *, const char *);
 static int patch_set_affects_branch(PatchSet *, const char *);
@@ -1077,32 +1076,6 @@ static int compare_patch_sets_bytime(const void * v_ps1, const void * v_ps2)
     return ret;
 }
 
-static void convert_date(time_t * t, const char * dte)
-{
-    /* HACK: this routine parses two formats,
-     * 1) 'cvslog' format YYYY/MM/DD HH:MM:SS
-     * 2) time_t formatted as %d
-     */
-       
-    if (strchr(dte, '/'))
-    {
-	struct tm tm;
-	
-	memset(&tm, 0, sizeof(tm));
-	sscanf(dte, "%d/%d/%d %d:%d:%d", 
-	       &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
-	       &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
-	
-	tm.tm_year -= 1900;
-	tm.tm_mon--;
-	
-	*t = mktime(&tm);
-    }
-    else
-    {
-	*t = atoi(dte);
-    }
-}
 
 static int is_revision_metadata(const char * buff)
 {
