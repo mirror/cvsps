@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.23 2001/12/05 21:17:32 david Exp $");
+RCSID("$Id: cvsps.c,v 4.24 2001/12/07 16:32:09 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -181,11 +181,8 @@ static void load_from_cvs()
 	switch(state)
 	{
 	case NEED_FILE:
-	    if (strncmp(buff, "RCS file", 8) == 0)
-	    {
-		file = parse_file(buff);
+	    if (strncmp(buff, "RCS file", 8) == 0 && (file = parse_file(buff)))
 		state = NEED_SYMS;
-	    }
 	    break;
 	case NEED_SYMS:
 	    if (strncmp(buff, "symbolic names:", 15) == 0)
@@ -349,7 +346,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
     debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
-    debug(DEBUG_APPERROR, "  -h display this informative this message");
+    debug(DEBUG_APPERROR, "  -h display this informative message");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -491,6 +488,16 @@ static void init_strip_path()
     }
     
     rep_buff[strlen(rep_buff) - 1] = 0;
+
+    /* some CVS have the CVSROOT string as part of the repository
+     * string (initial substring).  handle that case.
+     */
+    if (strncmp(p, rep_buff, strlen(p)) == 0)
+        strip_path_len = snprintf(strip_path, PATH_MAX, "%s/", rep_buff);
+    else
+        strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, rep_buff);
+
+
     strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, rep_buff);
 
     if (strip_path_len < 0)
@@ -516,9 +523,15 @@ static CvsFile * parse_file(const char * buff)
     
     if (strncmp(fn, strip_path, strip_path_len) != 0)
     {
-	debug(DEBUG_APPERROR, "filename %s doesn't match strip_path %s", 
+	/* FIXME: a subdirectory may have a different Repository path
+	 * than it's parent.  we'll fail the above test since strip_path
+	 * is global for the entire checked out tree (recursively).
+	 *
+	 * For now just ignore such files
+	 */
+	debug(DEBUG_APPERROR, "*** file %s doesn't match strip_path %s. ignoring", 
 	      fn, strip_path);
-	exit(1);
+	return NULL;
     }
 
     /* remove from beginning the 'strip_path' string */

@@ -1,3 +1,4 @@
+DEP_OBJS=cvsps.o
 include /cobite/share/libversions/Makefile.include-1
 
 #
@@ -6,11 +7,11 @@ include /cobite/share/libversions/Makefile.include-1
 #CFLAGS+=-fno-inline -fno-default-inline 
 #
 
-OBJS=cvsps.o
+OBJS=$(DEP_OBJS)
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=1
-MINOR=2
+MINOR=3
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 all: cvsps

@@ -2,6 +2,7 @@ CVSps (c) 2001 David Mansfield
 ------------------------------
 
 Overview.
+--------
 
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -12,14 +13,16 @@ information, it is often difficult to see what changes were committed
 'atomically' to the repository.
 
 Compiling.
+---------
 
 CVSps is a simple program, all in one .c file, with a few utility modules.
 The Makefile is very simple and should work in most GNU type environments.
 Unfortunately, I've only been able to test on Red Hat Linux, so YMMV.  As
 CVSps matures, I'm sure a more sophisticated build environment will evolve
-with in.  For now, just try 'make' and 'make install'.
+with it.  For now, just try 'make' and 'make install'.
 
 Running.
+-------
 
 CVSps operates by parsing the 'cvs log' output.  So to run it, you must
 be in the working directory of a cvs project.  CVSps handles
@@ -128,10 +131,11 @@ seconds, the 'commit time' as given in the log message for the first file
 will differ from that of the last file by 60 seconds.
 
 The fuzz factor attempts to workaround this by saying: commits by the same
-author, using the same log message, with in <fuzz> seconds are considered
+author, using the same log message, within <fuzz> seconds are considered
 part of the same patchset.  The default fuzz is 300 seconds (5 minutes).
 
 Reporting bugs / submitting patches.
+-----------------------------------
 
 Although the current version is perfect and bug free, you can still send
 bug reports, feature requests and patches to me at:
@@ -143,3 +147,21 @@ version of CVSps will always be available at http://www.cobite.com/cvsps
 
 Special thanks to my employer Cobite and Robert Lippman, who've given me
 time to develop this tool.
+
+Known Problems (this will become the FAQ if anyone ever A any Q).
+----------------------------------------------------------------
+
+1) What is the '*** file xyz doesn't match strip_path abc' error?
+
+This error occurs when one of the subdirectories of the directory you
+ran CVSps in is checked out from a different repository.  CVSps tries
+to remove the repository path information from the filenames that it
+gets to give you working-directory local pathnames.  It does this 
+at startup by parsing the CVS/Root and CVS/Repository files.  If 
+the contents of these two files is different for some subdirectory,
+all of the files in that subdirectory will be ignored. 
+
+You can always run CVSps in that subdirectory, and since it IS a 
+separate repository, that does make a little bit of sense.
+
+

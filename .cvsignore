@@ -6,3 +6,4 @@ cobite
 cvsps.cache*
 dist
 htdocs
+*.d
