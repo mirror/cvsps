@@ -10,7 +10,7 @@ OBJS=cvsps.o
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=1
-MINOR=0
+MINOR=1
 
 all: cvsps
 
