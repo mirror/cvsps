@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.46 2003/02/28 02:41:14 david Exp $");
+RCSID("$Id: cvsps.c,v 4.47 2003/02/28 14:30:42 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -52,6 +52,7 @@ static int update_cache;
 static int ignore_cache;
 static int do_write_cache;
 static int statistics;
+static const char * test_log_file;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
@@ -190,8 +191,12 @@ static void load_from_cvs()
     debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
 
     cache_date = time(NULL);
-    cvsfp = popen(cmd, "r");
-    //cvsfp = fopen("/local/david/cvs.log", "r");
+
+    /* for testing again and again without bashing a cvs server */
+    if (test_log_file)
+	cvsfp = fopen(test_log_file, "r");
+    else
+	cvsfp = popen(cmd, "r");
 
     if (!cvsfp)
     {
@@ -395,8 +400,10 @@ static void load_from_cvs()
 	exit(1);
     }
     
-    pclose(cvsfp);
-    //fclose(cvsfp);
+    if (test_log_file)
+	fclose(cvsfp);
+    else 
+	pclose(cvsfp);
 }
 
 static void usage(const char * str1, const char * str2)
@@ -612,6 +619,17 @@ static void parse_args(int argc, char *argv[])
 	    i++;
 	    continue;
 	}
+
+	if (strcmp(argv[i], "--test-log") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to --test-log missing", "");
+
+	    test_log_file = argv[i++];
+	    continue;
+	}
+
+
 
 	usage("invalid argument", argv[i]);
     }
