@@ -13,7 +13,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.28 2003/02/24 16:41:11 david Exp $");
+RCSID("$Id: cvsps.c,v 4.29 2003/02/24 16:45:16 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -33,23 +33,29 @@ enum
     NEED_EOM
 };
 
-typedef struct _CvsFile
+
+typedef struct _CvsFile CvsFile;
+typedef struct _PatchSet PatchSet;
+typedef struct _PatchSetMember PatchSetMember;
+typedef struct _PatchSetRange PatchSetRange;
+
+struct _CvsFile
 {
     char *filename;
     struct hash_table * revisions;
     struct hash_table * branches;
     struct hash_table * branches_sym;
-} CvsFile;
+};
 
-typedef struct _PatchSet
+struct _PatchSet
 {
     time_t date;
     char *descr;
     char *author;
     struct list_head members;
-} PatchSet;
+};
 
-typedef struct _PatchSetMember
+struct _PatchSetMember
 {
     char * pre_rev;
     char * post_rev;
@@ -57,14 +63,14 @@ typedef struct _PatchSetMember
     CvsFile * file;
     int dead_revision;
     struct list_head link;
-} PatchSetMember;
+};
 
-typedef struct _PatchSetRange
+struct _PatchSetRange
 {
     int min_counter;
     int max_counter;
     struct list_head link;
-} PatchSetRange;
+};
 
 static int ps_counter;
 static struct hash_table * file_hash;
