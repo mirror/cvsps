@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.51 2003/03/12 22:52:53 david Exp $");
+RCSID("$Id: cvsps.c,v 4.52 2003/03/12 23:48:37 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -942,6 +942,13 @@ static void check_print_patch_set(PatchSet * ps)
     if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
 	return;
     
+    /* the funk_factor overrides the restrict_tag_start and end */
+    if (ps->funk_factor < 0)
+	return;
+
+    if (ps->funk_factor > 0)
+	goto ok;
+
     /* resolve the ps.id of the start and end tag restrictions if necessary */
     if (restrict_tag_start && restrict_tag_ps_start == 0) 
     {
@@ -955,22 +962,26 @@ static void check_print_patch_set(PatchSet * ps)
 	    restrict_tag_ps_end = ps_counter;
     }
 
-    /* check the restriction, note: these id's may not be resolved, and
+    /* 
+     * check the restriction, note: these id's may not be resolved, and
      * that comes into play here.  keep in mind we may pass through
      *  the tree multiple times.
-     *
-     * FIXME: should the start restriction be >= comparison? (yes?)
-     * I.e. Do we want to see the diff leading up to the tag? (no?)
      */
     if (restrict_tag_start)
     {
-	if (restrict_tag_ps_start == 0 || restrict_tag_ps_start > ps_counter)
-	    return;
+	if (restrict_tag_ps_start == 0 || ps_counter <= restrict_tag_ps_start)
+	{
+	    if (ps_counter == restrict_tag_ps_start)
+		debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps_counter, restrict_tag_start);
 
-	if (restrict_tag_end && restrict_tag_ps_end > 0 && restrict_tag_ps_end < ps_counter)
+	    return;
+	}
+
+	if (restrict_tag_end && restrict_tag_ps_end > 0 && ps_counter > restrict_tag_ps_end)
 	    return;
     }
 
+ ok:
     if (!list_empty(&show_patch_set_ranges))
     {
 	struct list_head * next = show_patch_set_ranges.next;
@@ -1034,7 +1045,7 @@ static void print_patch_set(PatchSet * ps)
     
     /* this '---...' is different from the 28 hyphens that separate cvs log output */
     printf("---------------------\n");
-    printf("PatchSet %d\n", ps_counter);
+    printf("PatchSet %d %s\n", ps_counter, ps->funk_factor > 0 ? "(FUNKY)" :"");
     printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
 	   1900 + tm->tm_year, tm->tm_mon + 1, tm->tm_mday, 
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
@@ -1822,6 +1833,21 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	    if (before_tag(psm->post_rev, ps->tag))
 		return TAG_INVALID;
 	}
+
+	/*
+	 * If the ps->tag is one of the two possible '-r' tags
+	 * then the funkyness is even more important.
+	 *
+	 * In the restrict_tag_start case, this next_ps is chronologically
+	 * before ps, but tagwise after, so set the funk_factor so it will
+	 * be included.
+	 *
+	 * The restrict_tag_end case is similar, but backwards.
+	 */
+	if (restrict_tag_start && strcmp(ps->tag, restrict_tag_start) == 0)
+	    next_ps->funk_factor = 1;
+	if (restrict_tag_end && strcmp(ps->tag, restrict_tag_end) == 0)
+	    next_ps->funk_factor = -1;
 
 	rev = rev_follow_branch(rev, ps->branch);
     }
