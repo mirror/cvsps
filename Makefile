@@ -1,4 +1,4 @@
-DEP_OBJS=cvsps.o
+DEP_OBJS=cvsps.o cache.o
 CBT_DIR=/cobite
 include $(CBT_DIR)/share/libversions/Makefile.include-1
 
