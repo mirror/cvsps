@@ -13,7 +13,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.30 2003/02/24 17:40:03 david Exp $");
+RCSID("$Id: cvsps.c,v 4.31 2003/02/24 18:49:33 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -1130,7 +1130,11 @@ static void do_cvs_diff(PatchSet * ps)
 	char cmdbuff[PATH_MAX * 2+1];
 	cmdbuff[PATH_MAX*2] = 0;
 
-	if (!psm->pre_rev == 0)
+	/*
+	 * It's possible for pre_rev to be a 'dead' revision.
+	 * this happens when a file is added on a branch
+	 */
+	if (!psm->pre_rev || psm->pre_rev->dead)
 	{
 	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff -u /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
 		     norc, psm->post_rev->rev, psm->file->filename, psm->file->filename, psm->file->filename);
