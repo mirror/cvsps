@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.63 2003/03/18 01:35:50 david Exp $");
+RCSID("$Id: cvsps.c,v 4.64 2003/03/18 13:38:09 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -167,10 +167,9 @@ int main(int argc, char *argv[])
 	print_statistics(ps_tree);
 
     twalk(ps_tree_bytime, show_ps_tree_node);
+
     if (summary_first++)
-    {
 	twalk(ps_tree_bytime, show_ps_tree_node);
-    }
 
     exit(0);
 }
@@ -189,6 +188,7 @@ static void load_from_cvs()
     int have_log = 0;
     char cmd[BUFSIZ];
     char date_str[64];
+    int bk_log_border = 0;
 
     init_strip_path();
 
@@ -340,7 +340,20 @@ static void load_from_cvs()
 	    }
 	    break;
 	case NEED_EOM:
-	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0)
+	    if (bkcvs && !bk_log_border)
+	    {
+		char * p = buff; 
+
+		/* deletes have '}' prefixing the logical change string */
+		if (*p == '}') p++;
+
+		if (strcmp(file->filename, "ChangeSet") == 0)
+		    bk_log_border = 1;
+		else if (strncmp(p, "(Logical change", 15) == 0)
+		    bk_log_border = 1;
+	    }
+
+	    if (strcmp(buff, CVS_LOG_BOUNDARY) == 0 && (!bkcvs || bk_log_border))
 	    {
 		if (psm)
 		{
@@ -351,6 +364,7 @@ static void load_from_cvs()
 		logbuff[0] = 0;
 		loglen = 0;
 		have_log = 0;
+		bk_log_border = 0;
 		state = NEED_REVISION;
 	    }
 	    else if (strcmp(buff, CVS_FILE_BOUNDARY) == 0)
@@ -365,6 +379,7 @@ static void load_from_cvs()
 		logbuff[0] = 0;
 		loglen = 0;
 		have_log = 0;
+		bk_log_border = 0;
 		psm = NULL;
 		file = NULL;
 		state = NEED_FILE;
