@@ -1,3 +1,22 @@
+2.0b10
+- fix bug where filenames with 'bad' characters (such as ' ')
+  were being sent unescaped to a shell
+- add --no-cvs-direct and -Z 0 to disable cvs-direct and compression
+- extend the 'fuzz-factor' concept by keeping a min/max date
+  encountered for each patchset and fuzz on this interval,
+  rather than fuzzing on the date of the first encountered
+  member only, helps for handling REALLY slow commits where a
+  HUGE number of individual files were modified at a slow trickle.
+- it turns out that old versions of cvs have two problems
+  1) they don't support 'rlog' (handled)
+  2) they don't support 'version', which caused the workaround
+     for 1) to fail.
+  Now cvsps detects cvs versions too old to support version and/or
+  rlog.  Additionally, if server is too old, cvs-direct is
+  simply disabled.
+- parse the rc file first so that the command line will override
+- add -q to shut-up the warnings
+
 2.0b9
 - remove Mbinary from valid-response list - can't handle it
 - much more (pedantic?) clean-up/close path in cvs_direct

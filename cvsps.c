@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.92 2003/04/03 18:34:04 david Exp $");
+RCSID("$Id: cvsps.c,v 4.93 2003/04/03 19:38:47 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -456,7 +456,7 @@ static void load_from_cvs()
 			
 			if (len >= LOG_STR_MAX - loglen)
 			{
-			    debug(DEBUG_APPERROR, "WARNING: maximum log length exceeded, truncating log");
+			    debug(DEBUG_APPMSG1, "WARNING: maximum log length exceeded, truncating log");
 			    len = LOG_STR_MAX - loglen;
 			    buff[len - 1] = '\n';
 			}
@@ -521,7 +521,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [<repository>]");
+    debug(DEBUG_APPERROR, "             [<repository>] [-q]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -553,6 +553,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_APPERROR, "  -q be quiet about warnings");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
@@ -711,7 +712,7 @@ static int parse_args(int argc, char *argv[])
 	     * go away as TRUNK may be a valid branch within CVS
 	     */
 	    if (strcmp(restrict_branch, "TRUNK") == 0)
-		debug(DEBUG_APPERROR, "Warning: The HEAD branch of CVS is called HEAD, not TRUNK");
+		debug(DEBUG_APPMSG1, "WARNING: The HEAD branch of CVS is called HEAD, not TRUNK");
 	    continue;
 	}
 
@@ -834,6 +835,13 @@ static int parse_args(int argc, char *argv[])
 		return usage("argument to --root missing", "");
 
 	    strcpy(root_path, argv[i++]);
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-q") == 0)
+	{
+	    debuglvl &= ~DEBUG_APPMSG1;
+	    i++;
 	    continue;
 	}
 
@@ -1027,7 +1035,7 @@ static CvsFile * parse_file(const char * buff)
 	 *
 	 * For now just ignore such files
 	 */
-	debug(DEBUG_APPERROR, "*** file %s doesn't match strip_path %s. ignoring", 
+	debug(DEBUG_APPMSG1, "WARNING: file %s doesn't match strip_path %s. ignoring", 
 	      fn, strip_path);
 	return NULL;
     }
@@ -1501,7 +1509,7 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     }
     else
     {
-	debug(DEBUG_APPERROR, "how can we have both patchsets New?");
+	debug(DEBUG_APPERROR, "how can we have both patchsets pre-existing?");
 	exit(1);
     }
 
@@ -1830,7 +1838,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		//debug(DEBUG_APPERROR, "warning: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+		debug(DEBUG_APPMSG1, "WARNING: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
 		rev->branch = "#CVSPS_NO_BRANCH";
 	    }
 	    else
@@ -2218,7 +2226,7 @@ static void set_psm_initial(PatchSetMember * psm)
 	 * but there can only be one such member in a given patchset
 	 */
 	if (psm->ps->branch_add)
-	    debug(DEBUG_APPERROR, "branch_add already set!");
+	    debug(DEBUG_APPMSG1, "branch_add already set!");
 	psm->ps->branch_add = 1;
     }
 }
@@ -2280,8 +2288,8 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 		    next_ps->funk_factor = 
 			(next_ps->funk_factor == FNK_SHOW_ALL) ? FNK_SHOW_SOME : FNK_HIDE_SOME;
 		}
-		debug(DEBUG_APPERROR, 
-		      "Invalid PatchSet %d, Tag %s:\n"
+		debug(DEBUG_APPMSG1, 
+		      "WARNING: Invalid PatchSet %d, Tag %s:\n"
 		      "    %s:%s=after, %s:%s=before. Treated as 'before'", 
 		      next_ps->psid, ps->tag, 
 		      rev->file->filename, rev->rev, 

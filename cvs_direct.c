@@ -707,7 +707,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 	}
 	else if (memcmp(line, "E ", 2) == 0)
 	{
-	    fprintf(stderr, "%s\n", line + 2);
+	    debug(DEBUG_APPMSG1, "%s", line + 2);
 	}
 	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
 	{
@@ -885,7 +885,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     }
     else if (memcmp(lbuff, "E ", 2) == 0)
     {
-	fprintf(stderr, "%s\n", lbuff + 2);
+	debug(DEBUG_APPMSG1, "%s", lbuff + 2);
     }
     else if (strcmp(lbuff, "ok") == 0 ||strcmp(lbuff, "error") == 0)
     {

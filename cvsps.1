@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rlog] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>] [<repository>]
+[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rlog] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>] [-q] [<repository>] 
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -87,8 +87,8 @@ required for stable PatchSet numbering.  Use with care.
 send a custom set of options to diff, for example to increase
 the number of context lines, or change the diff format.
 .TP
-.B \--cvs-direct
-use built-in cvs client code. This enables the 'pipelining' of multiple
+.B \--cvs-direct (--no-cvs-direct)
+enable (disable) built-in cvs client code. This enables the 'pipelining' of multiple
 requests over a single client, reducing the overhead of handshaking and
 authentication to one per PatchSet instead of one per file.
 .TP
@@ -96,10 +96,13 @@ authentication to one per PatchSet instead of one per file.
 enable various debug output channels.
 .TP
 .B \-Z <compression>
-A value 1-9 which specifies amount of compression.
+A value 1-9 which specifies amount of compression.  A value of 0 disables compression.
 .TP
 .B \--root <cvsroot>
 Override the setting of CVSROOT (overrides working dir. and environment)
+.TP
+.B \-q
+Be quiet about warnings.
 .TP
 .B \<repository>
 Operate on the specified repository (overrides working dir.)
