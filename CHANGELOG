@@ -1,3 +1,13 @@
+2.0b4
+- add the bk_log_border parsing logic to handle the
+  case where 'cvs log' text was committed into the log
+- add 'adaptive crap filter' logic to handle all
+  of the different corruptions of the cvs log file
+- switch to rdiff instead of diff to not require working 
+  files to be checked out.  Note: when --diff-opts are
+  specified, diff must be used (not rdiff) because
+  rdiff doesn't support options(?!!)
+
 2.0b3
 - add the --diff-opts for explicitly setting the diff 
   options.  important for setting increased context for 
