@@ -17,14 +17,14 @@ less $PATCHSETDIR/$1.patch
 # test apply patchset
 #
 function tps() { 
-cat $PATCHSETDIR/$1.patch | patch -p0 --dry-run
+cat $PATCHSETDIR/$1.patch | patch -p1 --dry-run
 }
 
 #
 # apply patchset
 #
 function aps() { 
-cat $PATCHSETDIR/$1.patch | patch -p0 -E 
+cat $PATCHSETDIR/$1.patch | patch -p1
 }
 
 #
