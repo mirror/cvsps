@@ -13,19 +13,53 @@
 
 struct _CvsServerCtx 
 {
-    int fd;
+    int read_fd;
+    int write_fd;
     char read_buff[RD_BUFF_SIZE];
     char * head;
     char * tail;
+    char repository[PATH_MAX];
 };
 
 static void get_cvspass(char *, const char *);
 static void send_string(CvsServerCtx *, const char *, ...);
 static int read_response(CvsServerCtx *, const char *);
 
+static CvsServerCtx * open_ctx_pserver(CvsServerCtx *, const char *);
+static CvsServerCtx * open_ctx_other(CvsServerCtx *, const char *);
+
 CvsServerCtx * open_cvs_server(char * p_root)
 {
     CvsServerCtx * ctx = (CvsServerCtx*)malloc(sizeof(*ctx));
+    char root[PATH_MAX];
+    char * p = root, *tok;
+
+    if (!ctx)
+	return NULL;
+
+    ctx->head = ctx->tail = ctx->read_buff;
+    ctx->read_fd = ctx->write_fd = -1;
+
+    strcpy(root, p_root);
+
+    debuglvl |= DEBUG_TCP;
+
+    tok = strsep(&p, ":");
+    debug(DEBUG_TCP, "1st token '%s'", tok);
+
+    if (strlen(tok) == 0)
+	ctx = open_ctx_pserver(ctx, p_root);
+    else
+	ctx = open_ctx_other(ctx, p_root);
+
+    if (ctx)
+	send_string(ctx, "Root %s\n", ctx->repository);
+
+    return ctx;
+}
+
+static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
+{
     char root[PATH_MAX];
     char * p = root, *tok, *tok2;
     char user[BUFSIZ];
@@ -34,13 +68,10 @@ CvsServerCtx * open_cvs_server(char * p_root)
     char port[8];
     char fake_root[PATH_MAX];
 
-    if (!ctx)
-	return NULL;
-
     strcpy(root, p_root);
 
     tok = strsep(&p, ":");
-    debug(DEBUG_TCP, "1st token '%s'", tok);
+    debug(DEBUG_TCP, "1st token (pserver) '%s'", tok);
 
     tok = strsep(&p, ":");
     debug(DEBUG_TCP, "2nd token '%s'", tok);
@@ -68,26 +99,25 @@ CvsServerCtx * open_cvs_server(char * p_root)
 
     debug(DEBUG_TCP, "user:%s server:%s port:%s pass:%s", user, server, port, pass);
 
-    if ((ctx->fd = tcp_create_socket(REUSE_ADDR)) < 0)
+    if ((ctx->read_fd = tcp_create_socket(REUSE_ADDR)) < 0)
     {
 	free(ctx);
 	return NULL;
     }
 
-    if (tcp_connect(ctx->fd, server, atoi(port)) < 0)
+    ctx->write_fd = ctx->read_fd;
+
+    if (tcp_connect(ctx->read_fd, server, atoi(port)) < 0)
     {
 	free(ctx);
 	return NULL;
     }
     
-    ctx->head = ctx->tail = ctx->read_buff;
-
     send_string(ctx, "BEGIN AUTH REQUEST\n");
     send_string(ctx, "%s\n", tok);
     send_string(ctx, "%s\n", user);
     send_string(ctx, "%s\n", pass);
     send_string(ctx, "END AUTH REQUEST\n");
-    send_string(ctx, "Root %s\n", tok);
 
     if (!read_response(ctx, "I LOVE YOU"))
     {
@@ -95,16 +125,108 @@ CvsServerCtx * open_cvs_server(char * p_root)
 	exit(1);
     }
 
+    strcpy(ctx->repository, tok);
+
+    return ctx;
+}
+
+static CvsServerCtx * open_ctx_other(CvsServerCtx * ctx, const char * p_root)
+{
+    char root[PATH_MAX];
+    char * p = root, *tok, *tok2, *rep;
+    char execcmd[PATH_MAX];
+    int to_cvs[2];
+    int from_cvs[2];
+    pid_t pid;
+
+    strcpy(root, p_root);
+
+    tok = strsep(&p, ":");
+    debug(DEBUG_TCP, "1st token (other) '%s'", tok);
+
+    if (p)
+    {
+	const char * cvs_rsh = getenv("CVS_RSH");
+
+	tok2 = strsep(&tok, "@");
+	if (tok)
+	{
+	    snprintf(execcmd, PATH_MAX, "%s -l %s %s cvs server", cvs_rsh, tok2, tok);
+	}
+	else
+	{
+	    snprintf(execcmd, PATH_MAX, "%s %s cvs server", cvs_rsh, tok2);
+	}
+
+	rep = p;
+    }
+    else
+    {
+	strcpy(execcmd, "cvs server");
+	rep = tok;
+    }
+
+    if (pipe(to_cvs) < 0)
+    {
+	debug(DEBUG_SYSERROR, "pipe to_cvs");
+	exit(1);
+    }
+
+    if (pipe(from_cvs) < 0)
+    {
+	debug(DEBUG_SYSERROR, "pipe from_cvs");
+	exit(1);
+    }
+
+    debug(DEBUG_APPERROR, "other cmdline: %s", execcmd);
+
+    if ((pid = fork()) < 0)
+    {
+	debug(DEBUG_SYSERROR, "can't fork");
+    }
+    else if (pid == 0) /* child */
+    {
+	char * argp[4];
+	argp[0] = "sh";
+	argp[1] = "-c";
+	argp[2] = execcmd;
+	argp[3] = NULL;
+
+	close(to_cvs[1]);
+	close(from_cvs[0]);
+	
+	close(0);
+	dup(to_cvs[0]);
+	close(1);
+	dup(from_cvs[1]);
+
+	execv("/bin/sh",argp);
+
+	debug(DEBUG_APPERROR, "shouldn't be reached");
+	exit(1);
+    }
+
+    close(to_cvs[0]);
+    close(from_cvs[1]);
+    ctx->read_fd = from_cvs[0];
+    ctx->write_fd = to_cvs[1];
+
+    strcpy(ctx->repository, rep);
+
     return ctx;
 }
 
 void close_cvs_server(CvsServerCtx * ctx)
 {
-    if (ctx->fd)
+    if (ctx->read_fd >= 0)
     {
-	debug(DEBUG_TCP, "closing cvs server connection %d", ctx->fd);
-	close(ctx->fd);
+	debug(DEBUG_TCP, "closing cvs server connection %d", ctx->read_fd);
+	close(ctx->read_fd);
     }
+
+    if (ctx->write_fd >= 0 && ctx->write_fd != ctx->read_fd)
+	close(ctx->write_fd);
+
     free(ctx);
 }
 
@@ -162,7 +284,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 
     len = vsnprintf(buff, BUFSIZ, str, ap);
 
-    if (writen(ctx->fd, buff, len)  != len)
+    if (writen(ctx->write_fd, buff, len)  != len)
     {
 	debug(DEBUG_APPERROR, "bad write return");
 	exit(1);
@@ -178,7 +300,7 @@ static int refill_buffer(CvsServerCtx * ctx)
 	ctx->head = ctx->read_buff;
 	len = RD_BUFF_SIZE;
     }
-    len = read(ctx->fd, ctx->head, len);
+    len = read(ctx->read_fd, ctx->head, len);
     if (len <= 0)
 	return len;
     ctx->tail = ctx->head + len;
