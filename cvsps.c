@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.66 2003/03/18 15:16:25 david Exp $");
+RCSID("$Id: cvsps.c,v 4.67 2003/03/18 22:19:43 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1485,6 +1485,8 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	rev = (CvsFileRevision*)calloc(1, sizeof(*rev));
 	rev->rev = get_string(rev_str);
 	rev->file = file;
+	rev->branch = NULL;
+	rev->present = 0;
 	rev->pre_psm = NULL;
 	rev->post_psm = NULL;
 	INIT_LIST_HEAD(&rev->branch_children);
@@ -1509,6 +1511,12 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
     if (!rev->branch && file->have_branches)
     {
 	char branch_str[REV_STR_MAX];
+
+	/* in the cvs cvs repository (ccvs) there are tagged versions
+	 * that don't exist.  let's mark every 'known to exist' 
+	 * version
+	 */
+	rev->present = 1;
 
 	/* determine the branch this revision was committed on */
 	if (!get_branch(branch_str, rev->rev))
@@ -1774,6 +1782,17 @@ static void resolve_global_symbols()
 	{
 	    Tag * tag = list_entry(next, Tag, global_link);
 	    CvsFileRevision * rev = tag->rev;
+
+	    if (!rev->present)
+	    {
+		struct list_head *tmp = next->prev;
+		debug(DEBUG_APPERROR, "revision %s of file %s is tagged but not present",
+		      rev->rev, rev->file->filename);
+		/* FIXME: memleak */
+		list_del(next);
+		next = tmp;
+		continue;
+	    }
 
 	    ps = rev->post_psm->ps;
 

@@ -24,6 +24,13 @@ struct _CvsFileRevision
     CvsFile * file;
     char * branch;
     /*
+     * In the cvs cvs repository (ccvs project) there are tagged
+     * revisions that don't exist. track 'confirmed' revisions
+     * so as to not let them screw us up.
+     */
+    int present;
+
+    /*
      * A revision can be part of many PatchSets because it may
      * be the branch point of many branches (as a pre_rev).  
      * It should, however, be the 'post_rev' of only one 
