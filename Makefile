@@ -57,5 +57,4 @@ htdocs: dist
 	tar cvzf htdocs/cvsps-$(MAJOR).$(MINOR).tar.gz cvsps-$(MAJOR).$(MINOR)
 	mv cvsps-$(MAJOR).$(MINOR) dist
 
-
 .PHONY: clean this_clean all dist htdocs
