@@ -23,7 +23,7 @@
 #include "util.h"
 #include "stats.h"
 
-RCSID("$Id: cvsps.c,v 4.60 2003/03/17 15:21:48 david Exp $");
+RCSID("$Id: cvsps.c,v 4.61 2003/03/17 22:49:38 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -62,6 +62,7 @@ static int ps_counter;
 static void * ps_tree, * ps_tree_bytime;
 static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
+static char repository_path[PATH_MAX];
 static int strip_path_len;
 static time_t cache_date;
 static int update_cache;
@@ -88,6 +89,7 @@ static const char * restrict_tag_start;
 static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end;
+static const char * diff_opts = "-u";
 
 static void parse_args(int, char *[]);
 static void load_from_cvs();
@@ -202,11 +204,11 @@ static void load_from_cvs()
 	 * which is necessary to fill in the pre_rev stuff for a 
 	 * PatchSetMember
 	 */
-	snprintf(cmd, BUFSIZ, "cvs %s log -d '%s<;%s'", norc, date_str, date_str);
+	snprintf(cmd, BUFSIZ, "cvs %s rlog -d '%s<;%s' %s", norc, date_str, date_str, repository_path);
     }
     else
     {
-	snprintf(cmd, BUFSIZ, "cvs %s log", norc);
+	snprintf(cmd, BUFSIZ, "cvs %s rlog %s", norc, repository_path);
     }
     
     debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
@@ -662,6 +664,15 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "--diff-opts") == 0)
+	{
+	    if (++i >= argc)
+		usage("argument to --diff-opts missing", "");
+
+	    diff_opts = argv[i++];
+	    continue;
+	}
+
 	usage("invalid argument", argv[i]);
     }
 }
@@ -669,7 +680,7 @@ static void parse_args(int argc, char *argv[])
 static void init_strip_path()
 {
     FILE * fp;
-    char root_buff[PATH_MAX], rep_buff[PATH_MAX], *p;
+    char root_buff[PATH_MAX], *p;
     int len;
 
     if (!(fp = fopen("CVS/Root", "r")))
@@ -704,21 +715,26 @@ static void init_strip_path()
 	exit(1);
     }
 
-    if (!fgets(rep_buff, PATH_MAX, fp))
+    if (!fgets(repository_path, PATH_MAX, fp))
     {
 	debug(DEBUG_APPERROR, "Error reading repository path");
 	exit(1);
     }
     
-    rep_buff[strlen(rep_buff) - 1] = 0;
+    chop(repository_path);
 
     /* some CVS have the CVSROOT string as part of the repository
-     * string (initial substring).  handle that case.
+     * string (initial substring).  remove it.
      */
-    if (strncmp(p, rep_buff, strlen(p)) == 0)
-        strip_path_len = snprintf(strip_path, PATH_MAX, "%s/", rep_buff);
-    else
-        strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, rep_buff);
+    len = strlen(p);
+
+    if (strncmp(p, repository_path, len) == 0)
+    {
+	int rlen = strlen(repository_path + len + 1);
+	memmove(repository_path, repository_path + len + 1, rlen + 1);
+    }
+
+    strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
 
     if (strip_path_len < 0)
     {
@@ -735,6 +751,8 @@ static CvsFile * parse_file(const char * buff)
     char fn[PATH_MAX];
     int len = strlen(buff + 10);
     char * p;
+
+    static int path_ok;
     
     /* chop the ",v" string and the "LF" */
     len -= 3;
@@ -743,6 +761,27 @@ static CvsFile * parse_file(const char * buff)
     
     if (strncmp(fn, strip_path, strip_path_len) != 0)
     {
+	/* if the very first file fails the strip path,
+	 * then maybe we need to try for an alternate.
+	 * this will happen if symlinks are being used
+	 * on the server.  our best guess is to look
+	 * for the initial occurance of the repository
+	 * path in the filename and use that.  oh well.
+	 */
+	if (!path_ok)
+	{
+	    char * p = strstr(fn, repository_path);
+	    if (p)
+	    {
+		int len = strlen(repository_path);
+		memcpy(strip_path, fn, p - fn + len + 1);
+		strip_path_len = p - fn + len + 1;
+		strip_path[strip_path_len] = 0;
+		debug(DEBUG_STATUS, "used alt strip path %s", strip_path);
+		goto ok;
+	    }
+	}
+
 	/* FIXME: a subdirectory may have a different Repository path
 	 * than it's parent.  we'll fail the above test since strip_path
 	 * is global for the entire checked out tree (recursively).
@@ -753,6 +792,9 @@ static CvsFile * parse_file(const char * buff)
 	      fn, strip_path);
 	return NULL;
     }
+
+ ok:
+    path_ok = 1;
 
     /* remove from beginning the 'strip_path' string */
     len -= strip_path_len;
@@ -1246,16 +1288,24 @@ static int patch_set_contains_member(PatchSet * ps, const char * file)
 
 static int patch_set_affects_branch(PatchSet * ps, const char * branch)
 {
-    struct list_head * next = ps->members.next;
+    struct list_head * next;
 
-    while (next != &ps->members)
+    for (next = ps->members.next; next != &ps->members; next = next->next)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 
+	/*
+	 * slight hack. if -r is specified, and this patchset
+	 * is 'before' the tag, but is FNK_SHOW_SOME, only
+	 * check if the 'after tag' revisions affect
+	 * the branch.  this is especially important when
+	 * the tag is a branch point.
+	 */
+	if (ps->funk_factor == FNK_SHOW_SOME && psm->bad_funk)
+	    continue;
+
 	if (revision_affects_branch(psm->post_rev, branch))
 	    return 1;
-
-	next = next->next;
     }
 
     return 0;
@@ -1298,19 +1348,19 @@ static void do_cvs_diff(PatchSet * ps)
 	 */
 	if (!psm->pre_rev || psm->pre_rev->dead)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff -u /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
-		     norc, psm->post_rev->rev, psm->file->filename, psm->file->filename, psm->file->filename);
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff %s /dev/null - | sed -e '1 s|^--- /dev/null|--- %s|g' -e '2 s|^+++ -|+++ %s|g'",
+		     norc, psm->post_rev->rev, psm->file->filename, diff_opts, psm->file->filename, psm->file->filename);
 	}
 	else if (psm->post_rev->dead)
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff -u - /dev/null | sed -e '1 s|^--- -|--- %s|g' -e '2 s|^+++ /dev/null|+++ %s|g'",
-		     norc, psm->pre_rev->rev, psm->file->filename, psm->file->filename, psm->file->filename);
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s update -p -r %s %s | diff %s - /dev/null | sed -e '1 s|^--- -|--- %s|g' -e '2 s|^+++ /dev/null|+++ %s|g'",
+		     norc, psm->pre_rev->rev, psm->file->filename, diff_opts, psm->file->filename, psm->file->filename);
 	    
 	}
 	else
 	{
-	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s diff -u -r %s -r %s %s",
-		     norc, psm->pre_rev->rev, psm->post_rev->rev, psm->file->filename);
+	    snprintf(cmdbuff, PATH_MAX * 2, "cvs %s diff %s -r %s -r %s %s",
+		     norc, diff_opts, psm->pre_rev->rev, psm->post_rev->rev, psm->file->filename);
 	}
 
 	system(cmdbuff);

@@ -24,7 +24,7 @@ cat $PATCHSETDIR/$1.patch | patch -p0 --dry-run
 # apply patchset
 #
 function aps() { 
-cat $PATCHSETDIR/$1.patch | patch -p0 
+cat $PATCHSETDIR/$1.patch | patch -p0 -E 
 }
 
 #
