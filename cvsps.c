@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <search.h>
 #include <time.h>
+#include <ctype.h>
 #include <cbtcommon/hash.h>
 #include <cbtcommon/list.h>
 #include <cbtcommon/text_util.h>
@@ -19,6 +20,8 @@
 enum
 {
     NEED_FILE,
+    NEED_SYMS,
+    NEED_EOS,
     NEED_START_LOG,
     NEED_REVISION,
     NEED_DATE_AUTHOR_STATE,
@@ -29,6 +32,7 @@ typedef struct _CvsFile
 {
     char filename[PATH_MAX];
     struct hash_table * revisions;
+    struct hash_table * branches;
 } CvsFile;
 
 typedef struct _PatchSet
@@ -90,6 +94,8 @@ static PatchSet * create_patchset();
 static PatchSetMember * create_patchset_member();
 static void parse_cache_revision(PatchSetMember *, const char *);
 static char * file_get_revision(CvsFile *, const char *);
+static void parse_sym(CvsFile *, char *);
+static char * cvs_file_add_branch(CvsFile *, const char *, const char *);
 
 int main(int argc, char *argv[])
 {
@@ -172,8 +178,18 @@ static void load_from_cvs()
 	    if (strncmp(buff, "RCS file", 8) == 0)
 	    {
 		file = parse_file(buff);
-		state = NEED_START_LOG;
+		state = NEED_SYMS;
 	    }
+	    break;
+	case NEED_SYMS:
+	    if (strncmp(buff, "symbolic names:", 15) == 0)
+		state = NEED_EOS;
+	    break;
+	case NEED_EOS:
+	    if (!isspace(buff[0]))
+		state = NEED_START_LOG;
+	    else
+		parse_sym(file, buff);
 	    break;
 	case NEED_START_LOG:
 	    if (strncmp(buff, "--------", 8) == 0)
@@ -538,15 +554,24 @@ static PatchSet * get_patch_set(const char * dte, const char * log, const char *
     return retval;
 }
 
-static int get_branch(char * buff, const char * rev)
+static int get_branch_ext(char * buff, const char * rev, int * leaf)
 {
     char * p;
     strcpy(buff, rev);
     p = strrchr(buff, '.');
     if (!p)
 	return 0;
-    *p = 0;
+    *p++ = 0;
+
+    if (leaf)
+	*leaf = atoi(p);
+
     return 1;
+}
+
+static int get_branch(char * buff, const char * rev)
+{
+    return get_branch_ext(buff, rev, NULL);
 }
 
 /* the goal if this function is to determine what revision to assign to
@@ -653,7 +678,15 @@ static void print_patch_set(PatchSet * ps)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	printf("\t%s:%s->%s%s\n", psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision ? "(DEAD)": "");
+	char branch[REV_STR_MAX + 2], *tag;
+
+	if (get_branch(branch, psm->post_rev) && 
+	    (tag = (char*)get_hash_object(psm->file->branches, branch)))
+	    snprintf(branch, REV_STR_MAX + 2, "[%s]", tag);
+	else
+	    branch[0] = 0;
+
+	printf("\t%s:%s->%s%s %s\n", psm->file->filename, psm->pre_rev, psm->post_rev, psm->dead_revision ? "(DEAD)": "", branch);
 	next = next->next;
     }
     
@@ -846,7 +879,20 @@ static void write_cache()
 	    char * rev = (char *)rev_iter->he_obj;
 	    fprintf(cache_fp, "%s\n", rev);
 	}
+
+	fprintf(cache_fp, "branches:\n");
+	reset_hash_iterator(file->branches);
+	
+	while ((rev_iter = next_hash_entry(file->branches)))
+	{
+	    char * rev = (char *)rev_iter->he_key;
+	    char * tag = (char *)rev_iter->he_obj;
+	    fprintf(cache_fp, "%s: %s\n", rev, tag);
+	}
+
 	fprintf(cache_fp, "\n");
+
+	
     }
 
     fprintf(cache_fp, "\n");
@@ -917,6 +963,7 @@ enum
 {
     CACHE_NEED_FILE,
     CACHE_NEED_REV,
+    CACHE_NEED_BRANCHES,
     CACHE_NEED_PS,
     CACHE_NEED_PS_DATE,
     CACHE_NEED_PS_AUTHOR,
@@ -976,10 +1023,29 @@ static int read_cache()
 	    }
 	    break;
 	case CACHE_NEED_REV:
-	    if (buff[0] != '\n')
+	    if (isdigit(buff[0]))
 	    {
 		buff[len-1] = 0;
 		cvs_file_add_revision(f, buff);
+	    }
+	    else
+	    {
+		state = CACHE_NEED_BRANCHES;
+	    }
+	    break;
+	case CACHE_NEED_BRANCHES:
+	    if (buff[0] != '\n')
+	    {
+		char * tag;
+
+		tag = strchr(buff, ':');
+		if (tag)
+		{
+		    *tag = 0;
+		    tag += 2;
+		    buff[len - 1] = 0;
+		    cvs_file_add_branch(f, buff, tag);
+		}
 	    }
 	    else
 	    {
@@ -1053,11 +1119,24 @@ static int read_cache()
 static CvsFile * create_cvsfile()
 {
     CvsFile * f = (CvsFile*)malloc(sizeof(*f));;
-    
-    if (f)
-	f->revisions = create_hash_table(111);
+
+    if (!f)
+	goto out_err;
+
+    if (!(f->revisions = create_hash_table(111)))
+	goto out_free_err;
+
+    if (!(f->branches = create_hash_table(111)))
+	goto out_free2_err;
 
     return f;
+
+ out_free2_err:
+    destroy_hash_table(f->revisions, NULL);
+ out_free_err:
+    free(f);
+ out_err:
+    return NULL;
 }
 
 static PatchSet * create_patchset()
@@ -1129,4 +1208,65 @@ static char * file_get_revision(CvsFile * file, const char * r)
     }
 
     return rev;
+}
+
+static void parse_sym(CvsFile * file, char * sym)
+{
+    char * tag = sym, *eot;
+    int leaf, final_branch;
+    char rev[REV_STR_MAX];
+    char rev2[REV_STR_MAX];
+    
+    /* this routine looks for and parses lines formatted as:
+     * <white space>tag_name: <rev>;
+     * where rev is a sequence of integers separated by '.'
+     * AND where the second to last number is a 0.  This is
+     * the 'magic-branch-tag' format used internally to CVS
+     * and made visible in the 'cvs log' command.
+     */
+
+    while (*tag && isspace(*tag))
+	tag++;
+
+    if (!*tag)
+	return;
+
+    eot = strchr(tag, ':');
+    
+    if (!eot)
+	return;
+
+    *eot = 0;
+    eot += 2;
+    
+    if (!get_branch_ext(rev, eot, &leaf))
+	return;
+
+    if (!get_branch_ext(rev2, rev, &final_branch))
+	return;
+    
+    if (final_branch != 0)
+	return;
+
+    snprintf(rev, REV_STR_MAX, "%s.%d", rev2, leaf);
+    debug(DEBUG_STATUS, "got sym: %s for %s", tag, rev);
+
+    cvs_file_add_branch(file, rev, tag);
+}
+
+static char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
+{
+    char * new_tag;
+
+    if (get_hash_object(file->branches, rev))
+    {
+	debug(DEBUG_APPERROR, "attempt to add existing branch %s:%s to %s", 
+	      rev, tag, file->filename);
+	return NULL;
+    }
+
+    new_tag = strdup(tag);
+    put_hash_object(file->branches, rev, new_tag);
+    
+    return new_tag;
 }
