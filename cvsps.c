@@ -22,7 +22,7 @@
 #include "cvsps.h"
 #include "util.h"
 
-RCSID("$Id: cvsps.c,v 4.52 2003/03/12 23:48:37 david Exp $");
+RCSID("$Id: cvsps.c,v 4.53 2003/03/13 00:18:20 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -170,7 +170,7 @@ static void load_from_cvs()
     PatchSetMember * psm = NULL;
     char datebuff[20];
     char authbuff[AUTH_STR_MAX];
-    char logbuff[LOG_STR_MAX];
+    char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
     int have_log = 0;
     char cmd[BUFSIZ];
@@ -362,12 +362,14 @@ static void load_from_cvs()
 		 */
 		if (have_log || !is_revision_metadata(buff))
 		{
-		    /* if the log buffer is full, that's it.  keep
-		     * track of the room for the \0 
+		    /* if the log buffer is full, that's it.  
 		     * 
 		     * Also, read lines (fgets) always have \n in them
 		     * which we count on.  So if truncation happens,
 		     * be careful to put a \n on.
+		     * 
+		     * Buffer has LOG_STR_MAX + 1 for room for \0 if
+		     * necessary
 		     */
 		    if (loglen < LOG_STR_MAX)
 		    {
@@ -375,10 +377,9 @@ static void load_from_cvs()
 			
 			if (len >= LOG_STR_MAX - loglen)
 			{
-			    debug(DEBUG_APPERROR, "maximum log length exceeded, truncating log");
+			    debug(DEBUG_APPERROR, "WARNING: maximum log length exceeded, truncating log");
 			    len = LOG_STR_MAX - loglen;
-			    buff[len - 2] = '\n';
-			    buff[len - 1] = '\0';
+			    buff[len - 1] = '\n';
 			}
 
 			debug(DEBUG_STATUS, "appending %s to log", buff);
@@ -639,8 +640,6 @@ static void parse_args(int argc, char *argv[])
 	    test_log_file = argv[i++];
 	    continue;
 	}
-
-
 
 	usage("invalid argument", argv[i]);
     }
