@@ -3,7 +3,7 @@
 CVSps \- create patchset information from CVS
 .SH SYNOPSIS
 .B cvsps
-[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rcmds] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>]
+[-h] [-x] [-u] [-z <fuzz>] [-g] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-l <text>] [-b <branch>] [-r <tag> [-r <tag>]] [-p <directory>] [-v] [-t] [--norc] [--summary-first] [--test-log <filename>] [--bkcvs] [--no-rlog] [--diff-opts <option string>] [--cvs-direct] [--debuglvl <bitmask>] [-Z <compression>]
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
@@ -79,8 +79,8 @@ this captured file instead of hammering some poor CVS server
 (see note below) for use in parsing the BK->CVS tree log formats only.  This enables
 some hacks which are not generally applicable.
 .TP
-.B \--no-rcmds
-disable the use of rlog and rdiff internally.  Note: rlog is
+.B \--no-rlog
+disable the use of rlog internally.  Note: rlog is
 required for stable PatchSet numbering.  Use with care.
 .TP
 .B \--diffs-opts <option string>
@@ -94,6 +94,9 @@ authentication to one per PatchSet instead of one per file.
 .TP
 .B \--debuglvl <bitmask>
 enable various debug output channels.
+.TP
+.B \-Z <compression>
+A value 1-9 which specifies amount of compression.
 .SH "NOTE ON TAG HANDLING"
 Tags are fundamentally 'file at a time' in cvs, but like everything else,
 it would be nice to imagine that they are 'repository at a time.'  The
@@ -143,7 +146,9 @@ them, and it is recommended to apply them in the working directory with the -p1 
 to the patch command.  However, if the --diff-opts option is specified (to change, for 
 example, the lines of context), then rdiff cannot be used, because it doesn't support
 arbitrary options.  In this case, the patches will be generated without the module
-directory in the path, and -p0 will be required when applying the patch.
+directory in the path, and -p0 will be required when applying the patch.  When 
+diffs are generated in cvs-direct mode (see below), however, they will always
+be -p1 style patches.
 .SH "NOTE ON BKCVS"
 The --bkcvs option is a special operating mode that should only be used when parsing
 the log files from the BK -> CVS exported linux kernel trees.  cvsps uses special
@@ -151,6 +156,19 @@ semantics for recreating the BK ChangeSet metadata that has been embedded in the
 files for those trees.  The --bkcvs option should only be specified when the cache
 file is being created or updated (i.e. initial run of cvsps, or when -u and -x options
 are used).
+.SH "NOTE ON CVS-DIRECT"
+As of version 2.0b6 cvsps has a partial implementation of the cvs client code built 
+in.  This reduces the RTT and/or handshaking overhead from one per patchset member
+to one per patchset.  This dramatically increases the speed of generating diffs
+over a slow link, and improves the consistency of operation.  Currently the --cvs-direct
+option turns on the use of this code, but it very well may be default by the time
+2.0 comes out.  The built-in cvs code attempts to be compatible with cvs, but may
+have problems, which should be reported.  It honors the CVS_RSH and CVS_SERVER 
+environment variables, but does not parse the ~/.cvsrc file.
+.SH "NOTE ON CVSPS RC FILE"
+CVSps parses an rc file at startup.  This file should be located in ~/.cvsps/cvspsrc.
+The file should contain arguments, in the exact syntax as the command line, one per line.
+If an argument takes a parameter, the parameter should be on the same line as the argument.
 .SH "NOTE ON DATE FORMATS"
 Dates have formats.  Fixme.
 .SH "SEE ALSO"
