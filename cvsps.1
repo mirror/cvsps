@@ -1,0 +1,66 @@
+.TH "cvsps" 1
+.SH NAME
+CVSps \- create patchset information from CVS
+.SH SYNOPSIS
+.B cvsps
+[-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v] [-h]
+.SH DESCRIPTION
+CVSps is a program for generating 'patchset' information from a CVS
+repository.  A patchset in this case is defined as a set of changes made
+to a collection of files, and all committed at the same time (using a
+single 'cvs commit' command).  This information is valuable to seeing the
+big picture of the evolution of a cvs project.  While cvs tracks revision
+information, it is often difficult to see what changes were committed
+'atomically' to the repository.
+.SH OPTIONS
+.TP
+.B \-x
+ignore (and rebuild) CVS/cvsps.cache file
+.TP
+.B \-u
+update CVS/cvsps.cache file
+.TP
+.B \-z <fuzz>
+set the timestamp fuzz factor for identifying patch sets
+.TP
+.B \-s <patchset>
+generate a diff for a given patchset
+.TP
+.B \-a <author>
+restrict output to patchsets created by author
+.TP
+.B \-f <file>
+restrict output to patchsets involving file
+.TP
+.B \-d <date1> -d <date2>
+if just one date specified, show
+revisions newer than date1.  If two dates specified,
+show revisions between two dates.
+.TP
+.B \-b <branch>
+restrict output to patchsets affecting history of branch
+.TP
+.B \-v
+show verbose parsing messages
+.TP
+.B \-h
+display usage summary
+.SH "SEE ALSO"
+.BR cvs ( 1 ),
+.BR ci ( 1 ),
+.BR co ( 1 ),
+.BR cvs ( 5 ),
+.BR cvsbug ( 8 ),
+.BR diff ( 1 ),
+.BR grep ( 1 ),
+.BR patch ( 1 ),
+.BR rcs ( 1 ),
+.BR rcsdiff ( 1 ),
+.BR rcsmerge ( 1 ),
+.BR rlog ( 1 ).
+.SH "REPORTING BUGS"
+Report bugs to <cvsps@dm.cobite.com>
+.SH BUGS
+Updating the cache (with the -u flag) may not work perfectly in all cases.  I
+haven't tracked it down completely.
+

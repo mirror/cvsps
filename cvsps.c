@@ -12,7 +12,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.22 2001/12/05 17:35:25 david Exp $");
+RCSID("$Id: cvsps.c,v 4.23 2001/12/05 21:17:32 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -156,7 +156,7 @@ static void load_from_cvs()
 	 * which is necessary to fill in the pre_rev stuff for a 
 	 * PatchSetMember
 	 */
-	sprintf(cmd, "cvs log -d '%s<;%s'", date_str, date_str);
+	snprintf(cmd, BUFSIZ, "cvs log -d '%s<;%s'", date_str, date_str);
     }
     else
     {
@@ -330,9 +330,12 @@ static void load_from_cvs()
 
 static void usage(const char * str1, const char * str2)
 {
-    debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
+    if (str1)
+	debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
+
     debug(DEBUG_APPERROR, "Usage: cvsps [-x] [-u] [-z <fuzz>] [-s <patchset>] [-a <author>] ");
-    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>] [-v]");
+    debug(DEBUG_APPERROR, "             [-f <file>] [-d <date1> [-d <date2>]] [-b <branch>]");
+    debug(DEBUG_APPERROR, "             [-v] [-h]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -x ignore (and rebuild) CVS/cvsps.cache file");
@@ -346,6 +349,7 @@ static void usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
     debug(DEBUG_APPERROR, "  -b <branch> restrict output to patchsets affecting history of branch");
     debug(DEBUG_APPERROR, "  -v show verbose parsing messages");
+    debug(DEBUG_APPERROR, "  -h display this informative this message");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     exit(1);
@@ -435,6 +439,9 @@ static void parse_args(int argc, char *argv[])
 	    continue;
 	}
 	
+	if (strcmp(argv[i], "-h") == 0)
+	    usage(NULL, NULL);
+
 	usage("invalid argument", argv[i]);
     }
 }

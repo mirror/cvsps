@@ -10,7 +10,7 @@ OBJS=cvsps.o
 LIBS=-lcbtcommon
 CBTCOMMON_DIST=../libcbtcommon
 MAJOR=1
-MINOR=1
+MINOR=2
 CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
 all: cvsps
@@ -37,6 +37,7 @@ dist:
 	cat copyright.head cvsps.c >dist/cvsps.c
 	cp README dist/
 	cp COPYING dist/
+	cp cvsps.1 dist/
 	@echo "NOTE: Using $(CBTCOMMON_DIST) for dist files"
 	cat copyright.head $(CBTCOMMON_DIST)/list.h >dist/cbtcommon/list.h
 	cat copyright.head $(CBTCOMMON_DIST)/hash.h >dist/cbtcommon/hash.h
