@@ -55,7 +55,7 @@ cvsps's output is information about patchsets.  A patchset looks like:
 ---------------------
 PatchSet 1701
 Date: 2001/11/06 19:49:04
-Author: pjzhang
+Author: joe
 Log:
 this release completes line summary find
 
