@@ -92,7 +92,8 @@ Usage: cvsps [-h] [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;range&gt;[,&lt;range&
              [-b &lt;branch&gt;]  [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]]
              [-p &lt;directory&gt;] [-v] [-t] [--norc] [--summary-first]
              [--test-log &lt;captured cvs log file&gt;] [--bkcvs]
-             [--no-rcmds] [--diff-opts &lt;option string&gt;] [--cvs-direct]
+             [--no-rlog] [--diff-opts &lt;option string&gt;] [--cvs-direct]
+             [--debuglvl &lt;bitmask&gt;] [-Z &lt;compression&gt;]
 
 Where:
   -h display this informative message
@@ -119,10 +120,12 @@ Where:
   --test-log &lt;captured cvs log&gt; supply a captured cvs log for testing
   --diff-opts &lt;option string&gt; supply special set of options to diff
   --bkcvs special hack for parsing the BK -&gt; CVS log format
-  --no-rcmds disable rlog and rdiff (they're faulty in some setups)
+  --no-rlog disable rlog (it's faulty in some setups)
   --cvs-direct enable built-in cvs client code
+  --debuglvl &lt;bitmask&gt; enable various debug channels.
+  -Z &lt;compression&gt; A value 1-9 which specifies amount of compression
 
-cvsps version 2.0b6
+cvsps version 2.0b7
 </pre>
 </table>
 
@@ -141,7 +144,8 @@ CVSps is GPLed software.  If you want more information on the GPL, visit:<br>
 <table cellpadding=3><tr><td>
 You can download the source tarball for CVSps here:
 <br>
-<a href="cvsps-2.0b6.tar.gz">cvsps-2.0b6.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b7.tar.gz">cvsps-2.0b7.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b6.tar.gz">cvsps-2.0b6.tar.gz</a><br>
 <a href="cvsps-2.0b5.tar.gz">cvsps-2.0b5.tar.gz</a><br>
 <a href="cvsps-2.0b4.tar.gz">cvsps-2.0b4.tar.gz</a><br>
 <a href="cvsps-2.0b3.tar.gz">cvsps-2.0b3.tar.gz</a><br>
