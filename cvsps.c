@@ -3,6 +3,8 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <search.h>
+#include <time.h>
 #include <common/hash.h>
 #include <common/list.h>
 #include <common/text_util.h>
@@ -28,7 +30,7 @@ typedef struct _CvsFile
 typedef struct _PatchSet
 {
     char id[16];
-    char date[20];
+    time_t date;
     char author[64];
     char descr[CVS_LOG_MAX];
     struct list_head members;
@@ -46,28 +48,34 @@ typedef struct _PatchSetMember
 
 static int ps_counter;
 static struct hash_table * file_hash;
-static struct hash_table * ps_hash;
+static void * ps_tree;
+
 
 static CvsFile * parse_file(const char *);
 static PatchSetMember * parse_revision(const char *);
 static PatchSet * get_patch_set(const char *, const char *, const char *);
+static void assign_pre_revision(PatchSetMember *, PatchSetMember *);
+static void show_ps_tree_node(const void *, const VISIT, const int);
+static int compare_patch_sets(const void *, const void *);
+static void convert_date(time_t *, const char *);
+static int is_revision_metadata(const char *);
 
 int main()
 {
     FILE * cvsfp;
     char buff[BUFSIZ];
     int state = NEED_FILE;
-    struct hash_entry * he;
     CvsFile * file = NULL;
-    PatchSetMember * psm = NULL;
+    PatchSetMember * psm = NULL, * last_psm = NULL;
     char datebuff[20];
     char authbuff[64];
     char logbuff[CVS_LOG_MAX];
+    int have_log = 0;
     
     //chdir("../pricing_engine");
 
     file_hash = create_hash_table(1023);
-    ps_hash = create_hash_table(1023);
+    ps_tree = NULL;
 
     cvsfp = popen("cvs log", "r");
 
@@ -99,6 +107,13 @@ int main()
 	    {
 		psm = parse_revision(buff);
 		psm->file = file;
+
+		/* in the simple case, we are copying psm->post_rev to last_psm->pre_rev
+		 * since generally speaking the log is reverse chronological.
+		 * This breaks down slightly when branches are introduced 
+		 */
+		assign_pre_revision(last_psm, psm);
+		last_psm = psm;
 		list_add(&psm->file_link, file->patch_sets.prev);
 		state++;
 	    }
@@ -134,19 +149,36 @@ int main()
 		logbuff[0] = 0;
 		psm = NULL;
 		state = NEED_REVISION;
+		have_log = 0;
 	    }
 	    else if (strncmp(buff, "========", 8) == 0)
 	    {
 		psm->cp = get_patch_set(datebuff, logbuff, authbuff);
+		list_add(&psm->patch_set_link, &psm->cp->members);
 		datebuff[0] = 0;
 		logbuff[0] = 0;
+		assign_pre_revision(last_psm, NULL);
 		psm = NULL;
+		last_psm = NULL;
 		file = NULL;
 		state = NEED_FILE;
+		have_log = 0;
 	    }
 	    else
 	    {
-		strcat(logbuff, buff);
+		//FIXME: no silent buffer overflow
+		/* other "blahblah: information;" messages can 
+		 * follow the stuff we pay attention to
+		 */
+		if (have_log || !is_revision_metadata(buff))
+		{
+		    have_log = 1;
+		    strcat(logbuff, buff);
+		}
+		else 
+		{
+		    debug(DEBUG_STATUS, "ignoring unneeded info %s", buff);
+		}
 	    }
 
 	    break;
@@ -154,30 +186,7 @@ int main()
     }
 
     pclose(cvsfp);
-
-    reset_hash_iterator(ps_hash);
-    while((he = next_hash_entry(ps_hash)))
-    {
-	PatchSet * ps = (PatchSet*)he->he_obj;
-	struct list_head * next = ps->members.next;
-
-	printf("---------------------\n");
-	printf("PatchSet %s\n", ps->id);
-	printf("Date: %s\n", ps->date);
-	printf("Author: %s\n", ps->author);
-	printf("Log:\n%s", ps->descr);
-	printf("Members: ");
-
-	while (next != &ps->members)
-	{
-	    PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
-	    printf("%s:%s ", psm->file->filename, psm->post_rev);
-	    next = next->next;
-	}
-	
-	printf("\n");
-    }
-
+    twalk(ps_tree, show_ps_tree_node);
     exit(0);
 }
 
@@ -208,6 +217,7 @@ static PatchSetMember * parse_revision(const char * buff)
     PatchSetMember * retval = (PatchSetMember*)malloc(sizeof(*retval));
 
     //FIXME: what about pre_rev?
+    strcpy(retval->pre_rev, "UNKNOWN");
     strcpy(retval->post_rev, buff + 9);
     chop(retval->post_rev);
     retval->cp = NULL;
@@ -219,35 +229,182 @@ static PatchSetMember * parse_revision(const char * buff)
 
 static PatchSet * get_patch_set(const char * dte, const char * log, const char * author)
 {
-    char key[CVS_LOG_MAX + 20];
-    PatchSet * retval;
-
-    /* just date and author are key.  how could one person commit twice in same second... */
-    strcpy(key, dte);
-    strcat(key, author);
-
-    //debug(DEBUG_STATUS, "cp key: %s", key);
-
-    retval = (PatchSet*)get_hash_object(ps_hash, key);
-
-    if (!retval)
+    PatchSet * retval = NULL, **find = NULL;
+    
+    if (!(retval = (PatchSet*)malloc(sizeof(*retval))))
     {
-	if ((retval = (PatchSet*)malloc(sizeof(*retval))))
-	{
-	    sprintf(retval->id, "%d", ps_counter++);
-	    strcpy(retval->date, dte);
-	    strcpy(retval->descr, log);
-	    strcpy(retval->author, author);
-	    INIT_LIST_HEAD(&retval->members);
+	debug(DEBUG_SYSERROR, "malloc failed for PatchSet");
+	return NULL;
+    }
 
-	    put_hash_object(ps_hash, key, retval);
-	}
-	debug(DEBUG_STATUS, "new PatchSet: %s", retval->id);
+    sprintf(retval->id, "%d", ps_counter);
+    convert_date(&retval->date, dte);
+    strcpy(retval->author, author);
+    strcpy(retval->descr, log);
+    INIT_LIST_HEAD(&retval->members);
+
+    find = (PatchSet**)tsearch(retval, &ps_tree, compare_patch_sets);
+
+    if (*find != retval)
+    {
+	debug(DEBUG_STATUS, "found existing patch set");
+	free(retval);
+	retval = *find;
     }
     else
     {
-	debug(DEBUG_STATUS, "found existing PatchSet %s", retval->id);
+	debug(DEBUG_STATUS, "new patch set!");
+	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
+	ps_counter++;
     }
 
     return retval;
+}
+
+static int get_branch(char * buff, const char * rev)
+{
+    char * p;
+    strcpy(buff, rev);
+    p = strrchr(buff, '.');
+    if (!p)
+	return 0;
+    *p = 0;
+    return 1;
+}
+
+static void assign_pre_revision(PatchSetMember * last_psm, PatchSetMember * psm)
+{
+    char pre[16], post[16];
+
+    if (!last_psm)
+	return;
+    
+    if (!psm)
+    {
+	strcpy(last_psm->pre_rev, "INITIAL");
+	return;
+    }
+
+    /* are the two revisions on the same branch? */
+    if (!get_branch(pre, psm->post_rev))
+	return;
+
+    if (!get_branch(post, last_psm->post_rev))
+	return;
+
+    if (strcmp(pre, post) == 0)
+    {
+	strcpy(last_psm->pre_rev, psm->post_rev);
+	return;
+    }
+    
+    /* branches don't match. psm must be head of branch,
+     * so last_psm is first rev. on branch. or first
+     * revision overall.  if former, derive predecessor.  
+     * use get_branch to chop another rev. off of string.
+     */
+    if (!get_branch(pre, post))
+    {
+	strcpy(last_psm->pre_rev, "INITIAL");
+	return;
+    }
+    
+    strcpy(last_psm->pre_rev, pre);
+}
+
+static void show_ps_tree_node(const void * nodep, const VISIT which, const int depth)
+{
+    PatchSet * ps;
+    struct list_head * next;
+    struct tm * tm;
+
+    switch(which)
+    {
+    case postorder:
+    case leaf:
+	ps = *(PatchSet**)nodep;
+	next = ps->members.next;
+	tm = localtime(&ps->date);
+
+	printf("---------------------\n");
+	printf("PatchSet %s\n", ps->id);
+	printf("Date: %d/%02d/%02d %02d:%02d:%02d\n", 
+	       1900 + tm->tm_year, tm->tm_mon, tm->tm_mday, 
+	       tm->tm_hour, tm->tm_min, tm->tm_sec);
+	printf("Author: %s\n", ps->author);
+	printf("Log:\n%s", ps->descr);
+	printf("Members: \n");
+
+	while (next != &ps->members)
+	{
+	    PatchSetMember * psm = list_entry(next, PatchSetMember, patch_set_link);
+	    printf("\t%s:%s->%s\n", psm->file->filename, psm->pre_rev, psm->post_rev);
+	    next = next->next;
+	}
+	
+	printf("\n");
+    default:
+	break;
+    }
+}
+
+static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
+{
+    const PatchSet * ps1 = (const PatchSet *)v_ps1;
+    const PatchSet * ps2 = (const PatchSet *)v_ps2;
+    int ret;
+    long diff;
+
+    ret = strcmp(ps1->author, ps2->author);
+
+    if (ret)
+	return ret;
+
+    ret = strcmp(ps1->descr, ps2->descr);
+
+    if (ret)
+	return ret;
+    
+    diff = ps1->date - ps2->date;
+
+    if (labs(diff) < 300)
+	return 0;
+
+    return (diff < 0) ? -1 : 1;
+}
+
+static void convert_date(time_t * t, const char * dte)
+{
+    struct tm tm;
+    int ret;
+    
+    memset(&tm, 0, sizeof(tm));
+    ret = sscanf(dte, "%d/%d/%d %d:%d:%d", 
+	   &tm.tm_year, &tm.tm_mon, &tm.tm_mday, 
+	   &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+    
+    tm.tm_year -= 1900;
+    *t = mktime(&tm);
+}
+
+static int is_revision_metadata(const char * buff)
+{
+    char * p1, *p2;
+    int len;
+
+    if (!(p1 = strchr(buff, ':')))
+	return 0;
+
+    p2 = strchr(buff, ' ');
+    
+    if (p2 && p2 < p1)
+	return 0;
+
+    len = strlen(buff);
+
+    /* lines have LF at end */
+    if (len > 1 && buff[len - 2] == ';')
+	return 1;
+
+    return 0;
 }

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -g -Wall -I..
+CFLAGS=-fno-inline -fno-default-inline -g -Wall -I..
 
 OBJS=\
 	cvsps.o\
