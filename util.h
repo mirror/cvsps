@@ -13,5 +13,6 @@ void convert_date(time_t *, const char *);
 void timing_start();
 void timing_stop(const char *);
 int my_system(const char *);
+int escape_filename(char *, int, const char *);
 
 #endif /* UTIL_H */

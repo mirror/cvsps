@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.89 2003/03/27 15:21:23 david Exp $");
+RCSID("$Id: cvsps.c,v 4.90 2003/03/28 15:25:54 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -540,7 +540,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
     debug(DEBUG_APPERROR, "  --no-rlog disable rlog (it's faulty in some setups)");
-    debug(DEBUG_APPERROR, "  --cvs-direct enable built-in cvs client code");
+    debug(DEBUG_APPERROR, "  --cvs-direct (--no-cvs-direct) enable (disable) built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
@@ -785,6 +785,13 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "--no-cvs-direct") == 0)
+	{
+	    cvs_direct = 0;
+	    i++;
+	    continue;
+	}
+
 	if (strcmp(argv[i], "--debuglvl") == 0)
 	{
 	    if (++i >= argc)
@@ -801,10 +808,13 @@ static int parse_args(int argc, char *argv[])
 
 	    compress = atoi(argv[i++]);
 
-	    if (compress < 1 || compress > 9)
-		return usage("-Z level must be between 1 and 9 inclusive", argv[i-1]);
+	    if (compress < 0 || compress > 9)
+		return usage("-Z level must be between 1 and 9 inclusive (0 disables compression)", argv[i-1]);
 
-	    snprintf(compress_arg, 8, "-z%d", compress);
+	    if (compress == 0)
+		compress_arg[0] = 0;
+	    else
+		snprintf(compress_arg, 8, "-z%d", compress);
 	    continue;
 	}
 	
@@ -1593,10 +1603,14 @@ static void do_cvs_diff(PatchSet * ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2+1];
+	char esc_file[PATH_MAX];
 	int ret, check_ret = 0;
 
 	cmdbuff[0] = 0;
 	cmdbuff[PATH_MAX*2] = 0;
+
+	/* the filename may contain characters that the shell will barf on */
+	escape_filename(esc_file, PATH_MAX, psm->file->filename);
 
 	/*
 	 * Check the patchset funk. we may not want to diff this particular file 
@@ -1650,7 +1664,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    else
 	    {
 		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s%s|g'",
-			 compress_arg, norc, utype, rev, use_rep_path, psm->file->filename, dopts,
+			 compress_arg, norc, utype, rev, use_rep_path, esc_file, dopts,
 			 cr?"":"-",cr?"-":"", cr?"2":"1",
 			 use_rep_path, psm->file->filename);
 	    }
@@ -1670,7 +1684,7 @@ static void do_cvs_diff(PatchSet * ps)
 
 		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s %s -r %s -r %s %s%s",
 			 compress_arg, norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, 
-			 use_rep_path, psm->file->filename);
+			 use_rep_path, esc_file);
 	    }
 	}
 

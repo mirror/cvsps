@@ -673,10 +673,14 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
     {
 	read_line(ctx, line);
 	debug(DEBUG_TCP, "ctx_to_fp: %s", line);
-	if (line[0] == 'M')
+	if (memcmp(line, "M ", 2) == 0)
 	{
 	    if (fp)
 		fprintf(fp, "%s\n", line + 2);
+	}
+	else if (memcmp(line, "E ", 2) == 0)
+	{
+	    fprintf(stderr, "%s\n", line + 2);
 	}
 	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
 	{
@@ -851,6 +855,10 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
 	memcpy(buff, lbuff + 2, len - 2);
 	buff[len - 2 ] = '\n';
 	buff[len - 1 ] = 0;
+    }
+    else if (memcmp(lbuff, "E ", 2) == 0)
+    {
+	fprintf(stderr, "%s\n", lbuff + 2);
     }
     else if (strcmp(lbuff, "ok") == 0 ||strcmp(lbuff, "error") == 0)
     {
