@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.94 2003/04/03 19:45:01 david Exp $");
+RCSID("$Id: cvsps.c,v 4.95 2003/04/03 19:48:02 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -771,7 +771,14 @@ static int parse_args(int argc, char *argv[])
 	    if (++i >= argc)
 		return usage("argument to --diff-opts missing", "");
 
-	    diff_opts = argv[i++];
+	    /* allow diff_opts to be turned off by making empty string
+	     * into NULL
+	     */
+	    if (!strlen(argv[i]))
+		diff_opts = NULL;
+	    else
+		diff_opts = argv[i];
+	    i++;
 	    continue;
 	}
 
