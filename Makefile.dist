@@ -8,7 +8,8 @@ OBJS=\
 	cbtcommon/text_util.o\
 	cvsps.o\
 	cache.o\
-	util.o
+	util.o\
+	stats.o
 
 all: cvsps
 

@@ -1,6 +1,8 @@
 #ifndef CVSPS_TYPES_H
 #define CVSPS_TYPES_H
 
+#include <time.h>
+
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
 #define REV_STR_MAX 64

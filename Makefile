@@ -1,4 +1,4 @@
-DEP_OBJS=cvsps.o cache.o util.o
+DEP_OBJS=cvsps.o cache.o util.o stats.o
 CBT_DIR=/cobite
 include $(CBT_DIR)/share/libversions/Makefile.include-1
 
@@ -50,6 +50,8 @@ dist:
 	cat copyright.head util.c >dist/util.c
 	cat copyright.head util.h >dist/util.h
 	cat copyright.head cvsps_types.h >dist/cvsps_types.h
+	cat copyright.head stats.c >dist/stats.c
+	cat copyright.head stats.h >dist/stats.h
 	cp README dist/
 	cp COPYING dist/
 	cp cvsps.1 dist/
