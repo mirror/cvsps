@@ -25,7 +25,7 @@ CVSps operates by parsing the 'cvs log' output.  So to run it, you must
 be in the working directory of a cvs project.  CVSps handles
 subdirectories fine, so run it in the top directory of your project.
 
-a) the cvsps.cache file
+a) the CVS/cvsps.cache file
 
 Because you may have a *lot* of revision history in your project, and/or
 your connection to the cvs server may be slow or congested, CVSps uses a
@@ -35,15 +35,15 @@ cvsps
 
 and will begin reading and parsing the cvs log.  When it is finished it
 will output all of the patchset information to stdout, and it will also
-generate the 'cvsps.cache' file.
+generate the 'CVS/cvsps.cache' file.
 
 If the cache file exists, it won't ever be automatically updated.  To
-update the cache with cvs activity that has occurred since the cvsps.cache
+update the cache with cvs activity that has occurred since the CVS/cvsps.cache
 was last updated, use:
 
 cvsps -u
 
-If you question the integrity of the cvsps.cache, or for some other reason
+If you question the integrity of the CVS/cvsps.cache, or for some other reason
 want to force a full cache rebuild, use (you could alse 'rm' the cache):
 
 cvsps -x
@@ -106,7 +106,8 @@ that have modified the history of the given branch.  Note, this
 doesn't necessarily mean the commit itself was made on the branch, since
 the files in question may have existed prior to the branch point, in which
 case changes made to a given file before the branch point affect the file
-as it exists in the head of the branch. 
+as it exists in the head of the branch.  If you want to restrict to the
+main branch, use a branch of 'TRUNK'.
 
 d) viewing the changes made by a patchset.
 
