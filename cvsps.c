@@ -15,7 +15,7 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-RCSID("$Id: cvsps.c,v 4.36 2003/02/24 22:03:24 david Exp $");
+RCSID("$Id: cvsps.c,v 4.37 2003/02/24 22:10:49 david Exp $");
 
 #define LOG_STR_MAX 8192
 #define AUTH_STR_MAX 64
@@ -601,6 +601,11 @@ static void parse_args(int argc, char *argv[])
 		usage("argument to -b missing", "");
 
 	    restrict_branch = argv[i++];
+	    /* Warn if the user tries to use TRUNK. Should eventually
+	     * go away as TRUNK may be a valid branch within CVS
+	     */
+	    if (strcmp(restrict_branch, "TRUNK") == 0)
+		debug(DEBUG_APPERROR, "Warning: The HEAD branch of CVS is called HEAD, not TRUNK");
 	    continue;
 	}
 	
@@ -1124,8 +1129,8 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 
-	/* special case the branch called 'TRUNK' */
-	if (strcmp(branch, "TRUNK") == 0)
+	/* special case the branch called 'HEAD' */
+	if (strcmp(branch, "HEAD") == 0)
 	{
 	    /* look for only one '.' in rev */
 	    char * p = strchr(psm->post_rev->rev, '.');

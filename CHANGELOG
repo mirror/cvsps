@@ -9,10 +9,12 @@
   have the PatchSet summary information for all patchsets at
   the head of the output, when multiple patchsets are given
   to the -s option.
-- added the all: target to Makefile.  Patch from Ben Elliston
+- added the all: target to Makefile.  (patch from Ben Elliston)
 - use a single centralized cvsps.cache file per root/repository
   this obviates the need to 'cvsps -u' in multiple checked out
   trees of the same repository (patch adopted from Baruch Even)
+- change the magic name TRUNK (for -b option) to HEAD to be 
+  consistent with cvs.  (patch from Henrik Nordstrom)
 
 
 1.3.3 (why isn't this 1.4 again?)

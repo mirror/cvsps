@@ -110,7 +110,7 @@ doesn't necessarily mean the commit itself was made on the branch, since
 the files in question may have existed prior to the branch point, in which
 case changes made to a given file before the branch point affect the file
 as it exists in the head of the branch.  If you want to restrict to the
-main branch, use a branch of 'TRUNK'.
+main branch, use a branch of 'HEAD'.
 
 d) viewing the changes made by a patchset.
 
