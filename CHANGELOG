@@ -5,6 +5,14 @@
   for 'cvsps -s' in this case (frequent bug report)
 - added the '-l' option to restrict patchsets based on log descr
   content. (patch from Geoff Soutter).  added man page for it.
+- added the --summary-first option suggested by Andi Kleen to
+  have the PatchSet summary information for all patchsets at
+  the head of the output, when multiple patchsets are given
+  to the -s option.
+- added the all: target to Makefile.  Patch from Ben Elliston
+- use a single centralized cvsps.cache file per root/repository
+  this obviates the need to 'cvsps -u' in multiple checked out
+  trees of the same repository (patch adopted from Baruch Even)
 
 
 1.3.3 (why isn't this 1.4 again?)

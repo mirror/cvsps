@@ -28,7 +28,7 @@ CVSps operates by parsing the 'cvs log' output.  So to run it, you must
 be in the working directory of a cvs project.  CVSps handles
 subdirectories fine, so run it in the top directory of your project.
 
-a) the CVS/cvsps.cache file
+a) the ~/.cvsps/cvsps.cache file (or so it's called)
 
 Because you may have a *lot* of revision history in your project, and/or
 your connection to the cvs server may be slow or congested, CVSps uses a
@@ -38,15 +38,15 @@ cvsps
 
 and will begin reading and parsing the cvs log.  When it is finished it
 will output all of the patchset information to stdout, and it will also
-generate the 'CVS/cvsps.cache' file.
+generate the '~/.cvsps/cvsps.cache' file.
 
 If the cache file exists, it won't ever be automatically updated.  To
-update the cache with cvs activity that has occurred since the CVS/cvsps.cache
+update the cache with cvs activity that has occurred since the ~/.cvsps/cvsps.cache
 was last updated, use:
 
 cvsps -u
 
-If you question the integrity of the CVS/cvsps.cache, or for some other reason
+If you question the integrity of the ~/.cvsps/cvsps.cache, or for some other reason
 want to force a full cache rebuild, use (you could alse 'rm' the cache):
 
 cvsps -x
