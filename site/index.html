@@ -71,6 +71,47 @@ essentially gives you the equivalent to tagging before and after each commit.
 </table>
 
 <tr><td colspan=3>&nbsp;<tr>
+<td valign=top align=right bgcolor="#333333"><h3>usage</h3>
+<td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
+<table cellpadding=3><tr><td>
+A description of the usage of cvsps tersely describes a lot of its features:
+<pre>
+$ cvsps -h
+Usage: cvsps [-x] [-u] [-z &lt;fuzz&gt;] [-g] [-s &lt;patchset&gt;] [-a &lt;author&gt;]
+             [-f &lt;file&gt;] [-d &lt;date1&gt; [-d &lt;date2&gt;]] [-b &lt;branch&gt;]
+             [-l &lt;regex&gt;] [-r &lt;tag&gt; [-r &lt;tag&gt;]] [-p &lt;directory&gt;]
+             [-v] [-h] [-t] [--norc] [--summary-first]
+             [--test-log &lt;captured cvs log file&gt;]
+
+Where:
+  -x ignore (and rebuild) cvsps.cache file
+  -u update cvsps.cache file
+  -z &lt;fuzz&gt; set the timestamp fuzz factor for identifying patch sets
+  -g generate diffs of the selected patch sets
+  -s &lt;patch set&gt;[-[&lt;patch set&gt;]][,&lt;patch set&gt;...] restrict patch sets by id
+  -a &lt;author&gt; restrict output to patch sets created by author
+  -f &lt;file&gt; restrict output to patch sets involving file
+  -d &lt;date1&gt; -d &lt;date2&gt; if just one date specified, show
+     revisions newer than date1.  If two dates specified,
+     show revisions between two dates.
+  -b &lt;branch&gt; restrict output to patch sets affecting history of branch
+  -l &lt;regex&gt; restrict output to patch sets matching &lt;regex&gt; in log message
+  -r &lt;tag1&gt; -r &lt;tag2&gt; if just one tag specified, show
+     revisions since tag1. If two tags specified, show
+     revisions between the two tags.
+  -p &lt;directory&gt; output patch sets to individual files in &lt;directory&gt;
+  -v show verbose parsing messages
+  -t show some brief memory usage statistics
+  --norc when invoking cvs, ignore the .cvsrc file
+  -h display this informative message
+  --summary-first when multiple patch sets are shown, put all summaries first
+  --test-log &lt;captured cvs log&gt; supply a captured cvs log for testing
+
+cvsps version 2.0b2
+</pre>
+</table>
+
+<tr><td colspan=3>&nbsp;<tr>
 <td valign=top align=right bgcolor="#333333"><h3>license</h3>
 <td bgColor="#aaaaaa"><img src="whitepixel.gif"><td>
 <table cellpadding=3><tr><td>
@@ -85,7 +126,8 @@ CVSps is GPLed software.  If you want more information on the GPL, visit:<br>
 <table cellpadding=3><tr><td>
 You can download the source tarball for CVSps here:
 <br>
-<a href="cvsps-2.0b1.tar.gz">cvsps-2.0b1.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b2.tar.gz">cvsps-2.0b2.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent version)<br>
+<a href="cvsps-2.0b1.tar.gz">cvsps-2.0b1.tar.gz</a><br>
 <a href="cvsps-1.3.3.tar.gz">cvsps-1.3.3.tar.gz</a>&nbsp;&nbsp;&nbsp;(most recent stable version)<br>
 <a href="cvsps-1.3.2.tar.gz">cvsps-1.3.2.tar.gz</a><br>
 <a href="cvsps-1.3.1.tar.gz">cvsps-1.3.1.tar.gz</a><br>
