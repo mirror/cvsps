@@ -1,3 +1,13 @@
+2.0b8
+- fix the cvs_rupdate calls to use the real repository
+  instead of the mangled use_rep_path.  This broke
+  cvs_direct generation of add/remove diffs
+- fix the sed expression to account for the difference
+  between +++ and --- in the first and second lines.
+  This broke remove diffs for direct and external.
+- attempt to fix a hang-at-flush bug in cvs-direct
+  compression handling
+
 2.0b7
 - implement compression in cvs_direct
 - add command line -Z to specify compression level.
