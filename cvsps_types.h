@@ -110,6 +110,7 @@ struct _PatchSet
     char *tag;
     int tag_flags;
     char *branch;
+    char *ancestor_branch;
     struct list_head members;
     /*
      * A 'branch add' patch set is a bogus patch set created automatically

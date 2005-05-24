@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.99 2005/01/26 19:46:41 david Exp $");
+RCSID("$Id: cvsps.c,v 4.100 2005/05/24 19:57:37 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -75,6 +75,7 @@ static int ignore_cache;
 static int do_write_cache;
 static int statistics;
 static const char * test_log_file;
+static struct hash_table * branch_heads;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
@@ -101,6 +102,7 @@ static int no_rlog;
 static int cvs_direct;
 static int compress;
 static char compress_arg[8];
+static int track_branch_ancestry;
 
 static void check_norc(int, char *[]);
 static int parse_args(int, char *[]);
@@ -112,7 +114,7 @@ static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
-static void set_ps_id(const void *, const VISIT, const int);
+static void walk_all_ps(const void *, const VISIT, const int);
 static void show_ps_tree_node(const void *, const VISIT, const int);
 static int compare_patch_sets_bk(const void *, const void *);
 static int compare_patch_sets(const void *, const void *);
@@ -131,6 +133,7 @@ static void set_psm_initial(PatchSetMember * psm);
 static int check_rev_funk(PatchSet *, CvsFileRevision *);
 static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
 static int before_tag(CvsFileRevision * rev, const char * tag);
+static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps);
 
 int main(int argc, char *argv[])
 {
@@ -164,6 +167,7 @@ int main(int argc, char *argv[])
 
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
+    branch_heads = create_hash_table(1023);
 
     /* this parses some of the CVS/ files, and initializes
      * the repository_path and other variables 
@@ -197,7 +201,7 @@ int main(int argc, char *argv[])
     }
 
     ps_counter = 0;
-    twalk(ps_tree_bytime, set_ps_id);
+    twalk(ps_tree_bytime, walk_all_ps);
 
     resolve_global_symbols();
 
@@ -536,7 +540,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
     debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [<repository>] [-q]");
+    debug(DEBUG_APPERROR, "             [-q] [-A] [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -569,6 +573,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
     debug(DEBUG_APPERROR, "  -q be quiet about warnings");
+    debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
@@ -863,6 +868,13 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-q") == 0)
 	{
 	    debuglvl &= ~DEBUG_APPMSG1;
+	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-A") == 0)
+	{
+	    track_branch_ancestry = 1;
 	    i++;
 	    continue;
 	}
@@ -1398,6 +1410,8 @@ static void print_patch_set(PatchSet * ps)
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
     printf("Branch: %s\n", ps->branch);
+    if (ps->ancestor_branch)
+	printf("Ancestor branch: %s\n", ps->ancestor_branch);
     printf("Tag: %s %s\n", ps->tag ? ps->tag : "(none)", tag_flag_descr[ps->tag_flags]);
     printf("Log:\n%s\n", ps->descr);
     printf("Members: \n");
@@ -1425,7 +1439,10 @@ static void print_patch_set(PatchSet * ps)
     printf("\n");
 }
 
-static void set_ps_id(const void * nodep, const VISIT which, const int depth)
+/* walk all the patchsets to assign monotonic psid, 
+ * and to establish  branch ancestry
+ */
+static void walk_all_ps(const void * nodep, const VISIT which, const int depth)
 {
     PatchSet * ps;
 
@@ -1442,6 +1459,18 @@ static void set_ps_id(const void * nodep, const VISIT which, const int depth)
 	{
 	    ps_counter++;
 	    ps->psid = ps_counter;
+
+	    if (track_branch_ancestry && strcmp(ps->branch, "HEAD") != 0)
+	    {
+		PatchSet * head_ps = (PatchSet*)get_hash_object(branch_heads, ps->branch);
+		if (!head_ps) 
+		{
+		    head_ps = ps;
+		    put_hash_object(branch_heads, ps->branch, head_ps);
+		}
+
+		determine_branch_ancestor(ps, head_ps);
+	    }
 	}
 	else
 	{
@@ -1912,6 +1941,7 @@ static PatchSet * create_patch_set()
 	ps->tag_flags = 0;
 	ps->branch_add = 0;
 	ps->funk_factor = 0;
+	ps->ancestor_branch = NULL;
     }
 
     return ps;
@@ -2235,6 +2265,17 @@ static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
     return 0;
 }
 
+static int count_dots(const char * p)
+{
+    int dots = 0;
+
+    while (*p)
+	if (*p++ == '.')
+	    dots++;
+
+    return dots;
+}
+
 /*
  * When importing vendor sources, (apparently people do this)
  * the code is added on a 'vendor' branch, which, for some reason
@@ -2242,14 +2283,7 @@ static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
  */
 static int is_vendor_branch(const char * rev)
 {
-    int dots = 0;
-    const char *p = rev;
-
-    while (*p)
-	if (*p++ == '.')
-	    dots++;
-
-    return !(dots&1);
+    return !(count_dots(rev)&1);
 }
 
 void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
@@ -2395,5 +2429,69 @@ static void check_norc(int argc, char * argv[])
 	    break;
 	}
 	i++;
+    }
+}
+
+static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
+{
+    struct list_head * next;
+    CvsFileRevision * rev;
+
+    /* PatchSet 1 has no ancestor */
+    if (ps->psid == 1)
+	return;
+
+    /* HEAD branch patchsets have no ancestry, but callers should know that */
+    if (strcmp(ps->branch, "HEAD") == 0)
+    {
+	debug(DEBUG_APPMSG1, "WARNING: no branch ancestry for HEAD");
+	return;
+    }
+
+    for (next = ps->members.next; next != &ps->members; next = next->next) 
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	rev = psm->pre_rev;
+	int d1, d2;
+
+	/* the reason this is at all complicated has to do with a 
+	 * branch off of a branch.  it is possible (and indeed 
+	 * likely) that some file would not have been modified 
+	 * from the initial branch point to the branch-off-branch 
+	 * point, and therefore the branch-off-branch point is 
+	 * really branch-off-HEAD for that specific member (file).  
+	 * in that case, rev->branch will say HEAD but we want 
+	 * to know the symbolic name of the first branch
+	 * so we continue to look member after member until we find
+	 * the 'deepest' branching.  deepest can actually be determined
+	 * by considering the revision currently indicated by 
+	 * ps->ancestor_branch (by symbolic lookup) and rev->rev. the 
+	 * one with more dots wins
+	 *
+	 * also, the first commit in which a branch-off-branch is 
+	 * mentioned may ONLY modify files never committed since
+	 * original branch-off-HEAD was created, so we have to keep
+	 * checking, ps after ps to be sure to get the deepest ancestor
+	 *
+	 * note: rev is the pre-commit revision, not the post-commit
+	 */
+	if (!head_ps->ancestor_branch)
+	    d1 = 0;
+	else if (strcmp(ps->branch, rev->branch) == 0)
+	    continue;
+	else if (strcmp(head_ps->ancestor_branch, "HEAD") == 0)
+	    d1 = 1;
+	else {
+	    /* branch_rev may not exist if the file was added on this branch for example */
+	    const char * branch_rev = (char *)get_hash_object(rev->file->branches_sym, head_ps->ancestor_branch);
+	    d1 = branch_rev ? count_dots(branch_rev) : 1;
+	}
+
+	d2 = count_dots(rev->rev);
+	
+	if (d2 > d1)
+	    head_ps->ancestor_branch = rev->branch;
+
+ 	//printf("-----> %d ancestry %s %s %s\n", ps->psid, ps->branch, head_ps->ancestor_branch, rev->file->filename);
     }
 }
