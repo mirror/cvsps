@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.100 2005/05/24 19:57:37 david Exp $");
+RCSID("$Id: cvsps.c,v 4.101 2005/05/25 02:17:03 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1167,13 +1167,16 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	    free(retval->descr);
 	}
 
-	if (retval->date < (*find)->min_date)
+	/* expand the min_date/max_date window to help finding other members .
+	 * open the window by an extra margin determined by the fuzz factor 
+	 */
+	if (retval->date - timestamp_fuzz_factor < (*find)->min_date)
 	{
-	    (*find)->min_date = retval->date;
-	    debug(DEBUG_APPMSG1, "WARNING: non-increasing dates in encountered patchset members");
+	    (*find)->min_date = retval->date - timestamp_fuzz_factor;
+	    //debug(DEBUG_APPMSG1, "WARNING: non-increasing dates in encountered patchset members");
 	}
-	else if (retval->date > (*find)->max_date)
-	    (*find)->max_date = retval->date;
+	else if (retval->date + timestamp_fuzz_factor > (*find)->max_date)
+	    (*find)->max_date = retval->date + timestamp_fuzz_factor;
 
 	free(retval);
 	retval = *find;
@@ -1183,7 +1186,8 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	debug(DEBUG_STATUS, "new patch set!");
 	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
 
-	retval->min_date = retval->max_date = retval->date;
+	retval->min_date = retval->date - timestamp_fuzz_factor;
+	retval->max_date = retval->date + timestamp_fuzz_factor;
 
 	if (tsearch(retval, &ps_tree_bytime, cmp2) == retval)
 		abort();
@@ -1539,7 +1543,7 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 
     /* 
      * one of ps1 or ps2 is new.  the other should have the min_date
-     * and max_date set
+     * and max_date set to a window opened by the fuzz_factor
      */
     if (ps1->min_date == 0)
     {
@@ -1559,16 +1563,12 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 	exit(1);
     }
 
-    if ((min <= d && d <= max) || labs(min - d) <= timestamp_fuzz_factor || labs(d - max) <= timestamp_fuzz_factor)
+    if (min < d && d < max)
 	return 0;
 
     diff = ps1->date - ps2->date;
 
-    if (labs(diff) > timestamp_fuzz_factor)
-	return (diff < 0) ? -1 : 1;
-
-    debug(DEBUG_APPERROR, "don't expect to have fuzz matter here");
-    return 0;
+    return (diff < 0) ? -1 : 1;
 }
 
 static int compare_patch_sets_bytime(const void * v_ps1, const void * v_ps2)
