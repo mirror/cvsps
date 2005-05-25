@@ -125,6 +125,9 @@ struct _PatchSet
      * after, and vice-versa if a second -r option was specified
      */
     int funk_factor;
+
+    /* for putting onto a list */
+    struct list_head link;
 };
 
 struct _PatchSetRange

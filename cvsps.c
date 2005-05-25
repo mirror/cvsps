@@ -26,7 +26,7 @@
 #include "cap.h"
 #include "cvs_direct.h"
 
-RCSID("$Id: cvsps.c,v 4.101 2005/05/25 02:17:03 david Exp $");
+RCSID("$Id: cvsps.c,v 4.102 2005/05/25 02:44:19 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -76,6 +76,7 @@ static int do_write_cache;
 static int statistics;
 static const char * test_log_file;
 static struct hash_table * branch_heads;
+static struct list_head collisions;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
@@ -134,6 +135,7 @@ static int check_rev_funk(PatchSet *, CvsFileRevision *);
 static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
 static int before_tag(CvsFileRevision * rev, const char * tag);
 static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps);
+static void handle_collisions();
 
 int main(int argc, char *argv[])
 {
@@ -168,6 +170,7 @@ int main(int argc, char *argv[])
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
     branch_heads = create_hash_table(1023);
+    INIT_LIST_HEAD(&collisions);
 
     /* this parses some of the CVS/ files, and initializes
      * the repository_path and other variables 
@@ -200,8 +203,13 @@ int main(int argc, char *argv[])
 	do_write_cache = 1;
     }
 
+    //XXX
+    //handle_collisions();
+
     ps_counter = 0;
     twalk(ps_tree_bytime, walk_all_ps);
+
+    handle_collisions();
 
     resolve_global_symbols();
 
@@ -1942,6 +1950,7 @@ static PatchSet * create_patch_set()
 	ps->branch_add = 0;
 	ps->funk_factor = 0;
 	ps->ancestor_branch = NULL;
+	CLEAR_LIST_NODE(&ps->link);
     }
 
     return ps;
@@ -2288,8 +2297,19 @@ static int is_vendor_branch(const char * rev)
 
 void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
 {
+    /* check if a member for the same file already exists, if so
+     * put this PatchSet on the collisions list 
+     */
+    struct list_head * next;
+    for (next = ps->members.next; next != &ps->members; next = next->next) 
+    {
+	PatchSetMember * m = list_entry(next, PatchSetMember, link);
+	if (m->file == psm->file && ps->link.next == NULL) 
+		list_add(&ps->link, &collisions);
+    }
+
     psm->ps = ps;
-    list_add(&psm->link, psm->ps->members.prev);
+    list_add(&psm->link, ps->members.prev);
 }
 
 static void set_psm_initial(PatchSetMember * psm)
@@ -2493,5 +2513,15 @@ static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
 	    head_ps->ancestor_branch = rev->branch;
 
  	//printf("-----> %d ancestry %s %s %s\n", ps->psid, ps->branch, head_ps->ancestor_branch, rev->file->filename);
+    }
+}
+
+static void handle_collisions()
+{
+    struct list_head *next;
+    for (next = collisions.next; next != &collisions; next = next->next) 
+    {
+	PatchSet * ps = list_entry(next, PatchSet, link);
+	printf("PatchSet %d has collisions\n", ps->psid);
     }
 }
