@@ -144,6 +144,27 @@ static int get_int_substr(const char * str, const regmatch_t * p)
     return atoi(buff);
 }
 
+static time_t mktime_utc(struct tm * tm)
+{
+    char * old_tz = getenv("TZ");
+    time_t ret;
+
+    setenv("TZ", "UTC", 1);
+
+    tzset();
+	    
+    ret = mktime(tm);
+
+    if (old_tz)
+	setenv("TZ", old_tz, 1);
+    else 
+	unsetenv("TZ");
+
+    tzset();
+
+    return ret;
+}
+
 void convert_date(time_t * t, const char * dte)
 {
     static regex_t date_re;
@@ -166,7 +187,7 @@ void convert_date(time_t * t, const char * dte)
     if (regexec(&date_re, dte, nmatch, match, 0) == 0)
     {
 	regmatch_t * pm = match;
-	struct tm tm;
+	struct tm tm = {0};
 
 	/* first regmatch_t is match location of entire re */
 	pm++;
@@ -180,8 +201,8 @@ void convert_date(time_t * t, const char * dte)
 
 	tm.tm_year -= 1900;
 	tm.tm_mon--;
-	
-	*t = mktime(&tm);
+
+	*t = mktime_utc(&tm);
     }
     else
     {
