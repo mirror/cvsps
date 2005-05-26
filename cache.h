@@ -2,6 +2,6 @@
 #define CACHE_H
 
 extern time_t read_cache();
-extern void write_cache(time_t, void *);
+extern void write_cache(time_t);
 
 #endif /* CACHE_H */

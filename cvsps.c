@@ -25,8 +25,9 @@
 #include "stats.h"
 #include "cap.h"
 #include "cvs_direct.h"
+#include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.102 2005/05/25 02:44:19 david Exp $");
+RCSID("$Id: cvsps.c,v 4.103 2005/05/26 02:43:24 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -65,7 +66,7 @@ const char * fnk_descr[] = {
 
 /* static globals */
 static int ps_counter;
-static void * ps_tree, * ps_tree_bytime;
+static void * ps_tree;
 static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
@@ -76,6 +77,7 @@ static int do_write_cache;
 static int statistics;
 static const char * test_log_file;
 static struct hash_table * branch_heads;
+static struct list_head all_patch_sets;
 static struct list_head collisions;
 
 /* settable via options */
@@ -115,11 +117,13 @@ static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
-static void walk_all_ps(const void *, const VISIT, const int);
-static void show_ps_tree_node(const void *, const VISIT, const int);
+static void assign_patchset_id(PatchSet *);
+static int compare_rev_strings(const char *, const char *);
+static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * ps2);
 static int compare_patch_sets_bk(const void *, const void *);
 static int compare_patch_sets(const void *, const void *);
-static int compare_patch_sets_bytime(const void *, const void *);
+static int compare_patch_sets_bytime_list(struct list_head *, struct list_head *);
+static int compare_patch_sets_bytime(const PatchSet *, const PatchSet *);
 static int is_revision_metadata(const char *);
 static int patch_set_member_regex(PatchSet * ps, regex_t * reg);
 static int patch_set_affects_branch(PatchSet *, const char *);
@@ -170,6 +174,7 @@ int main(int argc, char *argv[])
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
     branch_heads = create_hash_table(1023);
+    INIT_LIST_HEAD(&all_patch_sets);
     INIT_LIST_HEAD(&collisions);
 
     /* this parses some of the CVS/ files, and initializes
@@ -206,15 +211,17 @@ int main(int argc, char *argv[])
     //XXX
     //handle_collisions();
 
+    list_sort(&all_patch_sets, compare_patch_sets_bytime_list);
+
     ps_counter = 0;
-    twalk(ps_tree_bytime, walk_all_ps);
+    walk_all_patch_sets(assign_patchset_id);
 
     handle_collisions();
 
     resolve_global_symbols();
 
     if (do_write_cache)
-	write_cache(cache_date, ps_tree_bytime);
+	write_cache(cache_date);
 
     if (statistics)
 	print_statistics(ps_tree);
@@ -233,10 +240,10 @@ int main(int argc, char *argv[])
 	exit(1);
     }
 
-    twalk(ps_tree_bytime, show_ps_tree_node);
+    walk_all_patch_sets(check_print_patch_set);
 
     if (summary_first++)
-	twalk(ps_tree_bytime, show_ps_tree_node);
+	walk_all_patch_sets(check_print_patch_set);
 
     if (cvs_direct_ctx)
 	close_cvs_server(cvs_direct_ctx);
@@ -436,7 +443,7 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
+		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch, psm);
 		    patch_set_add_member(ps, psm);
 		}
 
@@ -449,7 +456,7 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch);
+		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch, psm);
 		    patch_set_add_member(ps, psm);
 		    assign_pre_revision(psm, NULL);
 		}
@@ -1142,11 +1149,10 @@ static CvsFile * parse_file(const char * buff)
     return retval;
 }
 
-PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch)
+PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch, PatchSetMember * psm)
 {
     PatchSet * retval = NULL, **find = NULL;
     int (*cmp1)(const void *,const void*) = (bkcvs) ? compare_patch_sets_bk : compare_patch_sets;
-    int (*cmp2)(const void *,const void*) = (bkcvs) ? compare_patch_sets_bk : compare_patch_sets_bytime;
 
     if (!(retval = create_patch_set()))
     {
@@ -1158,8 +1164,23 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     retval->author = get_string(author);
     retval->descr = xstrdup(log);
     retval->branch = get_string(branch);
+    
+    /* we are looking for a patchset suitable for holding this member.
+     * this means two things:
+     * 1) a patchset already containing an entry for the file is no good
+     * 2) for two patchsets with same exact date/time, if they reference 
+     *    the same file, we can properly order them.  this primarily solves
+     *    the 'cvs import' problem and may not have general usefulness
+     *    because it would only work if the first member we consider is
+     *    present in the existing ps.
+     */
+    if (psm)
+	list_add(&psm->link, retval->members.prev);
 
     find = (PatchSet**)tsearch(retval, &ps_tree, cmp1);
+
+    if (psm)
+	list_del(&psm->link);
 
     if (*find != retval)
     {
@@ -1174,6 +1195,10 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	{
 	    free(retval->descr);
 	}
+
+	/* keep the minimum date of any member as the 'actual' date */
+	if (retval->date < (*find)->date)
+	    (*find)->date = retval->date;
 
 	/* expand the min_date/max_date window to help finding other members .
 	 * open the window by an extra margin determined by the fuzz factor 
@@ -1197,9 +1222,9 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	retval->min_date = retval->date - timestamp_fuzz_factor;
 	retval->max_date = retval->date + timestamp_fuzz_factor;
 
-	if (tsearch(retval, &ps_tree_bytime, cmp2) == retval)
-		abort();
+	list_add(&retval->all_link, &all_patch_sets);
     }
+
 
     return retval;
 }
@@ -1405,7 +1430,7 @@ static void check_print_patch_set(PatchSet * ps)
 
 static void print_patch_set(PatchSet * ps)
 {
-    struct tm * tm;
+    struct tm *tm;
     struct list_head * next;
     const char * funk = "";
 
@@ -1454,63 +1479,95 @@ static void print_patch_set(PatchSet * ps)
 /* walk all the patchsets to assign monotonic psid, 
  * and to establish  branch ancestry
  */
-static void walk_all_ps(const void * nodep, const VISIT which, const int depth)
+static void assign_patchset_id(PatchSet * ps)
 {
-    PatchSet * ps;
-
-    switch(which)
+    /*
+     * Ignore the 'BRANCH ADD' patchsets 
+     */
+    if (!ps->branch_add)
     {
-    case postorder:
-    case leaf:
-	ps = *(PatchSet**)nodep;
-
-	/*
-	 * Ignore the 'BRANCH ADD' patchsets 
-	 */
-	if (!ps->branch_add)
+	ps_counter++;
+	ps->psid = ps_counter;
+	
+	if (track_branch_ancestry && strcmp(ps->branch, "HEAD") != 0)
 	{
-	    ps_counter++;
-	    ps->psid = ps_counter;
-
-	    if (track_branch_ancestry && strcmp(ps->branch, "HEAD") != 0)
+	    PatchSet * head_ps = (PatchSet*)get_hash_object(branch_heads, ps->branch);
+	    if (!head_ps) 
 	    {
-		PatchSet * head_ps = (PatchSet*)get_hash_object(branch_heads, ps->branch);
-		if (!head_ps) 
-		{
-		    head_ps = ps;
-		    put_hash_object(branch_heads, ps->branch, head_ps);
-		}
-
-		determine_branch_ancestor(ps, head_ps);
+		head_ps = ps;
+		put_hash_object(branch_heads, ps->branch, head_ps);
 	    }
+	    
+	    determine_branch_ancestor(ps, head_ps);
 	}
-	else
-	{
-	    ps->psid = -1;
-	}
-
-	break;
-
-    default:
-	break;
+    }
+    else
+    {
+	ps->psid = -1;
     }
 }
 
-static void show_ps_tree_node(const void * nodep, const VISIT which, const int depth)
+static int compare_rev_strings(const char * cr1, const char * cr2)
 {
-    PatchSet * ps;
+    char r1[REV_STR_MAX];
+    char r2[REV_STR_MAX];
+    char *s1 = r1, *s2 = r2;
+    char *p1, *p2;
+    int n1, n2;
 
-    switch(which)
+    strcpy(s1, cr1);
+    strcpy(s2, cr2);
+
+    for (;;) 
     {
-    case postorder:
-    case leaf:
-	ps = *(PatchSet**)nodep;
-	check_print_patch_set(ps);
-	break;
+	p1 = strchr(s1, '.');
+	p2 = strchr(s2, '.');
 
-    default:
-	break;
+	if (p1) *p1++ = 0;
+	if (p2) *p2++ = 0;
+	
+	n1 = atoi(s1);
+	n2 = atoi(s2);
+	
+	if (n1 < n2)
+	    return -1;
+	if (n1 > n2)
+	    return 1;
+
+	if (!p1 && p2)
+	    return -1;
+	if (p1 && !p2)
+	    return 1;
+	if (!p1 && !p2)
+	    return 0;
+
+	s1 = p1;
+	s2 = p2;
     }
+}
+
+static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * ps2)
+{
+    struct list_head * i;
+
+    for (i = ps1->members.next; i != &ps1->members; i = i->next)
+    {
+	PatchSetMember * psm1 = list_entry(i, PatchSetMember, link);
+	struct list_head * j;
+
+	for (j = ps2->members.next; j != &ps2->members; j = j->next)
+	{
+	    PatchSetMember * psm2 = list_entry(j, PatchSetMember, link);
+	    if (psm1->file == psm2->file) 
+	    {
+		int ret = compare_rev_strings(psm1->post_rev->rev, psm2->post_rev->rev);
+		debug(DEBUG_APPMSG1, "file: %s comparing %s %s = %d", psm1->file->filename, psm1->post_rev->rev, psm2->post_rev->rev, ret);
+		return ret;
+	    }
+	}
+    }
+    
+    return 0;
 }
 
 static int compare_patch_sets_bk(const void * v_ps1, const void * v_ps2)
@@ -1532,9 +1589,9 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     int ret;
     time_t d, min, max;
 
-    /* We order by (author, descr, date), but because of the fuzz factor
+    /* We order by (author, descr, branch, members, date), but because of the fuzz factor
      * we treat times within a certain distance as equal IFF the author
-     * and descr match.  
+     * and descr match.
      */
 
     ret = strcmp(ps1->author, ps2->author);
@@ -1546,6 +1603,10 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 	    return ret;
 
     ret = strcmp(ps1->branch, ps2->branch);
+    if (ret)
+	return ret;
+
+    ret = compare_patch_sets_by_members(ps1, ps2);
     if (ret)
 	return ret;
 
@@ -1579,10 +1640,15 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     return (diff < 0) ? -1 : 1;
 }
 
-static int compare_patch_sets_bytime(const void * v_ps1, const void * v_ps2)
+static int compare_patch_sets_bytime_list(struct list_head * l1, struct list_head * l2)
 {
-    const PatchSet * ps1 = (const PatchSet *)v_ps1;
-    const PatchSet * ps2 = (const PatchSet *)v_ps2;
+    const PatchSet *ps1 = list_entry(l1, PatchSet, all_link);
+    const PatchSet *ps2 = list_entry(l2, PatchSet, all_link);
+    return compare_patch_sets_bytime(ps1, ps2);
+}
+
+static int compare_patch_sets_bytime(const PatchSet * ps1, const PatchSet * ps2)
+{
     long diff;
     int ret;
 
@@ -1594,6 +1660,10 @@ static int compare_patch_sets_bytime(const void * v_ps1, const void * v_ps2)
     diff = ps1->date - ps2->date;
     if (diff)
 	return (diff < 0) ? -1 : 1;
+
+    ret = compare_patch_sets_by_members(ps1, ps2);
+    if (ret)
+	return ret;
 
     ret = strcmp(ps1->author, ps2->author);
     if (ret)
@@ -1950,7 +2020,7 @@ static PatchSet * create_patch_set()
 	ps->branch_add = 0;
 	ps->funk_factor = 0;
 	ps->ancestor_branch = NULL;
-	CLEAR_LIST_NODE(&ps->link);
+	CLEAR_LIST_NODE(&ps->collision_link);
     }
 
     return ps;
@@ -2304,8 +2374,8 @@ void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
     for (next = ps->members.next; next != &ps->members; next = next->next) 
     {
 	PatchSetMember * m = list_entry(next, PatchSetMember, link);
-	if (m->file == psm->file && ps->link.next == NULL) 
-		list_add(&ps->link, &collisions);
+	if (m->file == psm->file && ps->collision_link.next == NULL) 
+		list_add(&ps->collision_link, &collisions);
     }
 
     psm->ps = ps;
@@ -2521,7 +2591,16 @@ static void handle_collisions()
     struct list_head *next;
     for (next = collisions.next; next != &collisions; next = next->next) 
     {
-	PatchSet * ps = list_entry(next, PatchSet, link);
+	PatchSet * ps = list_entry(next, PatchSet, collision_link);
 	printf("PatchSet %d has collisions\n", ps->psid);
+    }
+}
+
+void walk_all_patch_sets(void (*action)(PatchSet *))
+{
+    struct list_head * next;;
+    for (next = all_patch_sets.next; next != &all_patch_sets; next = next->next) {
+	PatchSet * ps = list_entry(next, PatchSet, all_link);
+	action(ps);
     }
 }

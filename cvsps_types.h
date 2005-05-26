@@ -127,7 +127,8 @@ struct _PatchSet
     int funk_factor;
 
     /* for putting onto a list */
-    struct list_head link;
+    struct list_head all_link;
+    struct list_head collision_link;
 };
 
 struct _PatchSetRange

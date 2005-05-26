@@ -24,7 +24,7 @@ static int cache_version = 1;
 static FILE * cache_fp;
 static int ps_counter;
 
-static void write_tree_node_to_cache(const void *, const VISIT, const int);
+static void write_patch_set_to_cache(PatchSet *);
 static void parse_cache_revision(PatchSetMember *, const char *);
 static void dump_patch_set(FILE *, PatchSet *);
 
@@ -283,7 +283,7 @@ time_t read_cache()
 	    if (strcmp(buff, CACHE_DESCR_BOUNDARY) == 0)
 	    {
 		debug(DEBUG_STATUS, "patch set %s %s %s %s", datebuff, authbuff, logbuff, branchbuff);
-		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff);
+		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff, NULL);
 		/* the tag and tag_flags will be assigned by the resolve_global_symbols code 
 		 * ps->tag = (strlen(tagbuff)) ? get_string(tagbuff) : NULL;
 		 * ps->tag_flags = tag_flags;
@@ -415,7 +415,7 @@ static void parse_cache_revision(PatchSetMember * psm, const char * p_buff)
 
 /************ Writing ************/
 
-void write_cache(time_t cache_date, void * ps_tree_bytime)
+void write_cache(time_t cache_date)
 {
     struct hash_entry * file_iter;
 
@@ -473,26 +473,14 @@ void write_cache(time_t cache_date, void * ps_tree_bytime)
     }
 
     fprintf(cache_fp, "\n");
-    twalk(ps_tree_bytime, write_tree_node_to_cache);
+    walk_all_patch_sets(write_patch_set_to_cache);
     fclose(cache_fp);
     cache_fp = NULL;
 }
 
-static void write_tree_node_to_cache(const void * nodep, const VISIT which, const int depth)
+static void write_patch_set_to_cache(PatchSet * ps)
 {
-    PatchSet * ps;
-
-    switch(which)
-    {
-    case postorder:
-    case leaf:
-	ps = *(PatchSet**)nodep;
-	dump_patch_set(cache_fp, ps);
-	break;
-
-    default:
-	break;
-    }
+    dump_patch_set(cache_fp, ps);
 }
 
 static void dump_patch_set(FILE * fp, PatchSet * ps)
