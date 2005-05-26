@@ -27,7 +27,7 @@
 #include "cvs_direct.h"
 #include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.105 2005/05/26 03:32:47 david Exp $");
+RCSID("$Id: cvsps.c,v 4.106 2005/05/26 03:39:29 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -2581,8 +2581,11 @@ static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
 	    const char * branch_rev = (char *)get_hash_object(rev->file->branches_sym, head_ps->ancestor_branch);
 	    d1 = branch_rev ? count_dots(branch_rev) : 1;
 	}
-
-	d2 = count_dots(rev->rev);
+	
+	/* HACK: we sometimes pretend to derive from the import branch.  
+	 * just don't do that.  this is the easiest way to prevent... 
+	 */
+	d2 = (strcmp(rev->rev, "1.1.1.1") == 0) ? 0 : count_dots(rev->rev);
 	
 	if (d2 > d1)
 	    head_ps->ancestor_branch = rev->branch;
