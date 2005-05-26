@@ -3,6 +3,10 @@
 
 #define CVSPS_PREFIX ".cvsps"
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 char *xstrdup(char const *);
 void strzncpy(char * dst, const char * src, int n);
 char *readfile(char const *filename, char *buf, size_t size);

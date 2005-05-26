@@ -27,7 +27,7 @@
 #include "cvs_direct.h"
 #include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.103 2005/05/26 02:43:24 david Exp $");
+RCSID("$Id: cvsps.c,v 4.104 2005/05/26 03:25:19 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -586,7 +586,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --cvs-direct (--no-cvs-direct) enable (disable) built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
-    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory (cvs-direct only)");
     debug(DEBUG_APPERROR, "  -q be quiet about warnings");
     debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
@@ -1749,6 +1749,7 @@ static void do_cvs_diff(PatchSet * ps)
     const char * dopts;
     const char * utype;
     char use_rep_path[PATH_MAX];
+    char esc_use_rep_path[PATH_MAX];
 
     fflush(stdout);
     fflush(stderr);
@@ -1769,6 +1770,8 @@ static void do_cvs_diff(PatchSet * ps)
 	dtype = "rdiff";
 	utype = "co";
 	sprintf(use_rep_path, "%s/", repository_path);
+	/* the rep_path may contain characters that the shell will barf on */
+	escape_filename(esc_use_rep_path, PATH_MAX, use_rep_path);
     }
     else
     {
@@ -1776,6 +1779,7 @@ static void do_cvs_diff(PatchSet * ps)
 	dtype = "diff";
 	utype = "update";
 	use_rep_path[0] = 0;
+	esc_use_rep_path[0] = 0;
     }
 
     for (next = ps->members.next; next != &ps->members; next = next->next)
@@ -1843,7 +1847,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    else
 	    {
 		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s%s|g'",
-			 compress_arg, norc, utype, rev, use_rep_path, esc_file, dopts,
+			 compress_arg, norc, utype, rev, esc_use_rep_path, esc_file, dopts,
 			 cr?"":"-",cr?"-":"", cr?"2":"1",
 			 use_rep_path, psm->file->filename);
 	    }
@@ -1863,7 +1867,7 @@ static void do_cvs_diff(PatchSet * ps)
 
 		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s %s -r %s -r %s %s%s",
 			 compress_arg, norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, 
-			 use_rep_path, esc_file);
+			 esc_use_rep_path, esc_file);
 	    }
 	}
 
@@ -2218,7 +2222,8 @@ static void resolve_global_symbols()
 	    Tag * tag = list_entry(next, Tag, global_link);
 	    CvsFileRevision * rev = tag->rev;
 
-	    if (!rev->present)
+	    /* FIXME:test for rev->post_psm from DEBIAN. not sure how this could happen */
+	    if (!rev->present || !rev->post_psm)
 	    {
 		struct list_head *tmp = next->prev;
 		debug(DEBUG_APPERROR, "revision %s of file %s is tagged but not present",

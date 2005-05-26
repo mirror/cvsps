@@ -6,6 +6,10 @@
 typedef struct _CvsServerCtx CvsServerCtx;
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 extern struct hash_table * file_hash;
 extern const char * tag_flag_descr[];
 extern CvsServerCtx * cvs_direct_ctx;

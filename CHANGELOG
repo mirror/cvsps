@@ -1,3 +1,22 @@
+2.1
+- lots of fixes to get the thing working sufficienly for cvs2git
+- main features
+  - optionally detect and display ancestor branch information for
+    new detected branches
+  - never allow more than one revision of a file to be in a single
+    patchset (this may disturb the patchset numbers for historical
+    data :-(
+  - use file revisions to help sort, so that initial imports
+    won't be listed as patchset 1, with patchset 2 as the actual
+    creation of the files.
+  - reports log times in localtime (use TZ to override)	
+- many downstream patches from Debian, special thanks to Marcus
+  Crafter for maintaining.  From the Debian changelog:
+   - patch from Kim Hansen to fix time calculation bug
+   - documentation patch from J. Bruce Fields
+   - directory name handling patch from David Kilzer
+   - others I'm not sure of, I'd happily update the credit here
+
 2.0rc1
 - resolve -r symbols during global symbol resolution
 - using two -r arguments implicitly sets -b with branch
