@@ -27,7 +27,7 @@
 #include "cvs_direct.h"
 #include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.104 2005/05/26 03:25:19 david Exp $");
+RCSID("$Id: cvsps.c,v 4.105 2005/05/26 03:32:47 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -1561,7 +1561,7 @@ static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * 
 	    if (psm1->file == psm2->file) 
 	    {
 		int ret = compare_rev_strings(psm1->post_rev->rev, psm2->post_rev->rev);
-		debug(DEBUG_APPMSG1, "file: %s comparing %s %s = %d", psm1->file->filename, psm1->post_rev->rev, psm2->post_rev->rev, ret);
+		//debug(DEBUG_APPMSG1, "file: %s comparing %s %s = %d", psm1->file->filename, psm1->post_rev->rev, psm2->post_rev->rev, ret);
 		return ret;
 	    }
 	}
