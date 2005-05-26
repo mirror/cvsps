@@ -13,7 +13,8 @@ OBJS=\
 	util.o\
 	stats.o\
 	cap.o\
-	cvs_direct.o
+	cvs_direct.o\
+	list_sort.o
 
 all: cvsps
 
