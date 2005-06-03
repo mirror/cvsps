@@ -27,7 +27,7 @@
 #include "cvs_direct.h"
 #include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.106 2005/05/26 03:39:29 david Exp $");
+RCSID("$Id: cvsps.c,v 4.107 2005/06/03 15:30:42 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -258,7 +258,7 @@ static void load_from_cvs()
     int state = NEED_FILE;
     CvsFile * file = NULL;
     PatchSetMember * psm = NULL;
-    char datebuff[20];
+    char datebuff[26];
     char authbuff[AUTH_STR_MAX];
     char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
@@ -407,8 +407,8 @@ static void load_from_cvs()
 	    {
 		char * p;
 
-		strncpy(datebuff, buff + 6, 19);
-		datebuff[19] = 0;
+		strncpy(datebuff, buff + 6, sizeof(datebuff));
+		datebuff[sizeof(datebuff)-1] = 0;
 
 		strcpy(authbuff, "unknown");
 		p = strstr(buff, "author: ");
