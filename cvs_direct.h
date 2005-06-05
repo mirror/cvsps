@@ -14,6 +14,6 @@ void cvs_diff(CvsServerCtx *, const char *, const char *, const char *, const ch
 FILE * cvs_rlog_open(CvsServerCtx *, const char *, const char *);
 char * cvs_rlog_fgets(char *, int, CvsServerCtx *);
 void cvs_rlog_close(CvsServerCtx *);
-void cvs_version(CvsServerCtx *, char *, char *);
+void cvs_version(CvsServerCtx *, char *, char *, int, int);
 
 #endif /* CVS_DIRECT_H */

@@ -296,3 +296,18 @@ int escape_filename(char * dst, int len, const char * src)
 
     return (*src == 0) ? 0 : -1;
 }
+
+void strcpy_a(char * dst, const char * src, int n)
+{
+    /* place a 'sentinel' char in final place in buffer 
+     * if strncpy expires the avail. space, this char.
+     * will no longer be \0
+     */
+    dst[n - 1] = 0;
+    strncpy(dst, src, n);
+
+    if (dst[n - 1] != 0) {
+	debug(DEBUG_APPERROR, "FATAL: internal buffer exhausted.");
+	exit(1);
+    }
+}
