@@ -40,7 +40,7 @@ static void get_cvspass(char *, const char *);
 static void send_string(CvsServerCtx *, const char *, ...);
 static int read_response(CvsServerCtx *, const char *);
 static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp);
-static int read_line(CvsServerCtx * ctx, char * p);
+static int read_line(CvsServerCtx * ctx, char * p, int len);
 
 static CvsServerCtx * open_ctx_pserver(CvsServerCtx *, const char *);
 static CvsServerCtx * open_ctx_forked(CvsServerCtx *, const char *);
@@ -126,7 +126,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	send_string(ctx, "valid-requests\n");
 
 	/* check for the commands we will issue */
-	read_line(ctx, buff);
+	read_line(ctx, buff, BUFSIZ);
 	if (strncmp(buff, "Valid-requests", 14) != 0)
 	{
 	    debug(DEBUG_APPERROR, "cvs_direct: bad response to valid-requests command");
@@ -145,7 +145,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    return NULL;
 	}
 	
-	read_line(ctx, buff);
+	read_line(ctx, buff, BUFSIZ);
 	if (strcmp(buff, "ok") != 0)
 	{
 	    debug(DEBUG_APPERROR, "cvs_direct: bad ok trailer to valid-requests command");
@@ -656,24 +656,29 @@ static int refill_buffer(CvsServerCtx * ctx)
     return len;
 }
 
-static int read_line(CvsServerCtx * ctx, char * p)
+static int read_line(CvsServerCtx * ctx, char * p, int maxlen)
 {
     int len = 0;
+
+    if (maxlen <= 0)
+	return -1;
+
     while (1)
     {
 	if (ctx->head == ctx->tail)
 	    if (refill_buffer(ctx) <= 0)
 		return -1;
 
-	*p = *ctx->head++;
-
-	if (*p == '\n')
+	/* break out without advancing head if buffer is exhausted */
+	if (maxlen == 1 || (*p = *ctx->head++) == '\n')
 	{
 	    *p = 0;
 	    break;
 	}
+
 	p++;
 	len++;
+	maxlen--;
     }
 
     return len;
@@ -684,7 +689,7 @@ static int read_response(CvsServerCtx * ctx, const char * str)
     /* FIXME: more than 1 char at a time */
     char resp[BUFSIZ];
 
-    if (read_line(ctx, resp) < 0)
+    if (read_line(ctx, resp, BUFSIZ) < 0)
 	return 0;
 
     debug(DEBUG_TCP, "response '%s' read", resp);
@@ -698,7 +703,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 
     while (1)
     {
-	read_line(ctx, line);
+	read_line(ctx, line, BUFSIZ);
 	debug(DEBUG_TCP, "ctx_to_fp: %s", line);
 	if (memcmp(line, "M ", 2) == 0)
 	{
@@ -874,7 +879,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     char lbuff[BUFSIZ];
     int len;
 
-    len = read_line(ctx, lbuff);
+    len = read_line(ctx, lbuff, BUFSIZ);
     debug(DEBUG_TCP, "cvs_direct: rlog: read %s", lbuff);
 
     if (memcmp(lbuff, "M ", 2) == 0)
@@ -905,13 +910,13 @@ void cvs_version(CvsServerCtx * ctx, char * client_version, char * server_versio
     char lbuff[BUFSIZ];
     strcpy(client_version, "Client: Concurrent Versions System (CVS) 99.99.99 (client/server) cvs-direct");
     send_string(ctx, "version\n");
-    read_line(ctx, lbuff);
+    read_line(ctx, lbuff, BUFSIZ);
     if (memcmp(lbuff, "M ", 2) == 0)
 	sprintf(server_version, "Server: %s", lbuff + 2);
     else
 	debug(DEBUG_APPERROR, "cvs_direct: didn't read version: %s", lbuff);
     
-    read_line(ctx, lbuff);
+    read_line(ctx, lbuff, BUFSIZ);
     if (strcmp(lbuff, "ok") != 0)
 	debug(DEBUG_APPERROR, "cvs_direct: protocol error reading version");
 

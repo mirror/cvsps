@@ -27,7 +27,7 @@
 #include "cvs_direct.h"
 #include "list_sort.h"
 
-RCSID("$Id: cvsps.c,v 4.107 2005/06/03 15:30:42 david Exp $");
+RCSID("$Id: cvsps.c,v 4.108 2005/06/05 22:52:43 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"
@@ -478,6 +478,7 @@ static void load_from_cvs()
 		    /* if the log buffer is full, that's it.  
 		     * 
 		     * Also, read lines (fgets) always have \n in them
+		     * (unless truncation happens)
 		     * which we count on.  So if truncation happens,
 		     * be careful to put a \n on.
 		     * 
