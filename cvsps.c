@@ -2280,6 +2280,11 @@ static void parse_sym(CvsFile * file, char * sym)
     
     if (!get_branch_ext(rev, eot, &leaf))
     {
+	if (strcmp(tag, "TRUNK") == 0)
+	{
+	    debug(DEBUG_STATUS, "ignoring the TRUNK branch/tag");
+	    return;
+	}
 	debug(DEBUG_APPERROR, "malformed revision");
 	exit(1);
     }
