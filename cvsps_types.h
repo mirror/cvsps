@@ -9,7 +9,7 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define LOG_STR_MAX 32768
+#define LOG_STR_MAX 65536
 #define AUTH_STR_MAX 64
 #define CID_STR_MAX 64
 #define REV_STR_MAX 64
