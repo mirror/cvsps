@@ -2,7 +2,7 @@ VERSION=3.1
 
 CC?=gcc
 CFLAGS?=-g -O2 -Wall 
-CFLAGS+=-I. -DVERSION=\"$(VERSION)\"
+CPPFLAGS+=-I. -DVERSION=\"$(VERSION)\"
 prefix?=/usr/local
 OBJS=\
 	cbtcommon/debug.o\
