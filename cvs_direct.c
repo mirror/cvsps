@@ -185,41 +185,41 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 
     strcpy_a(root, p_root, PATH_MAX);
 
-    tok = strsep(&p, ":");
-    if (strlen(tok) == 0 || !p)
-    {
-	debug(DEBUG_APPERROR, "parse error on third token");
-	goto out_free_err;
-    }
-
-    tok2 = strsep(&tok, "@");
-    if (!strlen(tok2) || (!tok || !strlen(tok)))
+    /* parse initial "user@server" portion of p. */
+    tok = strsep(&p, "@");
+    tok2 = p;
+    p += strcspn(p, ":/"); /* server part ends at first ':' or '/'. */
+    if (!tok || !tok2 || !strlen(tok) || 0 >= (p - tok2))
     {
 	debug(DEBUG_APPERROR, "parse error on user@server in pserver");
 	goto out_free_err;
     }
 
-    strcpy_a(user, tok2, BUFSIZ);
-    strcpy_a(server, tok, BUFSIZ);
-    
-    if (*p != '/')
-    {
-	tok = strchr(p, '/');
-	if (!tok)
-	{
-	    debug(DEBUG_APPERROR, "parse error: expecting / in root");
-	    goto out_free_err;
-	}
-	
-	memset(port, 0, sizeof(port));
-	memcpy(port, p, tok - p);
+    strcpy(user, tok);
+    memcpy(server, tok2, p - tok2);
+    server[p - tok2] = '\0';
 
-	p = tok;
+    /* p now points to ':' or '/' following server part. */
+    tok = strchr(p, '/'); /* find start of path */
+    if (!tok)
+    {
+	debug(DEBUG_APPERROR, "parse error: expecting / in root");
+	goto out_free_err;
+    }
+
+    if (*p == ':') /* port number specified. Ends at tok. */
+    {
+	p++;
+	memcpy(port, p, tok - p);
+	port[tok - p] = '\0';
     }
     else
     {
-	strcpy_a(port, "2401", 8);
+	strcpy(port, "2401");
     }
+
+    /* Make p point to path component, starting with '/'. */
+    p = tok;
 
     /* the line from .cvspass is fully qualified, so rebuild */
     snprintf(full_root, PATH_MAX, ":pserver:%s@%s:%s%s", user, server, port, p);
