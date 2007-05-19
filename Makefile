@@ -43,8 +43,11 @@ install: cvsps.1
 	install cvsps $(prefix)/bin
 	install -m 644 cvsps.1 $(prefix)/share/man/man1
 
+tags: *.c *.h cbtcommon/*.c cbtcommon/*.h
+	ctags *.c *.h cbtcommon/*.c cbtcommon/*.h
+
 clean:
-	rm -f cvsps *.o cbtcommon/*.o core cvsps.spec cvsps.1 cvsps.html
+	rm -f cvsps *.o cbtcommon/*.o core tags cvsps.spec cvsps.1 cvsps.html
 
 cvsps.spec: cvsps.spec.dist
 	echo "Version: $(VERSION)" >cvsps.spec
