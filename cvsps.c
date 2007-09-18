@@ -1057,6 +1057,13 @@ static void init_paths()
 	exit(1);
     }
 
+    if (strip_path_len > 3 && !strcmp(strip_path + strip_path_len - 3, "/./"))
+    {
+	debug(DEBUG_STATUS, "pruning /./ off end of strip_path");
+	strip_path_len -= 2;
+	strip_path[strip_path_len] = '\0';
+    }
+
     debug(DEBUG_STATUS, "strip_path: %s", strip_path);
 }
 
