@@ -228,3 +228,4 @@ all of the files in that subdirectory will be ignored.
 
 You can always run CVSps in that subdirectory, and since it IS a 
 separate repository, that does make a little bit of sense.
+
