@@ -79,6 +79,7 @@ static const char * test_log_file;
 static struct hash_table * branch_heads;
 static struct list_head all_patch_sets;
 static struct list_head collisions;
+static struct hash_table * branches;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
@@ -140,6 +141,7 @@ static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
 static int before_tag(CvsFileRevision * rev, const char * tag);
 static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps);
 static void handle_collisions();
+static Branch * create_branch(const char * name) ;
 
 int main(int argc, char *argv[])
 {
@@ -174,6 +176,7 @@ int main(int argc, char *argv[])
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
     branch_heads = create_hash_table(1023);
+    branches = create_hash_table(1023);
     INIT_LIST_HEAD(&all_patch_sets);
     INIT_LIST_HEAD(&collisions);
 
@@ -2014,6 +2017,7 @@ static PatchSet * create_patch_set()
     if (ps)
     {
 	INIT_LIST_HEAD(&ps->members);
+	INIT_LIST_HEAD(&ps->branches);
 	ps->psid = -1;
 	ps->date = 0;
 	ps->min_date = 0;
@@ -2184,6 +2188,13 @@ char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
     put_hash_object_ex(file->branches, new_rev, new_tag, HT_NO_KEYCOPY, NULL, NULL);
     put_hash_object_ex(file->branches_sym, new_tag, new_rev, HT_NO_KEYCOPY, NULL, NULL);
     
+    if (get_hash_object(branches, tag) == NULL) {
+	debug(DEBUG_STATUS, "adding new branch to branches hash: %s", tag);
+	Branch * branch = create_branch(tag);
+	put_hash_object_ex(branches, new_tag, branch, HT_NO_KEYCOPY, NULL, NULL);
+    }
+    
+
     return new_tag;
 }
 
@@ -2612,4 +2623,13 @@ void walk_all_patch_sets(void (*action)(PatchSet *))
 	PatchSet * ps = list_entry(next, PatchSet, all_link);
 	action(ps);
     }
+}
+
+static Branch * create_branch(const char * name) 
+{
+    Branch * branch = (Branch*)calloc(1, sizeof(*branch));
+    branch->name = get_string(name);
+    branch->ps = NULL;
+    CLEAR_LIST_NODE(&branch->link);
+    return branch;
 }

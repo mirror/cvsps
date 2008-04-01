@@ -16,6 +16,7 @@ typedef struct _PatchSetRange PatchSetRange;
 typedef struct _CvsFileRevision CvsFileRevision;
 typedef struct _GlobalSymbol GlobalSymbol;
 typedef struct _Tag Tag;
+typedef struct _Branch Branch;
 
 struct _CvsFileRevision
 {
@@ -126,6 +127,11 @@ struct _PatchSet
      */
     int funk_factor;
 
+    /* 
+     * a list of 'Branch' objects that branch from here
+     */
+    struct list_head branches;
+
     /* for putting onto a list */
     struct list_head all_link;
     struct list_head collision_link;
@@ -152,6 +158,14 @@ struct _Tag
     char * tag;
     struct list_head global_link;
     struct list_head rev_link;
+};
+
+struct _Branch
+{
+    char * name;
+    PatchSet * ps;
+    /* every patchset will have a list of branches that branch from there */
+    struct list_head link;
 };
 
 #endif /* CVSPS_TYPES_H */
