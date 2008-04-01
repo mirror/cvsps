@@ -2653,7 +2653,8 @@ static void find_branch_points(PatchSet * ps)
     /*
      * for each member, check if the post-rev has any branch children.
      * if so, the branch point for that branch cannot be earlier than this 
-     * PatchSet, so just assign here for new.
+     * PatchSet, so just assign here for now.  It'll get pushed ahead
+     * bit by bit until it falls into the right place.
      */
     for (next = ps->members.next; next != &ps->members; next = next->next) 
     {
