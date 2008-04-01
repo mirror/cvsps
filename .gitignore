@@ -1,0 +1,6 @@
+*.o
+*.d
+cobite
+.debug
+.release
+cvsps
