@@ -1,3 +1,9 @@
+2.2b1
+- add a new line item in the PatchSet output which indicates which 
+  branches fork off from after this PatchSet.  This is actually
+  the only way to correctly indicate the branching.  The 'Ancestor
+  Branch' thing is actually broken by design, and is now deprecated.
+
 2.1
 - lots of fixes to get the thing working sufficienly for cvs2git
 - main features

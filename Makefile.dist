@@ -16,13 +16,10 @@ OBJS=\
 	cvs_direct.o\
 	list_sort.o
 
-all: cvsps test_date
+all: cvsps 
 
 cvsps: $(OBJS)
 	$(CC) -o cvsps $(OBJS) -lz
-
-test_date: test_date.o util.o cbtcommon/debug.o
-	$(CC) -o test_date test_date.o util.o cbtcommon/debug.o
 
 install:
 	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
