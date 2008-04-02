@@ -3,6 +3,8 @@
   branches fork off from after this PatchSet.  This is actually
   the only way to correctly indicate the branching.  The 'Ancestor
   Branch' thing is actually broken by design, and is now deprecated.
+- sometimes cvs log has a timezone in it (from Ludwig Nussel)
+- better buffer size handling
 
 2.1
 - lots of fixes to get the thing working sufficienly for cvs2git
