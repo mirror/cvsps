@@ -906,7 +906,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     {
 	debug(DEBUG_APPMSG1, "%s", lbuff + 2);
     }
-    else if (strcmp(lbuff, "ok") == 0 ||strcmp(lbuff, "error") == 0)
+    else if (strcmp(lbuff, "ok") == 0 || strncmp(lbuff, "error", 5) == 0)
     {
 	debug(DEBUG_TCP, "cvs_direct: rlog: got command completion");
 	return NULL;
