@@ -1,3 +1,7 @@
+3.0
+  New maintainer is Eric S. Raymond.
+  The --fast-export option allows dumping the history as a git import stream.
+
 2.2b1
 - add a new line item in the PatchSet output which indicates which 
   branches fork off from after this PatchSet.  This is actually

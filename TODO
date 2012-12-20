@@ -1,3 +1,34 @@
+.cvsignore -> .gitignore filename translation in --fast-export mode
+
+An optional progress meter.
+
+Discard branch-root tags if they have a name that's a prefix of a tip tag.
+
+Make regression-test loads that create funky and invalid tags.  Add some
+more test loads derived from CVS repos found in the wild.
+
+git-cvsimport is a wrapper around cvsps; talk with its maintainer
+and simplify that code.
+
+Extend direct mode so the fetches of file content for fast-export
+mode can be done through it.
+
+Hide data fetching behind an API so that the difference between normal
+mode, direct mode, and running from a logfile capture is not visible
+in cvsps.c
+
+Maybe scrap options and simplify code?  -A looks like a candidate for
+removal.  So does --bkcvs.
+
+Branch-merge detection.  Not sure it's possible but I want to look
+into it.  Are merge_ tags standardized enough to use?
+
+Way in the future...does this belong in C?  Maybe not.  Performance
+is going to be limited by network latency anyway, so Python or Ruby
+might be better tools - code size would drop by about x4, I think.
+
+David's to-do items were:
+
 TODO/WISHLIST
 
 - add 'update' command to update working directory to patchset,
