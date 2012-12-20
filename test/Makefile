@@ -2,6 +2,8 @@
 
 PATH := ${PATH}:..
 
+test: regress
+
 testlist:
 	@grep '^##' *.tst
 

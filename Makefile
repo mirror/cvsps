@@ -23,6 +23,9 @@ all: cvsps
 cvsps: $(OBJS)
 	$(CC) -o cvsps $(OBJS) -lz
 
+check:
+	@(cd test >/dev/null; make --quiet)
+
 install:
 	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
 	[ -d $(prefix)/share/man/man1 ] || mkdir -p $(prefix)/share/man/man1
@@ -46,4 +49,4 @@ dist: cvsps-$(VERSION).tar.gz
 release: cvsps-$(VERSION).tar.gz
 	shipper -u -m -t; make clean
 
-.PHONY: install clean version dist
+.PHONY: install clean version dist check
