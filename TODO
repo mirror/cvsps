@@ -1,5 +1,7 @@
 Run the code through Coverity and cppcheck.
 
+Emit a fossil map that reposurgeon can use.
+
 Simulate CVS's default ignore patterns in a generated .gitignore?
 
 An optional progress meter.
@@ -28,12 +30,3 @@ into it.  Are merge_ tags standardized enough to use?
 Way in the future...does this belong in C?  Maybe not.  Performance
 is going to be limited by network latency anyway, so Python or Ruby
 might be better tools - code size would drop by about x4, I think.
-
-David's to-do items were:
-
-TODO/WISHLIST
-
-- add 'update' command to update working directory to patchset,
-  and/or 'tag' command to place a tag at a patchset
-- store cache file in gzip format
-- handle true 'modules' (multiple strip-path?) in repository
