@@ -1,9 +1,8 @@
-MAJOR=2
-MINOR=2b1
+VERSION=3.0
 
 CC?=gcc
 CFLAGS?=-g -O2 -Wall 
-CFLAGS+=-I. -DVERSION=\"$(MAJOR).$(MINOR)\"
+CFLAGS+=-I. -DVERSION=\"$(VERSION)\"
 prefix?=/usr/local
 OBJS=\
 	cbtcommon/debug.o\
@@ -34,17 +33,17 @@ clean:
 	rm -f cvsps *.o cbtcommon/*.o core cvsps.spec
 
 cvsps.spec: cvsps.spec.dist
-	echo "Version: $(MAJOR).$(MINOR)" >cvsps.spec
+	echo "Version: $(VERSION)" >cvsps.spec
 
 SOURCES = Makefile *.[ch] cbtcommon/*.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.1 TODO
 ALL =  $(SOURCES) $(DOCS) control
-cvsps-$(MAJOR).$(MINOR).tar.gz: $(ALL)
-	tar --transform='s:^:cvsps-$(MAJOR).$(MINOR)/:' --show-transformed-names -cvzf cvsps-$(MAJOR).$(MINOR).tar.gz $(ALL)
+cvsps-$(VERSION).tar.gz: $(ALL)
+	tar --transform='s:^:cvsps-$(VERSION)/:' --show-transformed-names -cvzf cvsps-$(VERSION).tar.gz $(ALL)
 
-dist: cvsps-$(MAJOR).$(MINOR).tar.gz
+dist: cvsps-$(VERSION).tar.gz
 
-release: cvsps-$(MAJOR).$(MINOR).tar.gz
+release: cvsps-$(VERSION).tar.gz
 	shipper -u -m -t; make clean
 
 .PHONY: install clean version dist
