@@ -185,7 +185,7 @@ void convert_date(time_t * t, const char * dte)
 
     if (!init_re) 
     {
-	if (regcomp(&date_re, "([0-9]{4})[-/]([0-9]{2})[-/]([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})( [-+][0-9]{4})?", REG_EXTENDED)) 
+	if (regcomp(&date_re, "([0-9]{4})[-/]([0-9]{2})[-/]([0-9]{2})[ T]([0-9]{2}):([0-9]{2}):([0-9]{2})( [-+][0-9]{4})?", REG_EXTENDED)) 
 	{
 	    fprintf(stderr, "FATAL: date regex compilation error\n");
 	    exit(1);
