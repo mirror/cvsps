@@ -122,7 +122,7 @@ int check_version_string(const char * str, int req_major, int req_minor, int req
     }
 
     p += skip;
-    if (sscanf(p, "%d.%d.%d", &major, &minor, &extra) != 3)
+    if (sscanf(p, "%3d.%3d.%3d", &major, &minor, &extra) != 3)
     {	
 	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
 	return 0;

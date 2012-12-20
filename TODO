@@ -22,7 +22,7 @@ mode, direct mode, and running from a logfile capture is not visible
 in cvsps.c
 
 Maybe scrap options and simplify code?  -A looks like a candidate for
-removal.  So does --bkcvs.
+removal.
 
 Branch-merge detection.  Not sure it's possible but I want to look
 into it.  Are merge_ tags standardized enough to use?

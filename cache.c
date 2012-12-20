@@ -105,7 +105,6 @@ time_t read_cache()
     char datebuff[20] = "";
     char authbuff[AUTH_STR_MAX] = "";
     char tagbuff[LOG_STR_MAX] = "";
-    int tag_flags = 0;
     char branchbuff[LOG_STR_MAX] = "";
     int branch_add = 0;
     char logbuff[LOG_STR_MAX] = "";
@@ -258,7 +257,7 @@ time_t read_cache()
 	    {
 		/* remove prefix "tag_flags: " and LF from len */
 		len -= 11;
-		tag_flags = atoi(buff + 11);
+		//tag_flags = atoi(buff + 11);
 		state = CACHE_NEED_PS_BRANCH;
 	    }
 	    break;
@@ -313,7 +312,6 @@ time_t read_cache()
 		datebuff[0] = 0;
 		authbuff[0] = 0;
 		tagbuff[0] = 0;
-		tag_flags = 0;
 		branchbuff[0] = 0;
 		branch_add = 0;
 		logbuff[0] = 0;

@@ -26,6 +26,9 @@ cvsps: $(OBJS)
 check:
 	@(cd test >/dev/null; make --quiet)
 
+cppcheck:
+	cppcheck --template gcc --enable=all --suppress=unusedStructMember *.[ch]
+
 install:
 	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
 	[ -d $(prefix)/share/man/man1 ] || mkdir -p $(prefix)/share/man/man1

@@ -1629,6 +1629,7 @@ static void print_fast_export(PatchSet * ps)
 	    }
 	    while ((c = fgetc(cfp)) != EOF)
 		putchar(c);
+	    (void)fclose(cfp);
 	    putchar('\n');
 
 	}
