@@ -1610,6 +1610,10 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
      * and descr match.
      */
 
+    ret = compare_patch_sets_by_members(ps1, ps2);
+    if (ret)
+	return ret;
+
     ret = strcmp(ps1->author, ps2->author);
     if (ret)
 	    return ret;
@@ -1619,10 +1623,6 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 	    return ret;
 
     ret = strcmp(ps1->branch, ps2->branch);
-    if (ret)
-	return ret;
-
-    ret = compare_patch_sets_by_members(ps1, ps2);
     if (ret)
 	return ret;
 
