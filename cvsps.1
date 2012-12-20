@@ -9,15 +9,31 @@ CVSps \- create patchset information from CVS
 [\-\-summary\-first] [\-\-test\-log <filename>] [\-\-bkcvs]
 [\-\-no\-rlog] [\-\-diff\-opts <option string>] [\-\-cvs\-direct]
 [\-\-debuglvl <bitmask>] [\-Z <compression>] [\-\-root <cvsroot>]
-[\-q] [\-A] [<repository>]
+[\-q] [\-A] [\-\-fast-export] [<repository>] 
 .SH DESCRIPTION
 CVSps is a program for generating 'patchset' information from a CVS
 repository.  A patchset in this case is defined as a set of changes made
 to a collection of files, and all committed at the same time (using a
 single 'cvs commit' command).  This information is valuable to seeing the
-big picture of the evolution of a cvs project.  While cvs tracks revision
+big picture of the evolution of a cvs project.  While CVS tracks revision
 information, it is often difficult to see what changes were committed
 'atomically' to the repository.
+.P
+The default reporting mode is designed for humans to look at.  The
+--fast-export mode emits a git import stream which can be consumed
+by the importers for other version-control systems.  In this mode,
+.IP * 5
+Each patchset becomes a commit
+.IP * 5
+CVS tags become git lightweight tags, and more than one may be
+reported per patchset (in the default mode only the latest is reported).
+.IP * 5
+The HEAD branch is renamed to 'master'
+.IP * 5
+Generated tags for branch roots are skipped
+.IP * 5
+Other tag and branch names are sanitized to be legal for git
+.P
 .SH OPTIONS
 .TP
 .B \-h
@@ -109,20 +125,28 @@ Override the setting of CVSROOT (overrides working dir. and environment).  For -
 .TP
 .B \-q
 Be quiet about warnings.
+.TP
 .B \-A
 Show ancestor branch when a new branch is found.
+.TP
+.B \-T
+Force deterministic dates for regression testing.  Takes a date
+argument which set the base time; ech patchset will have an attributed 
+date of as many seconds passs the base time as its ID.
+.TP
+.B \-\-fast-export
+Emit the report as a git import stream
 .TP
 .B \<repository>
 Operate on the specified repository (overrides working dir.)
 .SH "NOTE ON TAG HANDLING"
-Tags are fundamentally 'file at a time' in cvs, but like everything
-else, it would be nice to imagine that they are 'repository at a
-time.'  The approach cvsps takes is that a tag is assigned to a
-patchset.  The meaning of this is that after this patchset, every
-revision of every file is after the tag (and conversely, before this
-patchset, at least one file is still before the tag).  However, there
-are two kinds of inconsistent (or 'funky') tags that can be created,
-even when following best practices for cvs.
+Tags are fundamentally 'file at a time' in cvs, but like everything else,
+it would be nice to imagine that they are 'repository at a time.'  The
+approach cvsps takes is that a tag is assigned to a patchset.  The meaning
+of this is that after this patchset, every revision of every file is after
+the tag (and conversely, before this patchset, at least one file is still
+before the tag).  However, there are two kinds of inconsistent (or 'funky')
+tags that can be created, even when following best practices for cvs.  
 .PP
 The first is what is called a FUNKY tag.  A funky tag is one where
 there are patchsets which are chronologically (and thus by patchset
@@ -141,6 +165,39 @@ tag is specified as one of the '\-r' arguments, cvsps will flag each
 member of the affected patchsets as before or after the tag and the
 patchset summary will indicate which members are which, and diffs will
 be generated accordingly.
+.PP
+These may be better explained by examples.  The easiest test case for 
+this is two developers, starting in a consistent state.
+.IP (a)
+developer 1 changes file A(sub1) to A(sub2) and commits, creating
+patchset P(sub1) chronologically earlier, thus with a lower patchset id.
+.IP (b)
+developer 2 changes file B(sub1) to B(sub2) and commits, creating
+patchset P(sub2) chronologically later, thus higher patchset id.
+.IP (c)
+developer 2 B does \fInot\fR do "cvs update", so does not get A(sub2) in
+working directory and creates a "tag" T(sub1)
+.P
+A checkout of T(sub1) should have A(sub1) and B(sub2) and there is no
+"patchset" that represents this. In other words, if we label patchset
+P(sub2) with the tag there are earlier patchsets which need to be
+disregarded.
+.PP
+An "invalid" tag can be generated with a similar testcase, except:
+.IP *
+In step (a) developer 1 also changes file C(sub1) to C(sub2)
+.IP *
+developer 2 does a "selective" cvs update of only file C(sub2)
+.IP *
+developer 1 does another change from C(sub2) to C(sub3), creating
+a new patchset in between the previous P(sub1) and P(sub2)
+"P(sub1(sub2))??"
+.IP
+Then we have step (b) and step (c).  After this, a checkout of T(sub1)
+should have A(sub1), B(sub2) and C(sub2).
+.P
+In other words, if we label patchset P(sub2) with the tag there are
+earlier patchsets which need to be *partially* disregarded.
 .SH "NOTE ON CVS VERSIONS"
 Among the different cvs subcommands used by cvsps is the 'rlog'
 command.  The rlog command is used to get revision history of a
@@ -153,12 +210,11 @@ been pruned from the working directory with the '\-P' option.
 If 'rlog' is not used, these files logs will not be parsed, and the
 PatchSet numbering will be unstable.
 .PP
-The main problem with 'rlog' is that, until cvs version 1.11.1, 'rlog'
-was an alias for the 'log' command.  This means, for old versions of
-cvs, 'rlog' has different semantics and usage.  cvsps will attempt to
-work around this problem by detecting capable versions of cvs.  If an
-old version is detected, 'log' will be used instead of 'rlog', and
-YMMV.
+The main problem with 'rlog' is that, until cvs version 1.11.1, 'rlog' was an
+alias for the 'log' command.  This means, for old versions of cvs, 'rlog' has
+different semantics and usage.  cvsps will attempt to work around this problem
+by detecting capable versions of cvs.  If an old version is detected, 'log' will
+be used instead of 'rlog', and YMMV.
 .SH "NOTE ON GENERATED DIFFS"
 Another important note is that cvsps will attempt, whenever possible,
 to use the r\-commands (rlog, rdiff and co) instead of the local
@@ -174,6 +230,7 @@ module directory in the path, and \-p0 will be required when applying
 the patch.  When diffs are generated in cvs\-direct mode (see below),
 however, they will always be \-p1 style patches.
 .SH "NOTE ON BKCVS"
+
 The \-\-bkcvs option is a special operating mode that should only be
 used when parsing the log files from the BK \-> CVS exported linux
 kernel trees.  cvsps uses special semantics for recreating the BK
@@ -198,11 +255,14 @@ CVSps parses an rc file at startup.  This file should be located in
 syntax as the command line, one per line.  If an argument takes a
 parameter, the parameter should be on the same line as the argument.
 .SH "NOTE ON DATE FORMATS"
-All dates are reported in localtime.  This can be overridden (as
-usual) using the TZ environment variable.  Dates as arguments must be
-in the format 'yyyy/mm/dd hh:mm:ss'; for example,
+Dates are reported in localtime, except that fast-export mode reports
+UTC.  This can be overridden (as usual) using the TZ environment
+variable.  The preferred input format for dates is as in RFC3339:
+yyyy-mm-ddThh:mm:ss.  For backward compatibility with older
+versions, 'yyyy/mm/dd hh:mm:ss' is also accepted. As a contrived
+example:
 .IP "" 4
-$ cvsps -d '2004/05/01 00:00:00' -d '2004/07/07 12:00:00'
+$ cvsps -d '2004-05-01T00:00:00' -d '2004/07/07 12:00:00'
 .SH "SEE ALSO"
 .BR cvs ( 1 ),
 .BR ci ( 1 ),
