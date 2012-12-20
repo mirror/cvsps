@@ -37,11 +37,14 @@ cvsps.spec: cvsps.spec.dist
 	echo "Version: $(MAJOR).$(MINOR)" >cvsps.spec
 
 SOURCES = Makefile *.[ch] cbtcommon/*.[ch] merge_utils.sh
-DOCS = README COPYING CHANGELOG cvsps.1 TODO
-ALL =  $(SOURCES) $(DOCS)
+DOCS = README COPYING NEWS cvsps.1 TODO
+ALL =  $(SOURCES) $(DOCS) control
 cvsps-$(MAJOR).$(MINOR).tar.gz: $(ALL)
 	tar --transform='s:^:cvsps-$(MAJOR).$(MINOR)/:' --show-transformed-names -cvzf cvsps-$(MAJOR).$(MINOR).tar.gz $(ALL)
 
 dist: cvsps-$(MAJOR).$(MINOR).tar.gz
+
+release: cvsps-$(MAJOR).$(MINOR).tar.gz
+	shipper -u -m -t; make clean
 
 .PHONY: install clean version dist

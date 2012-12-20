@@ -1,0 +1,19 @@
+# This is not a real Debian control file
+# It's project metadata for the shipper tool
+
+Package: cvsps
+
+Description: Collect changesets from CVS repositories.
+ This tool can be used either by humans to inspect changsets or
+ as an exporter from CVS to other version control systems - it can be told
+ to emit a fast-export stream to standard output.
+
+XBS-Destinations: freecode
+
+XBS-Gitorious-URL: https://git.gitorious.org/csvps/
+
+XBS-Ohloh-URL: https://www.ohloh.net/p/8369
+
+Homepage: http://www.catb.org/~esr/cvsps
+
+XBS-Project-Tag-List: version control, cvs, git
