@@ -6,7 +6,7 @@ CVSps \- create patchset information from CVS
 [\-h] [\-x] [\-u] [\-z <fuzz>] [\-g] [\-s <patchset>] [\-a <author>]
 [\-f <file>] [\-d <date1> [\-d <date2>]] [\-l <text>] [\-b <branch>]
 [\-r <tag> [\-r <tag>]] [\-p <directory>] [\-v] [\-t] [\-\-norc]
-[\-\-summary\-first] [\-\-test\-log <filename>] [\-\-bkcvs]
+[\-\-summary\-first] [\-\-test\-log <filename>]
 [\-\-no\-rlog] [\-\-diff\-opts <option string>] [\-\-cvs\-direct]
 [\-\-debuglvl <bitmask>] [\-Z <compression>] [\-\-root <cvsroot>]
 [\-q] [\-A] [\-\-fast-export] [<repository>] 
@@ -99,10 +99,6 @@ summary for all patchsets at the beginning of the output.
 .B \-\-test\-log <captured cvs log file>
 for testing changes, you can capture cvs log output, then test against
 this captured file instead of hammering some poor CVS server
-.TP
-.B \-\-bkcvs
-(see note below) for use in parsing the BK\->CVS tree log formats only.  This enables
-some hacks which are not generally applicable.
 .TP
 .B \-\-no\-rlog
 disable the use of rlog internally.  Note: rlog is
@@ -232,15 +228,6 @@ options.  In this case, the patches will be generated without the
 module directory in the path, and \-p0 will be required when applying
 the patch.  When diffs are generated in cvs\-direct mode (see below),
 however, they will always be \-p1 style patches.
-.SH "NOTE ON BKCVS"
-
-The \-\-bkcvs option is a special operating mode that should only be
-used when parsing the log files from the BK \-> CVS exported linux
-kernel trees.  cvsps uses special semantics for recreating the BK
-ChangeSet metadata that has been embedded in the log files for those
-trees.  The \-\-bkcvs option should only be specified when the cache
-file is being created or updated (i.e. initial run of cvsps, or when
-\-u and \-x options are used).
 .SH "NOTE ON CVS\-DIRECT"
 As of version 2.0b6 cvsps has a partial implementation of the cvs
 client code built in.  This reduces the RTT and/or handshaking

@@ -107,7 +107,6 @@ static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
-static int bkcvs;
 static int no_rlog;
 static int cvs_direct;
 static int compress;
@@ -129,7 +128,6 @@ static void print_fast_export(PatchSet *);
 static void assign_patchset_id(PatchSet *);
 static int compare_rev_strings(const char *, const char *);
 static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * ps2);
-static int compare_patch_sets_bk(const void *, const void *);
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime_list(struct list_head *, struct list_head *);
 static int compare_patch_sets_bytime(const PatchSet *, const PatchSet *);
@@ -567,7 +565,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
-    debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>] [--bkcvs]");
+    debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
     debug(DEBUG_APPERROR, "             [-q] [-A] [<repository>]");
@@ -596,7 +594,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
-    debug(DEBUG_APPERROR, "  --bkcvs special hack for parsing the BK -> CVS log format");
     debug(DEBUG_APPERROR, "  --no-rlog disable rlog (it's faulty in some setups)");
     debug(DEBUG_APPERROR, "  --cvs-direct (--no-cvs-direct) enable (disable) built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
@@ -839,13 +836,6 @@ static int parse_args(int argc, char *argv[])
 		diff_opts = NULL;
 	    else
 		diff_opts = argv[i];
-	    i++;
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--bkcvs") == 0)
-	{
-	    bkcvs = 1;
 	    i++;
 	    continue;
 	}
@@ -1185,7 +1175,6 @@ static CvsFile * parse_file(const char * buff)
 PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch, PatchSetMember * psm)
 {
     PatchSet * retval = NULL, **find = NULL;
-    int (*cmp1)(const void *,const void*) = (bkcvs) ? compare_patch_sets_bk : compare_patch_sets;
 
     if (!(retval = create_patch_set()))
     {
@@ -1195,8 +1184,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 
     convert_date(&retval->date, dte);
     retval->author = get_string(author);
-    retval->descr = xstrdup(log);
-    retval->branch = get_string(branch);
+    retval->descr = xstrdup(log);    retval->branch = get_string(branch);
     
     /* we are looking for a patchset suitable for holding this member.
      * this means two things:
@@ -1210,7 +1198,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     if (psm)
 	list_add(&psm->link, retval->members.prev);
 
-    find = (PatchSet**)tsearch(retval, &ps_tree, cmp1);
+    find = (PatchSet**)tsearch(retval, &ps_tree, compare_patch_sets);
 
     if (psm)
 	list_del(&psm->link);
@@ -1219,15 +1207,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     {
 	debug(DEBUG_STATUS, "found existing patch set");
 
-	if (bkcvs && strstr(retval->descr, "BKrev:"))
-	{
-	    free((*find)->descr);
-	    (*find)->descr = retval->descr;
-	}
-	else
-	{
-	    free(retval->descr);
-	}
+	free(retval->descr);
 
 	/* keep the minimum date of any member as the 'actual' date */
 	if (retval->date < (*find)->date)
@@ -1803,17 +1783,6 @@ static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * 
     return 0;
 }
 
-static int compare_patch_sets_bk(const void * v_ps1, const void * v_ps2)
-{
-    const PatchSet * ps1 = (const PatchSet *)v_ps1;
-    const PatchSet * ps2 = (const PatchSet *)v_ps2;
-    long diff;
-
-    diff = ps1->date - ps2->date;
-
-    return (diff < 0) ? -1 : ((diff > 0) ? 1 : 0);
-}
-
 static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 {
     const PatchSet * ps1 = (const PatchSet *)v_ps1;
@@ -1822,9 +1791,9 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     int ret;
     time_t d, min, max;
 
-    /* We order by (author, descr, branch, members, date), but because of the fuzz factor
-     * we treat times within a certain distance as equal IFF the author
-     * and descr match.
+    /* We order by (author, descr, branch, members, date), but because
+     * of the fuzz factor we treat times within a certain distance as
+     * equal IFF the author and descr match.
      */
 
     ret = compare_patch_sets_by_members(ps1, ps2);
