@@ -1,3 +1,8 @@
+/*
+ * Copyright 2001, 2002, 2003 David Mansfield and Cobite, Inc.
+ * See COPYING file for license information 
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

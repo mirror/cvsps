@@ -1,3 +1,8 @@
+/*
+ * Copyright 2001, 2002, 2003 David Mansfield and Cobite, Inc.
+ * See COPYING file for license information 
+ */
+
 #ifndef CVSPS_TYPES_H
 #define CVSPS_TYPES_H
 

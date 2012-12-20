@@ -1,94 +1,47 @@
-DEP_OBJS=cvsps.o cache.o util.o stats.o cap.o cvs_direct.o list_sort.o
-CBT_DIR=/cobite
-include $(CBT_DIR)/share/libversions/Makefile.include-1
-
-ifeq ($(DEBUG_INLINING), y)
-CFLAGS+=-fno-inline -fno-default-inline -O0 -g
-endif
-
-OBJS=$(DEP_OBJS)
-LIBS=-lcbtcommon -lz
-CBTCOMMON_DIST=../libcbtcommon
 MAJOR=2
 MINOR=2b1
-CFLAGS+=-DVERSION=\"$(MAJOR).$(MINOR)_CBT\"
 
+CC?=gcc
+CFLAGS?=-g -O2 -Wall 
+CFLAGS+=-I. -DVERSION=\"$(MAJOR).$(MINOR)\"
+prefix?=/usr/local
+OBJS=\
+	cbtcommon/debug.o\
+	cbtcommon/hash.o\
+	cbtcommon/text_util.o\
+	cbtcommon/sio.o\
+	cbtcommon/tcpsocket.o\
+	cvsps.o\
+	cache.o\
+	util.o\
+	stats.o\
+	cap.o\
+	cvs_direct.o\
+	list_sort.o
 
-ifeq "$(CONFIG)" "Debug"
-RPATH+=$(CBT_DIR)/lib/debug
-else
-RPATH=$(CBT_DIR)/lib
-endif
-
-all: cvsps
+all: cvsps 
 
 cvsps: $(OBJS)
-	gcc -Wl,-rpath,$(RPATH) $(LDFLAGS) -o cvsps $(OBJS) $(LIBS)
-
-clean: this_clean
+	$(CC) -o cvsps $(OBJS) -lz
 
 install:
-	install cvsps $(CBT_DIR)/bin/
+	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
+	[ -d $(prefix)/share/man/man1 ] || mkdir -p $(prefix)/share/man/man1
+	install cvsps $(prefix)/bin
+	install -m 644 cvsps.1 $(prefix)/share/man/man1
 
-this_clean:
-	rm -f *.o *.d cvsps core
-	rm -fr dist/ htdocs/
+clean:
+	rm -f cvsps *.o cbtcommon/*.o core cvsps.spec
 
-usage.txt: cvsps
-	./cvsps -h 2>&1| sed -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/\(cvsps version .*\)_CBT/\1/g' > usage.txt
+cvsps.spec: cvsps.spec.dist
+	echo "Version: $(MAJOR).$(MINOR)" >cvsps.spec
 
-dist:
-	rm -fr dist/
-	mkdir dist/
-	mkdir dist/cbtcommon
-	echo MAJOR=$(MAJOR) >dist/Makefile
-	echo MINOR=$(MINOR) >>dist/Makefile
-	cat Makefile.dist >>dist/Makefile
-	echo "Version: $(MAJOR).$(MINOR)" >dist/cvsps.spec
-	cat cvsps.spec.dist >>dist/cvsps.spec
-	cat copyright.head cvsps.c >dist/cvsps.c
-	cat copyright.head cvsps.h >dist/cvsps.h
-	cat copyright.head cache.c >dist/cache.c
-	cat copyright.head cache.h >dist/cache.h
-	cat copyright.head util.c >dist/util.c
-	cat copyright.head util.h >dist/util.h
-	cat copyright.head cvsps_types.h >dist/cvsps_types.h
-	cat copyright.head stats.c >dist/stats.c
-	cat copyright.head stats.h >dist/stats.h
-	cat copyright.head cap.c >dist/cap.c
-	cat copyright.head cap.h >dist/cap.h
-	cat copyright.head cvs_direct.c >dist/cvs_direct.c
-	cat copyright.head cvs_direct.h >dist/cvs_direct.h
-	cat copyright.head list_sort.c >dist/list_sort.c
-	cat copyright.head list_sort.h >dist/list_sort.h
-	cp README dist/
-	cp COPYING dist/
-	cp cvsps.1 dist/
-	cp CHANGELOG dist/
-	cp merge_utils.sh dist/
-	@echo "NOTE: Using $(CBTCOMMON_DIST) for dist files"
-	cat copyright.head $(CBTCOMMON_DIST)/list.h >dist/cbtcommon/list.h
-	cat copyright.head $(CBTCOMMON_DIST)/hash.h >dist/cbtcommon/hash.h
-	cat copyright.head $(CBTCOMMON_DIST)/text_util.h >dist/cbtcommon/text_util.h
-	cat copyright.head $(CBTCOMMON_DIST)/debug.h >dist/cbtcommon/debug.h
-	cat copyright.head $(CBTCOMMON_DIST)/rcsid.h >dist/cbtcommon/rcsid.h
-	cat copyright.head $(CBTCOMMON_DIST)/inline.h >dist/cbtcommon/inline.h
-	cat copyright.head $(CBTCOMMON_DIST)/debug.c >dist/cbtcommon/debug.c
-	cat copyright.head $(CBTCOMMON_DIST)/hash.c >dist/cbtcommon/hash.c
-	cat copyright.head $(CBTCOMMON_DIST)/text_util.c >dist/cbtcommon/text_util.c
-	cat copyright.head $(CBTCOMMON_DIST)/tcpsocket.c >dist/cbtcommon/tcpsocket.c
-	cat copyright.head $(CBTCOMMON_DIST)/tcpsocket.h >dist/cbtcommon/tcpsocket.h
-	cat copyright.head $(CBTCOMMON_DIST)/sio.c >dist/cbtcommon/sio.c
-	cat copyright.head $(CBTCOMMON_DIST)/sio.h >dist/cbtcommon/sio.h
+SOURCES = Makefile *.[ch] cbtcommon/*.[ch] merge_utils.sh
+DOCS = README COPYING CHANGELOG cvsps.1 TODO
+ALL =  $(SOURCES) $(DOCS)
+cvsps-$(MAJOR).$(MINOR).tar.gz: $(ALL)
+	tar --transform='s:^:cvsps-$(MAJOR).$(MINOR)/:' --show-transformed-names -cvzf cvsps-$(MAJOR).$(MINOR).tar.gz $(ALL)
 
-htdocs: dist
-	rm -fr htdocs/
-	mkdir htdocs/
-	cp README htdocs/
-	cp CHANGELOG htdocs/
-	cp site/*.html site/*.gif htdocs/
-	mv dist cvsps-$(MAJOR).$(MINOR)
-	tar cvzf htdocs/cvsps-$(MAJOR).$(MINOR).tar.gz cvsps-$(MAJOR).$(MINOR)
-	mv cvsps-$(MAJOR).$(MINOR) dist
+dist: cvsps-$(MAJOR).$(MINOR).tar.gz
 
-.PHONY: clean this_clean all dist htdocs
+.PHONY: install clean version dist
