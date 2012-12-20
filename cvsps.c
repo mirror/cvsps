@@ -1184,7 +1184,8 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 
     convert_date(&retval->date, dte);
     retval->author = get_string(author);
-    retval->descr = xstrdup(log);    retval->branch = get_string(branch);
+    retval->descr = xstrdup(log);
+    retval->branch = get_string(branch);
     
     /* we are looking for a patchset suitable for holding this member.
      * this means two things:
