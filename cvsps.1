@@ -23,16 +23,19 @@ The default reporting mode is designed for humans to look at.  The
 --fast-export mode emits a git import stream which can be consumed
 by the importers for other version-control systems.  In this mode,
 .IP * 5
-Each patchset becomes a commit
+Each patchset becomes a commit.
 .IP * 5
 CVS tags become git lightweight tags, and more than one may be
 reported per patchset (in the default mode only the latest is reported).
 .IP * 5
-The HEAD branch is renamed to 'master'
+The HEAD branch is renamed to 'master'.
 .IP * 5
-Generated tags for branch roots are skipped
+Generated tags for branch roots are skipped.
 .IP * 5
-Other tag and branch names are sanitized to be legal for git
+Other tag and branch names are sanitized to be legal for git.
+.IP * 5
+Since .cvsignore files have a syntax upward-compatible with that
+of .gitignore files, they're renamed.
 .P
 .SH OPTIONS
 .TP

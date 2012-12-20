@@ -29,6 +29,12 @@ cvscommit "Add a spacer commit"
 
 cvstag foo
 
+cat >.cvsignore <<EOF
+*.pyc
+EOF
+cvsadd .cvsignore
+cvscommit "Check that .cvsignore -> .gitignore name translation works."
+
 cat >README <<EOF
 And now for something completely different.
 EOF

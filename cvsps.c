@@ -1673,6 +1673,17 @@ static void print_fast_export(PatchSet * ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 
+	/* 
+	 * .cvsignore files have a gloobing syntax that is upward-compatible
+	 * with git's, 
+	 */
+	if (SUFFIX(psm->file->filename, ".cvsignore")) {
+	    char *end = psm->file->filename + strlen(psm->file->filename);
+	    end[-9] = 'g';
+	    end[-8] = 'i';
+	    end[-7] = 't';
+	}
+
 	if (psm->post_rev->dead)
 	    printf("D 100644 %s\n", psm->file->filename);
 	else if (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))

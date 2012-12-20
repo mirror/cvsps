@@ -1,4 +1,6 @@
-.cvsignore -> .gitignore filename translation in --fast-export mode
+Run the code through Coverity and cppcheck.
+
+Simulate CVS's default ignore patterns in a generated .gitignore?
 
 An optional progress meter.
 

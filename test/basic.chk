@@ -58,75 +58,89 @@ from :8
 
 blob
 mark :9
-data 44
-And now for something completely different.
+data 6
+*.pyc
 
 commit refs/heads/master
 mark :10
 committer esr <esr> 1355862277 -0500
+data 60
+Check that .cvsignore -> .gitignore name translation works.
+
+from :8
+M 100644 :9 .gitignore
+
+blob
+mark :11
+data 44
+And now for something completely different.
+
+commit refs/heads/master
+mark :12
+committer esr <esr> 1355862278 -0500
 data 38
 The obligatory Monty Python reference
 
-from :8
-M 100644 :9 README
-
-commit refs/heads/master
-mark :11
-committer esr <esr> 1355862278 -0500
-data 21
-Testing file removal
-
 from :10
-D 100644 doomed
-
-blob
-mark :12
-data 58
-The file 'doomed' should not be visible at this revision.
+M 100644 :11 README
 
 commit refs/heads/master
 mark :13
 committer esr <esr> 1355862279 -0500
-data 36
-Only README should be visible here.
+data 21
+Testing file removal
 
-from :11
-M 100644 :12 README
-
-reset refs/tags/random
-from :13
-
-reset refs/tags/samplebranch_root
-from :13
+from :12
+D 100644 doomed
 
 blob
 mark :14
-data 38
-This is alternate content for README.
+data 58
+The file 'doomed' should not be visible at this revision.
 
-commit refs/heads/samplebranch
+commit refs/heads/master
 mark :15
 committer esr <esr> 1355862280 -0500
-data 34
-Do we get branch detection right?
+data 36
+Only README should be visible here.
 
 from :13
 M 100644 :14 README
 
+reset refs/tags/random
+from :15
+
+reset refs/tags/samplebranch_root
+from :15
+
 blob
 mark :16
+data 38
+This is alternate content for README.
+
+commit refs/heads/samplebranch
+mark :17
+committer esr <esr> 1355862281 -0500
+data 34
+Do we get branch detection right?
+
+from :15
+M 100644 :16 README
+
+blob
+mark :18
 data 30
 I'm back in the saddle again.
 
 commit refs/heads/master
-mark :17
-committer esr <esr> 1355862281 -0500
+mark :19
+committer esr <esr> 1355862282 -0500
 data 44
 This commit should alter the master branch.
 
-from :13
-M 100644 :16 README
+from :15
+M 100644 :18 README
 
 reset refs/tags/illegal
-from :17
+from :19
 
