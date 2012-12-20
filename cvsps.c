@@ -99,6 +99,7 @@ static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static int summary_first;
+static int fast_export;
 static const char * norc = "";
 static const char * patch_set_dir;
 static const char * restrict_tag_start;
@@ -112,6 +113,7 @@ static int cvs_direct;
 static int compress;
 static char compress_arg[8];
 static int track_branch_ancestry;
+static time_t regression_time;
 
 static void check_norc(int, char *[]);
 static int parse_args(int, char *[]);
@@ -123,6 +125,7 @@ static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
 static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
+static void print_fast_export(PatchSet *);
 static void assign_patchset_id(PatchSet *);
 static int compare_rev_strings(const char *, const char *);
 static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * ps2);
@@ -148,6 +151,8 @@ static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps);
 static void handle_collisions();
 static Branch * create_branch(const char * name) ;
 static void find_branch_points(PatchSet * ps);
+
+#define INSIDE(p, a)	(((p) - (a)) < sizeof(a)/sizeof(a[0]))
 
 int main(int argc, char *argv[])
 {
@@ -599,6 +604,8 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory (cvs-direct only)");
     debug(DEBUG_APPERROR, "  -q be quiet about warnings");
     debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
+    debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
+    debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
@@ -715,6 +722,15 @@ static int parse_args(int argc, char *argv[])
 
 	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
 	    convert_date(pt, argv[i++]);
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-T") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to -T missing", "");
+
+	    convert_date(&regression_time, argv[i++]);
 	    continue;
 	}
 
@@ -900,6 +916,13 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-A") == 0)
 	{
 	    track_branch_ancestry = 1;
+	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "--fast-export") == 0)
+	{
+	    fast_export = 1;
 	    i++;
 	    continue;
 	}
@@ -1429,8 +1452,13 @@ static void check_print_patch_set(PatchSet * ps)
      *
      * When the -s option is in effect, the show_patch_set_ranges
      * list will be non-empty.
+     *
+     * In fast-export mode, the do_diff and summary_first options 
+     * are ignored.
      */
-    if (summary_first <= 1)
+    if (fast_export)
+	print_fast_export(ps);
+    else if (summary_first <= 1)
 	print_patch_set(ps);
     if (do_diff && summary_first != 1)
 	do_cvs_diff(ps);
@@ -1447,7 +1475,7 @@ static void print_patch_set(PatchSet * ps)
     tm = localtime(&ps->date);
     
     funk = fnk_descr[ps->funk_factor];
-    
+
     /* this '---...' is different from the 28 hyphens that separate cvs log output */
     printf("---------------------\n");
     printf("PatchSet %d %s\n", ps->psid, funk);
@@ -1490,8 +1518,181 @@ static void print_patch_set(PatchSet * ps)
 
 	next = next->next;
     }
-    
+
     printf("\n");
+}
+
+#define SUFFIX(a, s)	(strcmp(a + strlen(a) - strlen(s), s) == 0) 
+
+static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
+{
+    char *sp, *tp;
+
+#define BADCHARS	"~^:\\*?[]"
+    memset(tp = sanitized, '\0', sanlength);
+    for (sp = name; *sp; sp++) {
+	if (!isgraph(*sp) || strchr(BADCHARS, *sp) == NULL) {
+	    *tp++ = *sp;
+	    if (SUFFIX(sanitized,"@{")||SUFFIX(sanitized,"..")) {
+		fprintf(stderr, 
+			"Tag or branch name %s is ill-formed.\n", 
+			name);
+		exit(1);
+	    }
+	}
+    }
+    if (strlen(sanitized) == 0) {
+	fprintf(stderr, 
+		"Tag or branch name %s was empty after sanitization.\n", 
+		name);
+	exit(1);
+    }
+
+    return sanitized;
+}
+
+static void print_fast_export(PatchSet * ps)
+{
+    struct tm *tm;
+    struct list_head * next;
+    static int mark = 0;
+    char *tf = tmpnam(NULL);	/* ugly necessity */
+    struct stat st;
+    int basemark = mark;
+    int c;
+    int ancestor_mark = 0;
+    char sanitized_branch[strlen(ps->branch)+1];
+    char sanitized_tag[ps->tag ? strlen(ps->tag) + 1 : 0];
+    char **spp;
+ 
+    struct branch_head {
+	char *name;
+	int mark;
+	struct branch_head *prev;
+    };
+    static struct branch_head *heads = NULL;
+    struct branch_head *tip = NULL;
+
+    for (tip = heads; tip; tip = tip->prev) 
+	if (strcmp(tip->name, ps->branch) == 0) {
+	    ancestor_mark = tip->mark;
+	    break;
+	}
+    if (tip == NULL) {
+	/* we're at a branch division */
+	tip = malloc(sizeof(struct branch_head));
+	tip->mark = 0;
+	tip->name = ps->branch;
+	tip->prev = heads;
+	heads = tip;
+
+	/* look for the branch join */
+	for (next = all_patch_sets.next; next != &all_patch_sets; next = next->next) {
+	    struct list_head * child_iter;
+
+	    PatchSet * as = list_entry(next, PatchSet, all_link);
+
+	    /* walk the branches looking for the join */
+	    for (child_iter = as->branches.next; child_iter != &as->branches; child_iter = child_iter->next) {
+		Branch * branch = list_entry(child_iter, Branch, link);
+		if (strcmp(ps->branch, branch->name) == 0) {
+		    ancestor_mark = as->mark;
+		    break;
+		}
+	    }
+	}
+    }
+
+    /* we need to be able to fake dates for regression testing */
+    if (regression_time == 0)
+	tm = localtime(&ps->date);
+    else
+    {
+	time_t clock_tick = regression_time + ps->psid;
+	tm = localtime(&clock_tick);
+    }
+
+    next = ps->members.next;
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	FILE *cfp;
+
+	/* FIXME: What, if anything, should we be doing with funk here? */
+	if (!psm->post_rev->dead) 
+	{
+	    char cmdbuf[256];
+
+	    snprintf(cmdbuf, sizeof(cmdbuf),
+		     "cvs -Q up -r%s -p %s >%s", 
+		     psm->post_rev->rev, psm->file->filename, tf);
+	    if (my_system(cmdbuf) != 0)
+	    {
+		fprintf(stderr, "CVS retrieval '%s' failed.\n", cmdbuf);
+		exit(1);
+	    }
+
+	    if (stat(tf, &st) != 0)
+	    {
+		fprintf(stderr, "stat(2) of %s:%s copy failed.\n",
+			psm->file->filename, psm->post_rev->rev);
+		exit(1);
+	    }
+
+	    printf("blob\nmark :%d\ndata %zd\n", ++mark, st.st_size);
+	    if ((cfp = fopen(tf, "r")) == NULL)
+	    {
+		fprintf(stderr, "blobfile open of  %s:%s failed.\n",
+			psm->file->filename, psm->post_rev->rev);
+		exit(1);
+	    }
+	    while ((c = fgetc(cfp)) != EOF)
+		putchar(c);
+	    putchar('\n');
+
+	}
+
+	next = next->next;
+    }
+
+    /* map HEAD branch to master, leave others unchanged */
+    printf("commit refs/heads/%s\n", 
+	   strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master");
+    printf("mark :%d\n", ++mark);
+    printf("committer %s <%s> %zd %c%02d%02d\n",
+	   ps->author, ps->author, mktime(tm) - tm->tm_gmtoff,
+	   tm->tm_gmtoff < 0 ? '-' : '+',
+	   abs(tm->tm_gmtoff / 3600), abs(tm->tm_gmtoff % 3600));
+    printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
+    if (ancestor_mark)
+	printf("from :%d\n", ancestor_mark);
+    ps->mark = tip->mark = mark;
+
+    next = ps->members.next;
+    while (next != &ps->members)
+    {
+	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+
+	if (psm->post_rev->dead)
+	    printf("D 100644 %s\n", psm->file->filename);
+	else if (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
+	    printf("M 100755 :%d %s\n", ++basemark, psm->file->filename);
+	else
+	    printf("M 100644 :%d %s\n", ++basemark, psm->file->filename);
+
+	next = next->next;
+    }
+    printf("\n");
+
+    /* might be this patchset has tags pointing to it */
+    for (spp = ps->export_tags; INSIDE(spp, ps->export_tags); spp++) 
+    {
+	if (*spp != NULL)
+	    printf("reset refs/tags/%s\nfrom :%d\n\n", 
+	       fast_export_sanitize(*spp, sanitized_tag, sizeof(sanitized_tag)), ps->mark);
+    }
+
+    unlink(tf);
 }
 
 /* walk all the patchsets to assign monotonic psid, 
@@ -2035,6 +2236,7 @@ static PatchSet * create_patch_set()
     {
 	INIT_LIST_HEAD(&ps->members);
 	INIT_LIST_HEAD(&ps->branches);
+	memset(ps->export_tags, '\0', sizeof(ps->export_tags));
 	ps->psid = -1;
 	ps->date = 0;
 	ps->min_date = 0;
@@ -2231,6 +2433,8 @@ char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
 static void resolve_global_symbols()
 {
     struct hash_entry * he_sym;
+    char **spp;
+
     reset_hash_iterator(global_symbols);
     while ((he_sym = next_hash_entry(global_symbols)))
     {
@@ -2279,6 +2483,14 @@ static void resolve_global_symbols()
 	}
 
 	ps->tag = sym->tag;
+
+	/* for fast-export mode we need a list of *all* tags pointing here */
+	for (spp = ps->export_tags; *spp && INSIDE(spp, ps->export_tags); spp++)
+	    continue;
+	if (!INSIDE(spp, ps->export_tags))
+	    fprintf(stderr, "Too many tags at patch set %d\n", ps->psid);
+	else
+	    *spp = sym->tag;
 
 	/* check if this ps is one of the '-r' patchsets */
 	if (restrict_tag_start && strcmp(restrict_tag_start, ps->tag) == 0)

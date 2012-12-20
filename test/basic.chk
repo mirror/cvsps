@@ -1,0 +1,132 @@
+blob
+mark :1
+data 46
+The quick brown fox jumped over the lazy dog.
+
+commit refs/heads/master
+mark :2
+committer esr <esr> 1355862273 -0500
+data 24
+This is a sample commit
+
+M 100644 :1 README
+
+blob
+mark :3
+data 70
+Now is the time for all good men to come to the aid of their country.
+
+commit refs/heads/master
+mark :4
+committer esr <esr> 1355862274 -0500
+data 30
+This is another sample commit
+
+from :2
+M 100644 :3 README
+
+blob
+mark :5
+data 54
+This is a doomed file.  Its destiny is to be deleted.
+
+commit refs/heads/master
+mark :6
+committer esr <esr> 1355862275 -0500
+data 21
+Create a doomed file
+
+from :4
+M 100644 :5 doomed
+
+blob
+mark :7
+data 63
+The world will little note, nor long remember what we say here
+
+commit refs/heads/master
+mark :8
+committer esr <esr> 1355862276 -0500
+data 20
+Add a spacer commit
+
+from :6
+M 100644 :7 doomed
+
+reset refs/tags/foo
+from :8
+
+blob
+mark :9
+data 44
+And now for something completely different.
+
+commit refs/heads/master
+mark :10
+committer esr <esr> 1355862277 -0500
+data 38
+The obligatory Monty Python reference
+
+from :8
+M 100644 :9 README
+
+commit refs/heads/master
+mark :11
+committer esr <esr> 1355862278 -0500
+data 21
+Testing file removal
+
+from :10
+D 100644 doomed
+
+blob
+mark :12
+data 58
+The file 'doomed' should not be visible at this revision.
+
+commit refs/heads/master
+mark :13
+committer esr <esr> 1355862279 -0500
+data 36
+Only README should be visible here.
+
+from :11
+M 100644 :12 README
+
+reset refs/tags/random
+from :13
+
+reset refs/tags/samplebranch_root
+from :13
+
+blob
+mark :14
+data 38
+This is alternate content for README.
+
+commit refs/heads/samplebranch
+mark :15
+committer esr <esr> 1355862280 -0500
+data 34
+Do we get branch detection right?
+
+from :13
+M 100644 :14 README
+
+blob
+mark :16
+data 30
+I'm back in the saddle again.
+
+commit refs/heads/master
+mark :17
+committer esr <esr> 1355862281 -0500
+data 44
+This commit should alter the master branch.
+
+from :13
+M 100644 :16 README
+
+reset refs/tags/illegal
+from :17
+

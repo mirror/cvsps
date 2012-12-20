@@ -90,7 +90,7 @@ struct _PatchSetMember
 /* 
  * these are bit flags for tag flags 
  * they apply to any patchset that
- * has an assoctiated tag
+ * has an associated tag
  */
 #define TAG_FUNKY   0x1
 #define TAG_INVALID 0x2
@@ -132,6 +132,21 @@ struct _PatchSet
      */
     int funk_factor;
 
+    /*
+     * In fast-export mode, this is the mark generated for this patchset
+     * at the moment we try to emit it.  Has to be kept here because of
+     * the complications around first commits after branching.
+     */
+    int mark;              
+
+    /* 
+     * For fast-export mode, we need not just the latest tag but *all*
+     * tags that point at this patchset.  This will never be a large
+     * set and we don't need to worry about collisions or global accessibility
+     * through a hash, so we keep things simple with static allocation.
+     */
+    char *export_tags[32];
+
     /* 
      * a list of 'Branch' objects that branch from here
      */
@@ -140,6 +155,7 @@ struct _PatchSet
     /* for putting onto a list */
     struct list_head all_link;
     struct list_head collision_link;
+
 };
 
 struct _PatchSetRange
