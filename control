@@ -10,7 +10,7 @@ Description: Collect changesets from CVS repositories.
 
 XBS-Destinations: freecode
 
-XBS-Gitorious-URL: https://git.gitorious.org/csvps/
+XBS-Gitorious-URL: https://gitorious.org/cvsps/
 
 XBS-Ohloh-URL: https://www.ohloh.net/p/8369
 
