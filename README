@@ -1,29 +1,24 @@
-CVSps (c) 2001,2002,2003 David Mansfield
-------------------------------
+= cvsps README =
 
-Overview.
---------
+== Overview ==
 
-CVSps is a program for generating 'patchset' information from a CVS
-repository.  A patchset in this case is defined as a set of changes made
-to a collection of files, and all committed at the same time (using a
-single 'cvs commit' command).  This information is valuable to seeing the
-big picture of the evolution of a cvs project.  While cvs tracks revision
-information, it is often difficult to see what changes were committed
-'atomically' to the repository.
+CVSps is a program for collecting patchsets from a CVS repository. The
+original use case was that its reports were useful for human
+inspection by developers working on projects using CVS, but nowadays
+the --fast-export option (which emits the history as a git-style
+fast-import stream) is more interesting.
 
-Compiling.
----------
+This tool was written and maintained until 2.2b1 by David Manfield,
+who reported his "thanks to my employer Cobite and Robert Lippman,
+who've given me time to develop this tool".  The 3.x versions
+with fast-export dumping are maintained by Eric S. Raymond.
 
-CVSps is a relatively small program, with only a few modules.
-The Makefile is very simple and should work in most GNU type environments.
-Unfortunately, I've only been able to test on Red Hat Linux, so YMMV.  As
-CVSps matures, I'm sure a more sophisticated build environment will evolve
-with it.  For now, just try 'make' and 'make install'.  If you have any 
-problems let me know.
+== Compiling ==
 
-Running.
--------
+Do 'make' and 'make install'.  This is very plain-vanilla ANSI C
+and should run on any Unixoid OS.
+
+== Running ==
 
 Note: not all options are necessarily discussed here.  Please check the
 output of 'cvsps -h' and/or the manual page for the most up-to-date info.
@@ -48,17 +43,22 @@ based on the CVS/Root and CVS/Repository contents, and thus is shared for
 the same repository checked out in multiple places.
 
 If the cache file exists, it won't ever be automatically updated.  To
-update the cache with cvs activity that has occurred since the ~/.cvsps/cvsps.cache
-was last updated, use:
+update the cache with cvs activity that has occurred since the
+~/.cvsps/cvsps.cache was last updated, use:
 
 cvsps -u
 
-If you question the integrity of the ~/.cvsps/cvsps.cache, or for some other reason
-want to force a full cache rebuild, use (you could also 'rm' the cache file):
+If you question the integrity of the ~/.cvsps/cvsps.cache, or for some
+other reason want to force a full cache rebuild, use (you could also
+'rm' the cache file):
 
 cvsps -x
 
 b) Reading the output.
+
+The --fast-export switch produces a git-style fast-import stream on
+standard output.  The rest of this section describes the older default
+format intended for human inspection.
 
 CVSps's output is information about patchsets.  A patchset looks like:
 
@@ -127,13 +127,14 @@ By date.  With one date specification, CVSps shows only patchsets newer
 than the date given, and with two dates, it shows patchsets between the
 two dates.
 
-*NOTE ON DATE FORMAT*.  Because I'm lazy, only one date format is
-currently acceptable. 'YYYY/MM/DD HH:MM:SS'  where time is given as
-localtime, and HH is in 24 hour format.  NOTE ALSO that cvs tends to
-display times as GMT, but parse dates as localtime, so when using the '-D'
-with cvs you need to convert from GMT to localtime in your head.  CVSps is
-not as fancy.  It treats all dates as if in localtime, and therefore you
-give CVSps dates the same way it gives them to you.
+*NOTE ON DATE FORMAT*.  The preferred date format is in RFC3339 style:
+'yyyy-mm-dd-Thh:mm:ss'; 'yyyy/mm/dd hh:mm:ss' is also accepted.  In
+both cases time is given as localtime and hh is in 24 hour format.
+CVS tends to display times as GMT, but parse dates as localtime, so
+when using the '-D' with cvs you need to convert from GMT to localtime
+in your head.  CVSps is not as fancy.  It treats all dates as if in
+localtime, and therefore you give CVSps dates the same way it gives
+them to you.  But note that --fast-export exports git-style UTC times.
 
 By branch.  With the -b <branch> flag you limit the output to patchsets
 that have modified the history of the given branch.  Note, this 
@@ -171,50 +172,35 @@ The fuzz factor attempts to workaround this by saying: commits by the same
 author, using the same log message, within <fuzz> seconds are considered
 part of the same patchset.  The default fuzz is 300 seconds (5 minutes).
 
-TAGS
-----
+== TAGS ==
 
 Please read the manual page.
 
-COMPATIBILITY
--------------
+== COMPATIBILITY ==
 
-One of the main goals of cvsps was to make the patchset numbering stable across
-all time, as long as no funny-business is done to the repository files themselves.
+One of the main goals of cvsps was to make the patchset numbering
+stable across all time, as long as no funny-business is done to the
+repository files themselves.
 
 Unfortunately, as bugs have been fixed, the numbering has changed.  This is most
 regrettable, but unavoidable.
 
-Additionally, in version 2.0, two changes have been made which will 'renumber'
-the patch sets.  
+Additionally, in version 2.0, two changes have been made which will
+'renumber' the patch sets.
 
 1) The false 'globbing' of two commits from nearly the exact same time, by the
 same person, with the same log description but to different branches.  Now,
 these will be reported as 2 patchsets instead of one.
 
-2) The creation of a large volume of patchsets for 'file xyz was originally added on
-branch' log messages.  This occurs whenever a file is originally born on a branch,
-and is exacerbated by the fact that even when all of these files are created with
-a single commit, the 'file xyz...' messages, which contains the actual file name,
-are different, causing a proliferation of these unwanted patchsets.  These patchsets
-are now silently eliminated from the output.
+2) The creation of a large volume of patchsets for 'file xyz was
+originally added on branch' log messages.  This occurs whenever a file
+is originally born on a branch, and is exacerbated by the fact that
+even when all of these files are created with a single commit, the
+'file xyz...' messages, which contains the actual file name, are
+different, causing a proliferation of these unwanted patchsets.  These
+patchsets are now silently eliminated from the output.
 
-Reporting bugs / submitting patches.
------------------------------------
-
-Although the current version is perfect and bug free, you can still send
-bug reports, feature requests and patches to me at:
-
-cvsps@dm.cobite.com
-
-I will try to maintain CVSps and make releases regularly.  The most recent
-version of CVSps will always be available at http://www.cobite.com/cvsps
-
-Special thanks to my employer Cobite and Robert Lippman, who've given me
-time to develop this tool.
-
-Known Problems (this will become the FAQ if anyone ever A any Q).
-----------------------------------------------------------------
+== Known Problems (this will become the FAQ if anyone ever A any Q). ==
 
 1) What is the '*** file xyz doesn't match strip_path abc' error?
 
