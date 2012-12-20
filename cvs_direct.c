@@ -853,7 +853,7 @@ void cvs_diff(CvsServerCtx * ctx,
 /*
  * FIXME: the design of this sucks.  It was originally designed to fork a subprocess
  * which read the cvs response and send it back through a pipe the main process,
- * which fdopen(3)ed the other end, and juts used regular fgets.  This however
+ * which fdopen(3)ed the other end, and just used regular fgets.  This however
  * didn't work because the reads of compressed data in the child process altered
  * the compression state, and there was no way to resynchronize that state with
  * the parent process.  We could use threads...
@@ -869,6 +869,7 @@ FILE * cvs_rlog_open(CvsServerCtx * ctx, const char * rep, const char * date_str
 	send_string(ctx, "Argument %s\n", date_str);
     }
 
+    send_string(ctx, "Argument -q\n");
     send_string(ctx, "Argument %s\n", rep);
     send_string(ctx, "rlog\n");
 
