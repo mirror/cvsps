@@ -21,10 +21,9 @@ static void count_hash(struct hash_table *hash, unsigned int *total,
 	unsigned int *max_val)
 {
     int counter = 0;
-    struct hash_entry *fh;
     
     reset_hash_iterator(hash);
-    while ((fh = next_hash_entry(hash)))
+    while (next_hash_entry(hash))
 	counter++;
 
     *total += counter;

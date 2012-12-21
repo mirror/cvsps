@@ -930,6 +930,7 @@ static int parse_rc()
 {
     char rcfile[PATH_MAX];
     FILE * fp;
+    /* coverity[tainted_data] */
     snprintf(rcfile, PATH_MAX, "%s/cvspsrc", get_cvsps_dir());
     if ((fp = fopen(rcfile, "r")))
     {
@@ -1613,6 +1614,7 @@ static void print_fast_export(PatchSet * ps)
 		exit(1);
 	    }
 
+	    /* coverity[toctou] */
 	    if (stat(tf, &st) != 0)
 	    {
 		fprintf(stderr, "stat(2) of %s:%s copy failed.\n",

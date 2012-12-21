@@ -276,6 +276,7 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 
     if (p)
     {
+	/* coverity[tainted_data] */
 	const char * cvs_rsh = getenv("CVS_RSH");
 
 	if (!cvs_rsh)
@@ -548,8 +549,9 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
     va_list ap;
 
     va_start(ap, str);
-
     len = vsnprintf((char *)buff, BUFSIZ, str, ap);
+    va_end(ap);
+
     if (len >= BUFSIZ)
     {
 	debug(DEBUG_APPERROR, "cvs_direct: command send string overflow");

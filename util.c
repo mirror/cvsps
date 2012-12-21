@@ -84,6 +84,7 @@ char *get_cvsps_dir()
     }
 
     /* Make sure the prefix directory exists */
+    /* coverity[toctou] */
     if (stat(prefix, &sbuf) < 0)
     {
 	int ret;
@@ -155,6 +156,7 @@ static int get_int_substr(const char * str, const regmatch_t * p)
 
 static time_t mktime_utc(struct tm * tm, const char* tzbuf)
 {
+    /* coverity[tainted_data] */
     char * old_tz = getenv("TZ");
     time_t ret;
 
