@@ -38,7 +38,7 @@ struct _CvsServerCtx
     z_stream zin;
 
     /* when reading compressed data, the compressed data buffer */
-    char zread_buff[RD_BUFF_SIZE];
+    unsigned char zread_buff[RD_BUFF_SIZE];
 };
 
 static void get_cvspass(char *, const char *, int len);
@@ -327,9 +327,15 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 	close(from_cvs[0]);
 	
 	close(0);
-	dup(to_cvs[0]);
+	if (dup(to_cvs[0]) < 0) {
+	    debug(DEBUG_APPERROR, "cvs_direct: dup of input failed");
+	    exit(1);
+	}
 	close(1);
-	dup(from_cvs[1]);
+	if (dup(from_cvs[1]) < 0) {
+	    debug(DEBUG_APPERROR, "cvs_direct: dup of output failed");
+	    exit(1);
+	}
 
 	execv("/bin/sh",argp);
 
@@ -373,7 +379,7 @@ void close_cvs_server(CvsServerCtx * ctx)
 	 */
 	do
 	{
-	    ctx->zout.next_out = buff;
+	    ctx->zout.next_out = (unsigned char *)buff;
 	    ctx->zout.avail_out = BUFSIZ;
 	    ret = deflate(&ctx->zout, Z_FINISH);
 
@@ -411,7 +417,7 @@ void close_cvs_server(CvsServerCtx * ctx)
     if (ctx->compressed)
     {
 	int ret = Z_OK, len, eof = 0;
-	char buff[BUFSIZ];
+	unsigned char buff[BUFSIZ];
 
 	/* read to the 'eof'/'eos' marker.  there are two states we 
 	 * track, looking for Z_STREAM_END (application level EOS)
@@ -469,7 +475,7 @@ void close_cvs_server(CvsServerCtx * ctx)
 		debug(DEBUG_TCP, "cvs_direct: got Z_STREAM_END");
 
 	    if ((ret == Z_OK || ret == Z_STREAM_END) && len > 0)
-		hexdump(buff, BUFSIZ - ctx->zin.avail_out, "cvs_direct: zin: unread data at close");
+		hexdump((char *)buff, BUFSIZ - ctx->zin.avail_out, "cvs_direct: zin: unread data at close");
 	}
 
 	if (ret != Z_STREAM_END)
@@ -538,12 +544,12 @@ static void get_cvspass(char * pass, const char * root, int passbuflen)
 static void send_string(CvsServerCtx * ctx, const char * str, ...)
 {
     int len;
-    char buff[BUFSIZ];
+    unsigned char buff[BUFSIZ];
     va_list ap;
 
     va_start(ap, str);
 
-    len = vsnprintf(buff, BUFSIZ, str, ap);
+    len = vsnprintf((char *)buff, BUFSIZ, str, ap);
     if (len >= BUFSIZ)
     {
 	debug(DEBUG_APPERROR, "cvs_direct: command send string overflow");
@@ -552,7 +558,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 
     if (ctx->compressed)
     {
-	char zbuff[BUFSIZ];
+	unsigned char zbuff[BUFSIZ];
 
 	if  (ctx->zout.avail_in != 0)
 	{
@@ -634,7 +640,7 @@ static int refill_buffer(CvsServerCtx * ctx)
 		ctx->zin.avail_in = zlen;
 	    }
 	    
-	    ctx->zin.next_out = ctx->head;
+	    ctx->zin.next_out = (unsigned char *)ctx->head;
 	    ctx->zin.avail_out = len;
 	    
 	    /* FIXME: we don't always need Z_SYNC_FLUSH, do we? */

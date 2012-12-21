@@ -117,7 +117,7 @@ void hexdump(const char *ptr, int size, const char *fmt, ...)
     int count = 0;
     va_list ap;
     
-    if ( !debuglvl & DEBUG_STATUS )
+    if (!(debuglvl & DEBUG_STATUS))
 	return;
     
     va_start(ap, fmt);
