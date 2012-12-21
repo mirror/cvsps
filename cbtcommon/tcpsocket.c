@@ -94,7 +94,7 @@ int
 tcp_accept_connection(int sockfd)
 {
   struct sockaddr_in remaddr;
-  int addrlen;
+  socklen_t addrlen;
   int retval;
 
 #ifdef WIN32
@@ -128,7 +128,7 @@ unsigned int
 tcp_get_client_ip(int fd)
 {
   struct sockaddr_in remaddr;
-  int addrlen;
+  socklen_t addrlen;
   int retval;
   unsigned int saddr;
 
@@ -242,7 +242,7 @@ convert_address(long *dest, const char *addr_str)
 int tcp_get_local_address(int sockfd, unsigned int *ip, unsigned short *port)
 {
     struct sockaddr_in addr;
-    int addrlen = sizeof(struct sockaddr_in);
+    socklen_t addrlen = sizeof(struct sockaddr_in);
   
     if(getsockname(sockfd, (struct sockaddr *)&addr, &addrlen) < 0)
     {

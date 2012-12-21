@@ -1,4 +1,4 @@
-Run the code through Coverity and cppcheck.
+Run the code through Coverity.
 
 Emit a fossil map that reposurgeon can use.
 
