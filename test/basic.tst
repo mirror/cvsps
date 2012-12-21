@@ -1,77 +1,65 @@
-#!/bin/bash
+#!/usr/bin/env python
 ## A branchy repo with deletions and only valid tags
 
-. cvsfunctions.sh
+import cvstest
 
-cvscreate test1
+repo = cvstest.CVSRepository("test1-repo")
+repo.module("test1-checkout")
+co = repo.checkout("test1-checkout")
 
-cat >README <<EOF
-The quick brown fox jumped over the lazy dog.
-EOF
-cvsadd README
-cvscommit "This is a sample commit"
+co.write("README", "The quick brown fox jumped over the lazy dog.\n")
+co.add("README")
+co.commit("This is a sample commit")
 
-cat >README <<EOF
-Now is the time for all good men to come to the aid of their country.
-EOF
-cvscommit "This is another sample commit"
+co.write("README",
+         "Now is the time for all good men to come to the aid of their country.\n")
+co.commit("This is another sample commit")
 
-cat >doomed <<EOF
-This is a doomed file.  Its destiny is to be deleted.
-EOF
-cvsadd doomed
-cvscommit "Create a doomed file"
+co.write("doomed",
+         "This is a doomed file.  Its destiny is to be deleted.\n")
+co.add("doomed")
+co.commit("Create a doomed file")
 
-cat >doomed <<EOF
-The world will little note, nor long remember what we say here
-EOF
-cvscommit "Add a spacer commit"
+co.write("doomed",
+         "The world will little note, nor long remember what we say here\n")
+co.commit("Add a spacer commit")
 
-cvstag foo
+co.tag("foo")	# Ordinary, legal tag name
 
-cat >.cvsignore <<EOF
-*.pyc
-EOF
-cvsadd .cvsignore
-cvscommit "Check that .cvsignore -> .gitignore name translation works."
+co.write(".cvsignore","*.pyc\n")
+co.add(".cvsignore")
+co.commit("Check that .cvsignore -> .gitignore name translation works.")
 
-cat >README <<EOF
-And now for something completely different.
-EOF
-cvscommit "The obligatory Monty Python reference"
+co.write("README",
+         "And now for something completely different.\n")
+co.commit("The obligatory Monty Python reference")
 
-cvsremove doomed
-cvscommit "Testing file removal"
+co.remove("doomed")
+co.commit("Testing file removal")
 
-cat >README <<EOF
-The file 'doomed' should not be visible at this revision.
-EOF
-cvscommit "Only README should be visible here."
+co.write("README",
+         "The file 'doomed' should not be visible at this revision.\n")
+co.commit("Only README should be visible here.")
 
-cvsbranch "samplebranch"
+co.branch("samplebranch")
 
 # This will point at the same commit as the generated samplebranch_root
-cvstag random
+co.tag("random")
 
-cat >README <<EOF
-This is alternate content for README.
-EOF
-cvscommit "Do we get branch detection right?"
+co.write("README", "This is alternate content for README.\n")
+co.commit("Do we get branch detection right?")
 
-cvsswitch HEAD
+co.switch("HEAD")
 
-cat >README <<EOF
-I'm back in the saddle again.
-EOF
-cvscommit "This commit should alter the master branch."
+co.write("README", "I'm back in the saddle again.\n")
+co.commit("This commit should alter the master branch.")
 
 # The tilde should be stripped from the middle of this
-cvstag "ill~egal"
+co.tag("ill~egal")
 
 # Doesn't matter what this date is, it just has to be constant
-emit 2012-12-18T15:24:32
-cvsdestroy
+co.emit("2012-12-18T15:24:32")
+
+repo.cleanup()
 
 # end
-
-

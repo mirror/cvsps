@@ -7,3 +7,4 @@ cvsps
 *~
 dist
 htdocs
+*.py[co]

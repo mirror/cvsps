@@ -11,7 +11,7 @@ TESTLOADS := $(shell ls -1 *.tst | sed '/.tst/s///')
 rebuild:
 	@-for file in $(TESTLOADS); do \
 	    echo "Remaking $${file}.chk"; \
-	    $${file}.tst >$${file}.chk; \
+	    python $${file}.tst >$${file}.chk; \
 	done
 regress:
 	@echo "=== Running repodiffer tests:"
@@ -22,4 +22,4 @@ regress:
 	@rm -f /tmp/regress
 
 clean:
-	rm -fr test*-checkout test*-repo
+	rm -fr test*-checkout test*-repo *.pyc
