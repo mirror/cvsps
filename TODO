@@ -4,6 +4,15 @@ Emit a fossil map that reposurgeon can use.
 
 Simulate CVS's default ignore patterns in a generated .gitignore?
 
+Michael Haggerty writes:
+> In 2009 I added tests demonstrating some of the erroneous behavior
+> of git-cvsimport.  The failing tests in t9601-t9603 [in the git
+> tree] are concrete examples of the problems mentioned in the
+> manpage.
+
+Mine the cvs2svn design notes for idea:
+http://cvs2svn.tigris.org/source/browse/*checkout*/cvs2svn/trunk/doc/design-notes.txt
+
 An optional progress meter.
 
 Discard branch-root tags if they have a name that's a prefix of a tip tag.
@@ -87,5 +96,5 @@ Bugs on the git-cvsimport page:
 	daughter branch they will erroneously be added to the daughter
 	branch in git.
 
-Can we fix any of these?  We should develop test loads ton demonstrate.
+Can we fix any of these?  We should develop test loads to demonstrate.
 
