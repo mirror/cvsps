@@ -263,6 +263,35 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
+static void detect_and_repair_time_skew(const char *last_date, 
+					char *date, 
+					int n,
+					const char *filename)
+{
+
+    time_t smaller;
+    time_t bigger;
+    struct tm *ts;
+
+    /* if last_date does not exist do nothing */
+    if (last_date[0] == '\0')
+        return;
+
+    /* important: because rlog is showing revisions backwards last_date should
+     * always be bigger than date */
+    convert_date(&bigger, last_date);
+    convert_date(&smaller, date);
+
+    if (difftime(bigger, smaller) <= 0) {
+        debug(DEBUG_APPMSG1, "broken revision date: %s -> %s file: %s, repairing.\n",
+              date, last_date, filename);
+        smaller = bigger - 1;
+        ts = gmtime(&smaller);
+        strftime(date, n, "%Y-%m-%d %H:%M:%S", ts);
+    }
+}
+
+
 static void load_from_cvs()
 {
     FILE * cvsfp;
@@ -271,6 +300,7 @@ static void load_from_cvs()
     CvsFile * file = NULL;
     PatchSetMember * psm = NULL;
     char datebuff[26];
+    char last_datebuff[20];
     char authbuff[AUTH_STR_MAX];
     char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
@@ -331,6 +361,8 @@ static void load_from_cvs()
 	exit(1);
     }
 
+    /* initialize the last_datebuff with value indicating invalid date */
+    last_datebuff[0]='\0';
     for (;;)
     {
 	char * tst;
@@ -455,8 +487,20 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch, psm);
+		    PatchSet *ps;
+		    detect_and_repair_time_skew(last_datebuff, 
+						datebuff, sizeof(datebuff), 
+						psm->file->filename);
+		    ps = get_patch_set(datebuff,
+				       logbuff,
+				       authbuff, 
+				       psm->post_rev->branch,
+				       psm);
 		    patch_set_add_member(ps, psm);
+		    /* remember last revision */
+		    strncpy(last_datebuff, datebuff, 20);
+		    /* just to be sure */
+		    last_datebuff[19] = '\0';
 		}
 
 		logbuff[0] = 0;
@@ -468,8 +512,21 @@ static void load_from_cvs()
 	    {
 		if (psm)
 		{
-		    PatchSet * ps = get_patch_set(datebuff, logbuff, authbuff, psm->post_rev->branch, psm);
+		    PatchSet *ps;
+		    detect_and_repair_time_skew(last_datebuff, 
+						datebuff, sizeof(datebuff),
+						psm->file->filename);
+		    ps = get_patch_set(datebuff, 
+				       logbuff, 
+				       authbuff, 
+				       psm->post_rev->branch,
+				       psm);
 		    patch_set_add_member(ps, psm);
+
+		    /* just finished the last revision of this file,
+		     * set last_datebuff to invalid */
+		    last_datebuff[0]='\0';
+
 		    assign_pre_revision(psm, NULL);
 		}
 
