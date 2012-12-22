@@ -263,18 +263,25 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
-static void detect_and_repair_time_skew(const char *last_date, 
-					char *date, 
-					int n,
-					const char *filename)
+void detect_and_repair_time_skew(const char *last_date, char *date, int n,
+                                 PatchSetMember *psm)
 {
 
     time_t smaller;
     time_t bigger;
     struct tm *ts;
+    char *rev_end;
 
     /* if last_date does not exist do nothing */
     if (last_date[0] == '\0')
+        return;
+
+    /* TODO: repairing of branch times, skipping them for the moment */
+    /* check whether rev is of the form /1.[0-9]+/ */
+    if (psm->post_rev->rev[0] != '1' || psm->post_rev->rev[1] != '.')
+        return;
+    strtol(psm->post_rev->rev+2, &rev_end, 10);
+    if (*rev_end != '\0')
         return;
 
     /* important: because rlog is showing revisions backwards last_date should
@@ -284,13 +291,16 @@ static void detect_and_repair_time_skew(const char *last_date,
 
     if (difftime(bigger, smaller) <= 0) {
         debug(DEBUG_APPMSG1, "broken revision date: %s -> %s file: %s, repairing.\n",
-              date, last_date, filename);
+              date, last_date, psm->file->filename);
+        if (!(bigger > 0)) {
+            debug(DEBUG_APPERROR, "timestamp underflow, exiting ... ");
+            exit(1);
+        }
         smaller = bigger - 1;
         ts = gmtime(&smaller);
         strftime(date, n, "%Y-%m-%d %H:%M:%S", ts);
     }
 }
-
 
 static void load_from_cvs()
 {
