@@ -931,6 +931,9 @@ void cvs_version(CvsServerCtx * ctx, char * client_version, char * server_versio
 	debug(DEBUG_APPERROR, "cvs_direct: didn't read version: %s", lbuff);
     
     read_line(ctx, lbuff, BUFSIZ);
+    if (strstr(lbuff,"CVSACL")!=NULL) {
+	read_line(ctx, lbuff);
+    }
     if (strcmp(lbuff, "ok") != 0)
 	debug(DEBUG_APPERROR, "cvs_direct: protocol error reading version");
 
