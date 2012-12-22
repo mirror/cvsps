@@ -500,7 +500,7 @@ static void load_from_cvs()
 		    PatchSet *ps;
 		    detect_and_repair_time_skew(last_datebuff, 
 						datebuff, sizeof(datebuff), 
-						psm->file->filename);
+						psm);
 		    ps = get_patch_set(datebuff,
 				       logbuff,
 				       authbuff, 
@@ -525,7 +525,7 @@ static void load_from_cvs()
 		    PatchSet *ps;
 		    detect_and_repair_time_skew(last_datebuff, 
 						datebuff, sizeof(datebuff),
-						psm->file->filename);
+						psm);
 		    ps = get_patch_set(datebuff, 
 				       logbuff, 
 				       authbuff, 
