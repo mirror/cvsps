@@ -89,6 +89,7 @@ enum
     CACHE_NEED_PS_TAG_FLAGS,
     CACHE_NEED_PS_BRANCH,
     CACHE_NEED_PS_BRANCH_ADD,
+    CACHE_NEED_PS_COMMITID_OR_DESCR,
     CACHE_NEED_PS_DESCR,
     CACHE_NEED_PS_EOD,
     CACHE_NEED_PS_MEMBERS,
@@ -107,6 +108,7 @@ time_t read_cache()
     char tagbuff[LOG_STR_MAX] = "";
     char branchbuff[LOG_STR_MAX] = "";
     int branch_add = 0;
+    char cidbuff[CID_STR_MAX] = "";
     char logbuff[LOG_STR_MAX] = "";
     time_t cache_date = -1;
     int read_version;
@@ -276,9 +278,19 @@ time_t read_cache()
 		/* remove prefix "branch_add: " and LF from len */
 		len -= 12;
 		branch_add = atoi(buff + 12);
-		state = CACHE_NEED_PS_DESCR;
+		state = CACHE_NEED_PS_COMMITID_OR_DESCR;
 	    }
 	    break;
+	case CACHE_NEED_PS_COMMITID_OR_DESCR:
+	    if (strncmp(buff, "commitid:", 9) == 0)
+	    {
+		/* remove prefix "commitid: " and LF from len */
+		len -= 10;
+		strzncpy(cidbuff, buff + 10, MIN(len, CID_STR_MAX));
+		state = CACHE_NEED_PS_DESCR;
+		break;
+	    }
+	    /* FALLTHROUGH */
 	case CACHE_NEED_PS_DESCR:
 	    if (strncmp(buff, "descr:", 6) == 0)
 		state = CACHE_NEED_PS_EOD;
@@ -286,8 +298,8 @@ time_t read_cache()
 	case CACHE_NEED_PS_EOD:
 	    if (strcmp(buff, CACHE_DESCR_BOUNDARY) == 0)
 	    {
-		debug(DEBUG_STATUS, "patch set %s %s %s %s", datebuff, authbuff, logbuff, branchbuff);
-		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff, NULL);
+		debug(DEBUG_STATUS, "patch set %s %s %s %s %s", datebuff, authbuff, logbuff, branchbuff, cidbuff);
+		ps = get_patch_set(datebuff, logbuff, authbuff, branchbuff, cidbuff, NULL);
 		/* the tag and tag_flags will be assigned by the resolve_global_symbols code 
 		 * ps->tag = (strlen(tagbuff)) ? get_string(tagbuff) : NULL;
 		 * ps->tag_flags = tag_flags;
@@ -314,6 +326,7 @@ time_t read_cache()
 		tagbuff[0] = 0;
 		branchbuff[0] = 0;
 		branch_add = 0;
+		cidbuff[0] = 0;
 		logbuff[0] = 0;
 		state = CACHE_NEED_PS;
 	    }
@@ -498,6 +511,8 @@ static void dump_patch_set(FILE * fp, PatchSet * ps)
     fprintf(fp, "tag_flags: %d\n", ps->tag_flags);
     fprintf(fp, "branch: %s\n", ps->branch);
     fprintf(fp, "branch_add: %d\n", ps->branch_add);
+    if (ps->commitid[0])
+	fprintf(fp, "commitid: %s\n", ps->commitid);
     fprintf(fp, "descr:\n%s", ps->descr); /* descr is guaranteed to end with LF */
     fprintf(fp, CACHE_DESCR_BOUNDARY);
     fprintf(fp, "members:\n");

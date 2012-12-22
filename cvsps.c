@@ -316,6 +316,7 @@ static void load_from_cvs()
     char last_datebuff[20];
 #endif
     char authbuff[AUTH_STR_MAX];
+    char cidbuff[CID_STR_MAX];
     char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
     int have_log = 0;
@@ -495,6 +496,19 @@ static void load_from_cvs()
 			    psm->post_rev->dead = 1;
 		}
 
+		cidbuff[0] = 0;
+		p = strstr(buff, "commitid: ");
+		if (p)
+		{
+		    char * op;
+		    p += 10;
+		    op = strchr(p, ';');
+		    if (op)
+		    {
+			strzncpy(cidbuff, p, op - p + 1);
+		    }
+		}
+
 		state = NEED_EOM;
 	    }
 	    break;
@@ -513,6 +527,7 @@ static void load_from_cvs()
 				       logbuff,
 				       authbuff, 
 				       psm->post_rev->branch,
+				       cidbuff,
 				       psm);
 		    patch_set_add_member(ps, psm);
 #ifdef HEIKO
@@ -542,6 +557,7 @@ static void load_from_cvs()
 				       logbuff, 
 				       authbuff, 
 				       psm->post_rev->branch,
+				       cidbuff,
 				       psm);
 		    patch_set_add_member(ps, psm);
 
@@ -1263,7 +1279,7 @@ static CvsFile * parse_file(const char * buff)
     return retval;
 }
 
-PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch, PatchSetMember * psm)
+PatchSet * get_patch_set(const char * dte, const char * log, const char * author, const char * branch, const char *commitid, PatchSetMember * psm)
 {
     PatchSet * retval = NULL, **find = NULL;
 
@@ -1275,6 +1291,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 
     convert_date(&retval->date, dte);
     retval->author = get_string(author);
+    retval->commitid = get_string(commitid);
     retval->descr = xstrdup(log);
     retval->branch = get_string(branch);
     
@@ -1322,7 +1339,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     else
     {
 	debug(DEBUG_STATUS, "new patch set!");
-	debug(DEBUG_STATUS, "%s %s %s", retval->author, retval->descr, dte);
+	debug(DEBUG_STATUS, "%s %s %s %s", retval->author, retval->descr, retval->commitid, dte);
 
 	retval->min_date = retval->date - timestamp_fuzz_factor;
 	retval->max_date = retval->date + timestamp_fuzz_factor;
@@ -1885,7 +1902,7 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
     int ret;
     time_t d, min, max;
 
-    /* We order by (author, descr, branch, members, date), but because
+    /* We order by (author, descr, branch, commitid, members, date), but because
      * of the fuzz factor we treat times within a certain distance as
      * equal IFF the author and descr match.
      */
@@ -1903,6 +1920,10 @@ static int compare_patch_sets(const void * v_ps1, const void * v_ps2)
 	    return ret;
 
     ret = strcmp(ps1->branch, ps2->branch);
+    if (ret)
+	return ret;
+
+    ret = strcmp(ps1->commitid, ps2->commitid);
     if (ret)
 	return ret;
 
@@ -1970,6 +1991,10 @@ static int compare_patch_sets_bytime(const PatchSet * ps1, const PatchSet * ps2)
 	return ret;
 
     ret = strcmp(ps1->branch, ps2->branch);
+    if (ret)
+	return ret;
+
+    ret = strcmp(ps1->commitid, ps2->commitid);
     return ret;
 }
 
@@ -2320,6 +2345,7 @@ static PatchSet * create_patch_set()
 	ps->tag = NULL;
 	ps->tag_flags = 0;
 	ps->branch_add = 0;
+	ps->commitid = "";
 	ps->funk_factor = 0;
 	ps->ancestor_branch = NULL;
 	CLEAR_LIST_NODE(&ps->collision_link);
