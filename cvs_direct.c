@@ -754,22 +754,8 @@ void cvs_rdiff(CvsServerCtx * ctx,
     ctx_to_fp(ctx, stdout);
 }
 
-void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, int create, const char * opts)
+void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, FILE *fp)
 {
-    FILE * fp;
-    char cmdbuff[BUFSIZ];
-    
-    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
-	     opts, create?"":"-", create?"-":"", create?"2":"1", rep, file);
-
-    debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff);
-
-    if (!(fp = popen(cmdbuff, "w")))
-    {
-	debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
-	exit(1);
-    }
-
     send_string(ctx, "Argument -p\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev);
@@ -777,8 +763,6 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     send_string(ctx, "co\n");
 
     ctx_to_fp(ctx, fp);
-
-    pclose(fp);
 }
 
 static int parse_patch_arg(char * arg, char ** str)

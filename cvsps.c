@@ -2162,8 +2162,23 @@ static void do_cvs_diff(PatchSet * ps)
 
 	    if (cvs_direct_ctx)
 	    {
-		/* cvs_rupdate does the pipe through diff thing internally */
-		cvs_rupdate(cvs_direct_ctx, repository_path, psm->file->filename, rev, cr, dopts);
+		char cmdbuff[BUFSIZ];
+		FILE *fp;
+
+		snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
+			 dopts, cr?"":"-", cr?"-":"", cr?"2":"1", repository_path, psm->file->filename);
+
+		/* debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff); */
+
+		if (!(fp = popen(cmdbuff, "w")))
+		{
+		    debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
+		    exit(1);
+		}
+
+		cvs_rupdate(cvs_direct_ctx, 
+			    repository_path, psm->file->filename, rev, fp);
+		pclose(fp);
 	    }
 	    else
 	    {
