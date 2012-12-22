@@ -68,9 +68,9 @@ class CVSRepository:
         if verbose >= DEBUG_COMMANDS:
             sys.stdout.write("Creating module %s\n" % module)
         os.mkdir(module)
-    def checkout(self, cname):
+    def checkout(self, module, checkout=None):
         "Create a checkout of this repo."
-        self.checkouts.append(CVSCheckout(self, cname))
+        self.checkouts.append(CVSCheckout(self, module, checkout))
         return self.checkouts[-1]
     def cleanup(self):
         "Clean up the repository and its checkouts."
@@ -80,11 +80,14 @@ class CVSRepository:
             shutil.rmtree(self.directory)
 
 class CVSCheckout:
-    def __init__(self, repo, cname):
+    def __init__(self, repo, module, checkout=None):
         self.repo = repo
-        self.cname = cname
-        self.directory = os.path.join(os.getcwd(), self.cname)
-        self.repo.do("co", self.cname)
+        self.module = module
+        self.checkout = checkout or module
+        self.repo.do("co", self.module)
+        if checkout:
+            os.rename(module, checkout)
+        self.directory = os.path.join(os.getcwd(), self.checkout)
     def do(self, cmd, *args):
         "Execute a command in the checkout directory."
         with directory_context(self.directory):
