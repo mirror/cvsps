@@ -11,13 +11,13 @@ TESTLOADS := $(shell ls -1 *.tst | sed '/.tst/s///')
 rebuild:
 	@-for file in $(TESTLOADS); do \
 	    echo "Remaking $${file}.chk"; \
-	    python $${file}.tst >$${file}.chk; \
+	    python $${file}.tst | sed -e "/$${USER} <$${USER}>/s//foo <foo>/" >$${file}.chk; \
 	done
 regress:
-	@echo "=== Running repodiffer tests:"
+	@echo "=== Running cvsps tests:"
 	@-for file in $(TESTLOADS); do \
 	    echo -n "  $${file} "; grep '##' $${file}.tst  || echo ' ## (no description)'; \
-	    $${file}.tst | diff -u $${file}.chk -; \
+	    $${file}.tst | sed -e "/$${USER} <$${USER}>/s//foo <foo>/" | diff -u $${file}.chk -; \
 	done
 	@rm -f /tmp/regress
 
