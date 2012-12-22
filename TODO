@@ -11,7 +11,7 @@ Michael Haggerty writes:
 Mine the cvs2svn design notes for idea:
 http://cvs2svn.tigris.org/source/browse/*checkout*/cvs2svn/trunk/doc/design-notes.txt
 
-An optional progress meter.
+Merge the msysgit port patches from http://repo.or.cz/w/cvsps/4msysgit.git?
 
 Discard branch-root tags if they have a name that's a prefix of a tip tag.
 
