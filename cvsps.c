@@ -1126,8 +1126,17 @@ static void init_paths()
      * (instead of log) it gives the 'real' RCS file path, which can be different
      * from the 'nominal' repository path because of symlinks in the server and 
      * the like.  See also the 'parse_file' routine
+     *
+     * When you've checked out the root, rather than a specific
+     * module, repository_path is . but we should use only p without
+     * anything added for path stripping.
      */
-    strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
+    if (!strcmp(repository_path,".")) {
+	strip_path_len = snprintf(strip_path, PATH_MAX, "%s/", p);
+    } else {
+	strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
+    }
+
 
     if (strip_path_len < 0 || strip_path_len >= PATH_MAX)
     {
