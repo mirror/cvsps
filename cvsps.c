@@ -146,6 +146,8 @@ static void find_branch_points(PatchSet * ps);
 
 int main(int argc, char *argv[])
 {
+    struct list_head * next;
+
     debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPMSG1;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
@@ -200,6 +202,23 @@ int main(int argc, char *argv[])
     {
 	debug(DEBUG_APPERROR, "symbol given with second -r: %s: not found", restrict_tag_end);
 	exit(1);
+    }
+
+    for (next=all_patch_sets.next; next!=&all_patch_sets; next=next->next) {
+	PatchSet * ps = list_entry(next, PatchSet, all_link);
+	PatchSet * nextps = next->next ? list_entry(next->next, PatchSet, all_link) : NULL;
+	if (ps->commitid == NULL
+	    && (next->next == NULL || nextps == NULL || nextps->commitid == NULL))
+	{
+	    if (fast_export)
+		debug(DEBUG_APPERROR,
+		      "commitid reliable only after commit :%d%s",
+		      ps->mark);
+	    else
+		debug(DEBUG_APPERROR,
+		      "commitid reliable only after patch set %d%s",
+		      ps->psid);
+	}
     }
 
     walk_all_patch_sets(check_print_patch_set);
