@@ -609,7 +609,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --cvs-direct (--no-cvs-direct) enable (disable) built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
-    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory (cvs-direct only)");
+    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
     debug(DEBUG_APPERROR, "  -q be quiet about warnings");
     debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
