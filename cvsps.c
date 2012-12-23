@@ -1154,10 +1154,11 @@ static void init_paths()
      * path to an 'rcs file'.  the strip_path portion of these paths is
      * stripped off, leaving us with the working file.
      *
-     * NOTE: because of some bizarre 'feature' in cvs, when 'rlog' is used
-     * (instead of log) it gives the 'real' RCS file path, which can be different
-     * from the 'nominal' repository path because of symlinks in the server and 
-     * the like.  See also the 'parse_file' routine
+     * NOTE: because of some bizarre 'feature' in cvs, when 'rlog' is
+     * used (instead of log) it gives the 'real' RCS file path, which
+     * can be different from the 'nominal' repository path because of
+     * symlinks in the server and the like.  See also the 'parse_file'
+     * routine
      *
      * When you've checked out the root, rather than a specific
      * module, repository_path is . but we should use only p without
@@ -1227,7 +1228,7 @@ static CvsFile * parse_file(const char * buff)
 	}
 
 	/* FIXME: a subdirectory may have a different Repository path
-	 * than it's parent.  we'll fail the above test since strip_path
+	 * than its parent.  we'll fail the above test since strip_path
 	 * is global for the entire checked out tree (recursively).
 	 *
 	 * For now just ignore such files
