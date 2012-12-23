@@ -64,7 +64,7 @@ static void get_version_external()
     
     if (!fgets(client_version, BUFSIZ, cvsfp))
     {
-	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: no data");
+	debug(DEBUG_APPWARN, "WARNING: malformed CVS version: no data");
 	goto out;
     }
     
@@ -74,7 +74,7 @@ static void get_version_external()
     {
 	if (!fgets(server_version, BUFSIZ, cvsfp))
 	{
-	    debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: no server data");
+	    debug(DEBUG_APPWARN, "WARNING: malformed CVS version: no server data");
 	    goto out;
 	}
 	chop(server_version);
@@ -117,14 +117,14 @@ int check_version_string(const char * str, int req_major, int req_minor, int req
 
     if (!p)
     {
-	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version str: %s", str);
+	debug(DEBUG_APPWARN, "WARNING: malformed CVS version str: %s", str);
 	return 0;
     }
 
     p += skip;
     if (sscanf(p, "%3d.%3d.%3d", &major, &minor, &extra) != 3)
     {	
-	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
+	debug(DEBUG_APPWARN, "WARNING: malformed CVS version: %s", str);
 	return 0;
     }
 

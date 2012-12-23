@@ -21,7 +21,7 @@
 #define DEBUG_TCP       4
 #define DEBUG_SIGNALS   8
 #define DEBUG_APPERROR  16
-#define DEBUG_APPMSG1   32
+#define DEBUG_APPWARN   32
 #define DEBUG_APPMSG2   64
 #define DEBUG_APPMSG3   128
 #define DEBUG_APPMSG4   256

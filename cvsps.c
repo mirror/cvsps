@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 {
     struct list_head * next;
 
-    debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPMSG1;
+    debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
@@ -260,7 +260,7 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
     convert_date(&smaller, date);
 
     if (difftime(bigger, smaller) <= 0) {
-        debug(DEBUG_APPMSG1, "broken revision date: %s -> %s file: %s, repairing.\n",
+        debug(DEBUG_APPWARN,"broken revision date: %s -> %s file: %s, repairing.\n",
               date, last_date, psm->file->filename);
         if (!(bigger > 0)) {
             debug(DEBUG_APPERROR, "timestamp underflow, exiting ... ");
@@ -526,7 +526,7 @@ static void load_from_cvs()
 			
 			if (len >= LOG_STR_MAX - loglen)
 			{
-			    debug(DEBUG_APPMSG1, "WARNING: maximum log length exceeded, truncating log");
+			    debug(DEBUG_APPWARN,"WARNING: maximum log length exceeded, truncating log");
 			    len = LOG_STR_MAX - loglen;
 			    buff[len - 1] = '\n';
 			}
@@ -582,7 +582,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [-q] [-A] [-T] [<repository>]");
+    debug(DEBUG_APPERROR, "             [-A] [-T] [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -610,7 +610,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
-    debug(DEBUG_APPERROR, "  -q be quiet about warnings");
     debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
     debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
@@ -773,7 +772,7 @@ static int parse_args(int argc, char *argv[])
 	     * go away as TRUNK may be a valid branch within CVS
 	     */
 	    if (strcmp(restrict_branch, "TRUNK") == 0)
-		debug(DEBUG_APPMSG1, "WARNING: The HEAD branch of CVS is called HEAD, not TRUNK");
+		debug(DEBUG_APPWARN, "WARNING: The HEAD branch of CVS is called HEAD, not TRUNK");
 	    continue;
 	}
 
@@ -874,13 +873,6 @@ static int parse_args(int argc, char *argv[])
 		return usage("argument to --root missing", "");
 
 	    strcpy(root_path, argv[i++]);
-	    continue;
-	}
-
-	if (strcmp(argv[i], "-q") == 0)
-	{
-	    debuglvl &= ~DEBUG_APPMSG1;
-	    i++;
 	    continue;
 	}
 
@@ -1116,7 +1108,7 @@ static CvsFile * parse_file(const char * buff)
 		memcpy(strip_path, fn, lastp - fn + len + 1);
 		strip_path_len = lastp - fn + len + 1;
 		strip_path[strip_path_len] = 0;
-		debug(DEBUG_APPMSG1, "NOTICE: used alternate strip path %s", strip_path);
+		debug(DEBUG_APPWARN, "NOTICE: used alternate strip path %s", strip_path);
 		goto ok;
 	    }
 	}
@@ -1127,7 +1119,7 @@ static CvsFile * parse_file(const char * buff)
 	 *
 	 * For now just ignore such files
 	 */
-	debug(DEBUG_APPMSG1, "WARNING: file %s doesn't match strip_path %s. ignoring", 
+	debug(DEBUG_APPWARN, "WARNING: file %s doesn't match strip_path %s. ignoring", 
 	      fn, strip_path);
 	return NULL;
     }
@@ -1225,7 +1217,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
 	if (retval->date - timestamp_fuzz_factor < (*find)->min_date)
 	{
 	    (*find)->min_date = retval->date - timestamp_fuzz_factor;
-	    //debug(DEBUG_APPMSG1, "WARNING: non-increasing dates in encountered patchset members");
+	    //debug(DEBUG_APPWARN, "WARNING: non-increasing dates in encountered patchset members");
 	}
 	else if (retval->date + timestamp_fuzz_factor > (*find)->max_date)
 	    (*find)->max_date = retval->date + timestamp_fuzz_factor;
@@ -1783,7 +1775,7 @@ static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * 
 	    if (psm1->file == psm2->file) 
 	    {
 		int ret = compare_rev_strings(psm1->post_rev->rev, psm2->post_rev->rev);
-		//debug(DEBUG_APPMSG1, "file: %s comparing %s %s = %d", psm1->file->filename, psm1->post_rev->rev, psm2->post_rev->rev, ret);
+		//debug(DEBUG_APPWARN, "file: %s comparing %s %s = %d", psm1->file->filename, psm1->post_rev->rev, psm2->post_rev->rev, ret);
 		return ret;
 	    }
 	}
@@ -2142,7 +2134,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPMSG1, "WARNING: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
 		rev->branch = "#CVSPS_NO_BRANCH";
 	    }
 	    else
@@ -2460,14 +2452,14 @@ static void resolve_global_symbols()
 	    {
 		if (strcmp(ps->branch, restrict_branch) != 0)
 		{
-		    debug(DEBUG_APPMSG1, 
+		    debug(DEBUG_APPWARN,
 			  "WARNING: -b option and second -r have conflicting branches: %s %s", 
 			  restrict_branch, ps->branch);
 		}
 	    }
 	    else
 	    {
-		debug(DEBUG_APPMSG1, "NOTICE: implicit branch restriction set to %s", ps->branch);
+		debug(DEBUG_APPWARN, "NOTICE: implicit branch restriction set to %s", ps->branch);
 		restrict_branch = ps->branch;
 	    }
 	}
@@ -2593,7 +2585,7 @@ static void set_psm_initial(PatchSetMember * psm)
 	 * but there can only be one such member in a given patchset
 	 */
 	if (psm->ps->branch_add)
-	    debug(DEBUG_APPMSG1, "WARNING: branch_add already set!");
+	    debug(DEBUG_APPWARN, "WARNING: branch_add already set!");
 	psm->ps->branch_add = true;
     }
 }
@@ -2655,7 +2647,7 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 		    next_ps->funk_factor = 
 			(next_ps->funk_factor == FNK_SHOW_ALL) ? FNK_SHOW_SOME : FNK_HIDE_SOME;
 		}
-		debug(DEBUG_APPMSG1, 
+		debug(DEBUG_APPWARN,
 		      "WARNING: Invalid PatchSet %d, Tag %s:\n"
 		      "    %s:%s=after, %s:%s=before. Treated as 'before'", 
 		      next_ps->psid, ps->tag, 
@@ -2677,7 +2669,7 @@ static bool before_tag(CvsFileRevision * rev, const char * tag)
     bool retval = false;
 
     if (tagged_rev && tagged_rev->branch == NULL)
-        debug(DEBUG_APPMSG1, "WARNING: Branch == NULL for: %s %s %s %s %d",
+        debug(DEBUG_APPWARN, "WARNING: Branch == NULL for: %s %s %s %s %d",
 	      rev->file->filename, tag, rev->rev, tagged_rev->rev, retval);
 
     if (tagged_rev && tagged_rev->branch != NULL &&
@@ -2725,7 +2717,7 @@ static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
     /* HEAD branch patchsets have no ancestry, but callers should know that */
     if (strcmp(ps->branch, "HEAD") == 0)
     {
-	debug(DEBUG_APPMSG1, "WARNING: no branch ancestry for HEAD");
+	debug(DEBUG_APPWARN, "WARNING: no branch ancestry for HEAD");
 	return;
     }
 
