@@ -3,10 +3,12 @@
 PATH := ${PATH}:..
 
 
-.SUFFIXES: .tst .repo
+.SUFFIXES: .tst .repo .checkout
 
 .tst.repo:
 	python $<
+.repo.checkout:
+	cvs -d :local:${PWD}/$*.repo -Q checkout $* && mv $* $*.checkout
 
 test: regress
 
