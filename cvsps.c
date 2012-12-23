@@ -634,6 +634,13 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 	
+	/* git-cvsimport expects to be able to pass this */
+	if (strcmp(argv[i], "-u") == 0)
+	{
+	    i++;
+	    continue;
+	}
+	
 	if (strcmp(argv[i], "-s") == 0)
 	{
 	    PatchSetRange * range;
