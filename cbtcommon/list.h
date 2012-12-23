@@ -6,10 +6,13 @@
 #ifndef _COMMON_LIST_H
 #define _COMMON_LIST_H
 
+#include <stddef.h>
+
 /*
  * Stolen from linux-2.1.131
  * All comments from the original source unless otherwise noted
  * Added: the CLEAR_LIST_NODE macro
+ * Changed: The list_entry macro now uses offsetof()
  */
 
 /*
@@ -107,6 +110,6 @@ static INLINE void list_splice(struct list_head *list, struct list_head *head)
 }
 
 #define list_entry(ptr, type, member) \
-        ((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
+    ((type *)((char *)(ptr)-offsetof(type, member)))
 
 #endif /* _COMMON_LIST_H */
