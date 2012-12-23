@@ -3,9 +3,9 @@
 
 import cvstest
 
-repo = cvstest.CVSRepository("test1-repo")
-repo.module("test1-checkout")
-co = repo.checkout("test1-checkout")
+repo = cvstest.CVSRepository("basic.repo")
+repo.module("basic")
+co = repo.checkout("basic", "basic.checkout")
 
 co.write("README", "The quick brown fox jumped over the lazy dog.\n")
 co.add("README")
@@ -56,9 +56,6 @@ co.commit("This commit should alter the master branch.")
 
 # The tilde should be stripped from the middle of this
 co.tag("ill~egal")
-
-# Doesn't matter what this date is, it just has to be constant
-co.emit("2012-12-18T15:24:32")
 
 repo.cleanup()
 

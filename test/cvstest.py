@@ -73,11 +73,10 @@ class CVSRepository:
         self.checkouts.append(CVSCheckout(self, module, checkout))
         return self.checkouts[-1]
     def cleanup(self):
-        "Clean up the repository and its checkouts."
+        "Clean up the repository checkout directories."
         if not self.retain:
             for checkout in self.checkouts:
                 checkout.cleanup()
-            shutil.rmtree(self.directory)
 
 class CVSCheckout:
     def __init__(self, repo, module, checkout=None):
