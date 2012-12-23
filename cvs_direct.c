@@ -861,7 +861,6 @@ FILE * cvs_rlog_open(CvsServerCtx * ctx, const char * rep, const char * date_str
 	send_string(ctx, "Argument %s\n", date_str);
     }
 
-    send_string(ctx, "Argument -q\n");
     send_string(ctx, "Argument %s\n", rep);
     send_string(ctx, "rlog\n");
 

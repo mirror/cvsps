@@ -1707,18 +1707,36 @@ static void print_fast_export(PatchSet * ps)
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	FILE *cfp;
 
-	/* FIXME: What, if anything, should we be doing with funk here? */
 	if (!psm->post_rev->dead) 
 	{
-	    char cmdbuf[256];
-
-	    snprintf(cmdbuf, sizeof(cmdbuf),
-		     "cvs -Q up -r%s -p %s >%s", 
-		     psm->post_rev->rev, psm->file->filename, tf);
-	    if (my_system(cmdbuf) != 0)
+	    if (cvs_direct_ctx)
 	    {
-		fprintf(stderr, "CVS retrieval '%s' failed.\n", cmdbuf);
-		exit(1);
+		FILE *ofp = fopen(tf, "w");
+
+		if (ofp == NULL)
+		{
+		    fprintf(stderr, "CVS direct retrieval of %s failed.\n",
+			    psm->file->filename);
+		    exit(1);
+		}
+
+		cvs_rupdate(cvs_direct_ctx,
+			    repository_path,
+			    psm->file->filename,
+			    psm->post_rev->rev, ofp);
+	    }
+	    else
+	    {
+		char cmdbuf[256];
+
+		snprintf(cmdbuf, sizeof(cmdbuf),
+			 "cvs -Q up -r%s -p %s >%s",
+			 psm->post_rev->rev, psm->file->filename, tf);
+		if (my_system(cmdbuf) != 0)
+		{
+		    fprintf(stderr, "CVS retrieval '%s' failed.\n", cmdbuf);
+		    exit(1);
+		}
 	    }
 
 	    /* coverity[toctou] */
@@ -1740,7 +1758,6 @@ static void print_fast_export(PatchSet * ps)
 		putchar(c);
 	    (void)fclose(cfp);
 	    putchar('\n');
-
 	}
 
 	next = next->next;

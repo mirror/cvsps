@@ -21,9 +21,6 @@ more test loads derived from CVS repos found in the wild.
 git-cvsimport is a wrapper around cvsps; talk with its maintainer
 and simplify that code.
 
-Extend direct mode so the fetches of file content for fast-export
-mode can be done through it.
-
 Hide data fetching behind an API so that the difference between normal
 mode, direct mode, and running from a logfile capture is not visible
 in cvsps.c
