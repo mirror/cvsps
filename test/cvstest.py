@@ -141,7 +141,7 @@ class CVSCheckout:
             if self.repo.fast_export:
                 do_or_die("cvsps --fast-export -T " + timebase)
             else:
-                do_or_die("cvsps -x")
+                do_or_die("cvsps")
     def cleanup(self):
         "Clean up the checkout directory."
         shutil.rmtree(self.directory)
