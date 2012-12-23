@@ -605,15 +605,13 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
-    debug(DEBUG_APPERROR, "  --no-rlog disable rlog (it's faulty in some setups)");
-    debug(DEBUG_APPERROR, "  --cvs-direct (--no-cvs-direct) enable (disable) built-in cvs client code");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
     debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
     debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
-    debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository.  overrides working directory");
+    debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository. Overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
     return -1;
