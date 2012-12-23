@@ -28,34 +28,6 @@ Way in the future...does this belong in C?  Maybe not.  Performance
 is going to be limited by network latency anyway, so Python or Ruby
 might be better tools - code size would drop by about x4, I think.
 
-A commenter on my blog says:
-
-  Hmm, I found an issue when running reposurgon against Gentoo’s cvs
-  repository (apologies – I could find no trace of a bug reporting
-  system for cvsps).
-
-  cvs [update aborted]: no such directory `net-mail/mutt’
-  CVS retrieval ‘cvs -Q up -r1.1 -p net-mail/mutt/mutt-1.2.5-1.ebuild >/tmp/filerAfyOI’ failed.
-  …(1671.92 sec) done.
-  reposurgeon: cvsps -x –fast-export repository export returned error.
-
-  Indeed that cvs command does fail with that error when run
-  manually. The issue is that the directory was removed (actually moved,
-  but same thing as far as CVS is concerned).
-
-  I ran into similar problems when parsing CVS. I found this command a
-  bit more bulletproof:
-
-  cvs -Q co -r1.1 -p gentoo-x86/net-mail/mutt/mutt-1.2.5-1.ebuild
-
-  It does have to be run from above the module level of the repository
-  (ie from one level higher, note the extra directory in the path). As
-  far as I can tell that could work in all cases update works, but also
-  when a directory was removed.
-
-  Take it for whatever little it is worth. :) And thanks for creating a
-  great tool...
-
 Bugs on the git-cvsimport page (some others have been fixed):
 
     Problems related to timestamps:
