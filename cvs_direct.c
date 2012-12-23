@@ -768,24 +768,24 @@ void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const 
     ctx_to_fp(ctx, fp);
 }
 
-static int parse_patch_arg(char * arg, char ** str)
+static bool parse_patch_arg(char * arg, char ** str)
 {
     char *tok, *tok2 = "";
     tok = strsep(str, " ");
     if (!tok)
-	return 0;
+	return false;
 
     if (*tok != '-')
     {
 	debug(DEBUG_APPERROR, "diff_opts parse error: no '-' starting argument: %s", *str);
-	return 0;
+	return false;
     }
     
     /* if it's not 'long format' argument, we can process it efficiently */
     if (tok[1] == '-')
     {
 	debug(DEBUG_APPERROR, "diff_opts parse_error: long format args not supported");
-	return 0;
+	return false;
     }
 
     /* see if command wants two args and they're separated by ' ' */
@@ -795,12 +795,12 @@ static int parse_patch_arg(char * arg, char ** str)
 	if (!tok2)
 	{
 	    debug(DEBUG_APPERROR, "diff_opts parse_error: argument %s requires two arguments", tok);
-	    return 0;
+	    return false;
 	}
     }
     
     snprintf(arg, 32, "%s%s", tok, tok2);
-    return 1;
+    return true;
 }
 
 void cvs_diff(CvsServerCtx * ctx, 

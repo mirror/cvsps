@@ -132,16 +132,16 @@ static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * 
 static int compare_patch_sets(const void *, const void *);
 static int compare_patch_sets_bytime_list(struct list_head *, struct list_head *);
 static int compare_patch_sets_bytime(const PatchSet *, const PatchSet *);
-static int is_revision_metadata(const char *);
-static int patch_set_member_regex(PatchSet * ps, regex_t * reg);
-static int patch_set_affects_branch(PatchSet *, const char *);
+static bool is_revision_metadata(const char *);
+static bool patch_set_member_regex(PatchSet * ps, regex_t * reg);
+static bool patch_set_affects_branch(PatchSet *, const char *);
 static void do_cvs_diff(PatchSet *);
 static PatchSet * create_patch_set();
 static PatchSetRange * create_patch_set_range();
 static void parse_sym(CvsFile *, char *);
 static void resolve_global_symbols();
-static int revision_affects_branch(CvsFileRevision *, const char *);
-static int is_vendor_branch(const char *);
+static bool revision_affects_branch(CvsFileRevision *, const char *);
+static bool is_vendor_branch(const char *);
 static void set_psm_initial(PatchSetMember * psm);
 static int check_rev_funk(PatchSet *, CvsFileRevision *);
 static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
@@ -1354,7 +1354,7 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     return retval;
 }
 
-static int get_branch_ext(char * buff, const char * rev, int * leaf)
+static bool get_branch_ext(char * buff, const char * rev, int * leaf)
 {
     char * p;
     int len = strlen(rev);
@@ -1365,13 +1365,13 @@ static int get_branch_ext(char * buff, const char * rev, int * leaf)
 
     p = strrchr(buff, '.');
     if (!p)
-	return 0;
+	return false;
     *p++ = 0;
 
     if (leaf)
 	*leaf = atoi(p);
 
-    return 1;
+    return true;
 }
 
 static int get_branch(char * buff, const char * rev)
@@ -2019,7 +2019,7 @@ static int compare_patch_sets_bytime(const PatchSet * ps1, const PatchSet * ps2)
 }
 
 
-static int is_revision_metadata(const char * buff)
+static bool is_revision_metadata(const char * buff)
 {
     char * p1, *p2;
     int len;
@@ -2030,18 +2030,18 @@ static int is_revision_metadata(const char * buff)
     p2 = strchr(buff, ' ');
     
     if (p2 && p2 < p1)
-	return 0;
+	return false;
 
     len = strlen(buff);
 
     /* lines have LF at end */
     if (len > 1 && buff[len - 2] == ';')
-	return 1;
+	return true;
 
-    return 0;
+    return false;
 }
 
-static int patch_set_member_regex(PatchSet * ps, regex_t * reg)
+static bool patch_set_member_regex(PatchSet * ps, regex_t * reg)
 {
     struct list_head * next = ps->members.next;
 
@@ -2050,15 +2050,15 @@ static int patch_set_member_regex(PatchSet * ps, regex_t * reg)
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	
 	if (regexec(&restrict_file, psm->file->filename, 0, NULL, 0) == 0)
-	    return 1;
+	    return true;
 
 	next = next->next;
     }
 
-    return 0;
+    return false;
 }
 
-static int patch_set_affects_branch(PatchSet * ps, const char * branch)
+static bool patch_set_affects_branch(PatchSet * ps, const char * branch)
 {
     struct list_head * next;
 
@@ -2077,10 +2077,10 @@ static int patch_set_affects_branch(PatchSet * ps, const char * branch)
 	    continue;
 
 	if (revision_affects_branch(psm->post_rev, branch))
-	    return 1;
+	    return true;
     }
 
-    return 0;
+    return false;
 }
 
 static void do_cvs_diff(PatchSet * ps)
@@ -2688,7 +2688,7 @@ static void resolve_global_symbols()
     }
 }
 
-static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
+static bool revision_affects_branch(CvsFileRevision * rev, const char * branch)
 {
     /* special case the branch called 'HEAD' */
     if (strcmp(branch, "HEAD") == 0)
@@ -2696,7 +2696,7 @@ static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
 	/* look for only one '.' in rev */
 	char * p = strchr(rev->rev, '.');
 	if (p && !strchr(p + 1, '.'))
-	    return 1;
+	    return true;
     }
     else
     {
@@ -2727,7 +2727,7 @@ static int revision_affects_branch(CvsFileRevision * rev, const char * branch)
 	}
     }
 
-    return 0;
+    return false;
 }
 
 static int count_dots(const char * p)
@@ -2746,7 +2746,7 @@ static int count_dots(const char * p)
  * the code is added on a 'vendor' branch, which, for some reason
  * doesn't use the magic-branch-tag format.  Try to detect that now
  */
-static int is_vendor_branch(const char * rev)
+static bool is_vendor_branch(const char * rev)
 {
     return !(count_dots(rev)&1);
 }
