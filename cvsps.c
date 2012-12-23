@@ -145,7 +145,7 @@ static int is_vendor_branch(const char *);
 static void set_psm_initial(PatchSetMember * psm);
 static int check_rev_funk(PatchSet *, CvsFileRevision *);
 static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
-static int before_tag(CvsFileRevision * rev, const char * tag);
+static bool before_tag(CvsFileRevision * rev, const char * tag);
 static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps);
 static void handle_collisions();
 static Branch * create_branch(const char * name) ;
@@ -2855,19 +2855,19 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 }
 
 /* determine if the revision is before the tag */
-static int before_tag(CvsFileRevision * rev, const char * tag)
+static bool before_tag(CvsFileRevision * rev, const char * tag)
 {
     CvsFileRevision * tagged_rev = (CvsFileRevision*)get_hash_object(rev->file->symbols, tag);
-    int retval = 0;
+    bool retval = false;
 
     if (tagged_rev && tagged_rev->branch == NULL)
         debug(DEBUG_APPMSG1, "WARNING: Branch == NULL for: %s %s %s %s %d",
-	      rev->file->filename, tag, rev->rev, tagged_rev ? tagged_rev->rev : "N/A", retval);
+	      rev->file->filename, tag, rev->rev, tagged_rev->rev, retval);
 
     if (tagged_rev && tagged_rev->branch != NULL &&
 	revision_affects_branch(rev, tagged_rev->branch) && 
 	rev->post_psm->ps->date <= tagged_rev->post_psm->ps->date)
-	retval = 1;
+	retval = true;
 
     debug(DEBUG_STATUS, "before_tag: %s %s %s %s %d", 
 	  rev->file->filename, tag, rev->rev, tagged_rev ? tagged_rev->rev : "N/A", retval);

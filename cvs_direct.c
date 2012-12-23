@@ -232,6 +232,8 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 	goto out_free_err;
 
     ctx->write_fd = dup(ctx->read_fd);
+    if (ctx->write_fd < 0)
+	goto out_close_err;
 
     if (tcp_connect(ctx->read_fd, server, atoi(port)) < 0)
 	goto out_close_err;
@@ -773,7 +775,7 @@ static int parse_patch_arg(char * arg, char ** str)
     if (!tok)
 	return 0;
 
-    if (!*tok == '-')
+    if (*tok != '-')
     {
 	debug(DEBUG_APPERROR, "diff_opts parse error: no '-' starting argument: %s", *str);
 	return 0;
