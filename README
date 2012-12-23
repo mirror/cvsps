@@ -63,41 +63,33 @@ format intended for human inspection.
 CVSps's output is information about patchsets.  A patchset looks like:
 
 ---------------------
-PatchSet 999
-Date: 2002/07/11 19:50:46
-Author: alan
-Branch: HEAD
-Tag: (none)
+PatchSet 63 
+Date: 2001/03/09 18:21:15
+Author: sneakums
+Branch: sneakums-nasty-hack
+Tag: (none) 
+Branches: 
 Log:
-[PATCH] Fix several pdc202xx problems
+First steps towards separating rfk from it nki source.  The primary
+aim is to rough out the interface, specified in nki.h.  Expect the
+implementation to suck.
 
-Misnaming of 20270 as 20268R
-Failure of LBA48 on 20262
-Incorrect speed detection because the old driver used host not drive side
-cable detect
-PDC202xx handling for quirks in udma reporting off some drives
-LBA48 for PIO mode
-
-BKrev: 3d2dd386wJMnehoOAhv3wL991IfXVQ
-
-Members:
-  ChangeSet:1.999->1.1000
-  MAINTAINERS:1.74->1.75
-  drivers/ide/ide-features.c:1.4->1.5
-  drivers/ide/ide-pci.c:1.18->1.19
-  drivers/ide/pdc202xx.c:1.11->1.12
-  include/linux/pci_ids.h:1.44->1.45
+Members: 
+	src/Makefile.am:1.6->1.6.2.1 
+	src/messages.h:1.9->1.9.2.1 
+	src/nki.c:1.1->1.1.2.1 
+	src/nki.h:1.1->1.1.2.1 
+	src/robotfindskitten.c:1.15->1.15.2.1 
 
 ---------------------
 
-This patchset is taken from the linux kernel BK->CVS tree.  It shows the date, 
-the author, log message and each file that was modified.  For each file the
-pre-commit and post-commit revisions are given.  You can also see (if 
-applicable, not in this case) if the files are on a branch, as well as the
-tag (see TAGS below).
+This patchset report shows the date, the author, log message and each
+file that was modified.  For each file the pre-commit and post-commit
+revisions are given.  You can also see if the files are on a branch,
+as well as the tag (see TAGS below).
 
 Patchsets are ordered by commit timestamp, so as long as the clock on your
-cvs server is monotonic, the numbering of patchsets should be invariant
+CVS server is monotonic, the numbering of patchsets should be invariant
 across cache-rebuilds. (see COMPATIBILITY below).
 
 c) Limiting the patchset output.
@@ -106,10 +98,11 @@ The default output of CVSps is to show all patchsets.  This can be
 filtered in one of many ways.  These flags can be combined to really
 limit the output to what you're interested in.
 
-By id.  With the -s <ps range> you can specify individual PatchSets by
-number or by range.  Ranges can be of the form '<number>', '<number>-',
-'-<number>' and of course '<number>-<number>'.  Multiple ranges can be
-specified seperated by commas.  E.g.
+By patch-set number.  With the -s <ps range> you can specify
+individual PatchSets by number or by range.  Ranges can be of the form
+'<number>', '<number>-', '-<number>' and of course
+'<number>-<number>'.  Multiple ranges can be specified seperated by
+commas.  E.g.
 
 cvsps -s 999-1020,1025,4956-
 
@@ -162,7 +155,7 @@ directory with the '-p1' option to the patch command.
 
 e) what is timestamp fuzz factor (-z option)?
 
-There's another annoying feature of cvs.  When you commit a large change,
+There's another annoying feature of CVS.  When you commit a large change,
 the timestamp on the change is created per file committed.  For example:
 if you commit changes to 60 files on a slow server, taking, say, 60
 seconds, the 'commit time' as given in the log message for the first file
