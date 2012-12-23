@@ -96,7 +96,6 @@ static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static int summary_first;
 static bool fast_export;
-static const char * norc = "";
 static const char * patch_set_dir;
 static const char * restrict_tag_start;
 static const char * restrict_tag_end;
@@ -108,7 +107,6 @@ static char compress_arg[8];
 static bool track_branch_ancestry;
 static time_t regression_time;
 
-static void check_norc(int, char *[]);
 static int parse_args(int, char *[]);
 static int parse_rc();
 static void load_from_cvs();
@@ -152,15 +150,7 @@ int main(int argc, char *argv[])
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
 
-    /*
-     * we want to parse the rc first, so command line can override it
-     * but also, --norc should stop the rc from being processed, so
-     * we look for --norc explicitly first.  Note: --norc in the rc 
-     * file itself will prevent the cvs rc file from being used.
-     */
-    check_norc(argc, argv);
-
-    if (strlen(norc) == 0 && parse_rc() < 0)
+    if (parse_rc() < 0)
 	exit(1);
 
     if (parse_args(argc, argv) < 0)
@@ -542,7 +532,6 @@ static void load_from_cvs()
     if (state == NEED_SYMS)
     {
 	debug(DEBUG_APPERROR, "Error: 'symbolic names' not found in log output.");
-	debug(DEBUG_APPERROR, "       Perhaps you should try running with --norc");
 	exit(1);
     }
 
@@ -570,7 +559,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
-    debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
+    debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
@@ -594,7 +583,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -p <directory> output patch sets to individual files in <directory>");
     debug(DEBUG_APPERROR, "  -v show very verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
-    debug(DEBUG_APPERROR, "  --norc when invoking cvs, ignore the .cvsrc file");
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
@@ -803,10 +791,9 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-h") == 0)
 	    return usage(NULL, NULL);
 
-	/* see special handling of --norc in main */
+	/* git-cvsimport expect to be able to pass this */
 	if (strcmp(argv[i], "--norc") == 0)
 	{
-	    norc = "-f";
 	    i++;
 	    continue;
 	}
@@ -2705,20 +2692,6 @@ static CvsFileRevision * rev_follow_branch(CvsFileRevision * rev, const char * b
     }
     
     return NULL;
-}
-
-static void check_norc(int argc, char * argv[])
-{
-    int i = 1; 
-    while (i < argc)
-    {
-	if (strcmp(argv[i], "--norc") == 0)
-	{
-	    norc = "-f";
-	    break;
-	}
-	i++;
-    }
 }
 
 static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
