@@ -109,7 +109,6 @@ static int restrict_tag_ps_start;
 static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
 static bool no_rlog;
-static bool cvs_direct;
 static int compress;
 static char compress_arg[8];
 static bool track_branch_ancestry;
@@ -173,16 +172,6 @@ int main(int argc, char *argv[])
     if (parse_args(argc, argv) < 0)
 	exit(1);
 
-    if (diff_opts && !cvs_direct && do_diff)
-    {
-	debug(DEBUG_APPMSG1, "\nWARNING: diff options are not supported by 'cvs rdiff'");
-	debug(DEBUG_APPMSG1, "         which is usually used to create diffs.  'cvs diff'");
-	debug(DEBUG_APPMSG1, "         will be used instead, but the resulting patches ");
-	debug(DEBUG_APPMSG1, "         will need to be applied using the '-p0' option");
-	debug(DEBUG_APPMSG1, "         to patch(1) (in the working directory), ");
-	debug(DEBUG_APPMSG1, "         instead of '-p1'\n");
-    }
-
     file_hash = create_hash_table(1023);
     global_symbols = create_hash_table(111);
     branch_heads = create_hash_table(1023);
@@ -212,7 +201,7 @@ int main(int argc, char *argv[])
 	timestamp_fuzz_factor = save_fuzz_factor;
     }
 
-    if (cvs_direct && (do_diff || (update_cache && !test_log_file)))
+    if (do_diff || (update_cache && !test_log_file))
 	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
     if (update_cache)
@@ -941,20 +930,6 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--no-rlog") == 0)
 	{
 	    no_rlog = true;
-	    i++;
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--cvs-direct") == 0)
-	{
-	    cvs_direct = true;
-	    i++;
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--no-cvs-direct") == 0)
-	{
-	    cvs_direct = false;
 	    i++;
 	    continue;
 	}
