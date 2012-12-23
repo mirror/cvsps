@@ -13,6 +13,26 @@ who reported his "thanks to my employer Cobite and Robert Lippman,
 who've given me time to develop this tool".  The 3.x versions
 with fast-export dumping are maintained by Eric S. Raymond.
 
+== Change notices and deprecations ==
+
+If you have not used an older version of CVSps, you can skip this section.
+
+The 3.x versions have changed significantly.  In 2012, CVS use is declining 
+swiftly (GNU CVS hasn't been updated since 2004) and the original use case
+for this tool - browsing change sets in a live CVS repository - is obsolete.
+The 3.x versions are more focused on the --fast-export mode.
+
+Accordingly, a large amount of old code and options have been
+discarded in order to reduce CVSps's complexity and improve its
+performance.  It now always runs in what used to be cvs_direct mode,
+doing client transactions with the CVS server and not relying on local
+CVS commands at all.  Consequently, all the hairiness around caching
+and different log/rlog versions is gone and the tool is much faster.
+
+The old-style non-fast-export reporting mode is still supported, but
+deprecated.  In the future, it is possible that it may be dropped
+entirely.
+
 == Compiling ==
 
 Do 'make' and 'make install'.  This is very plain-vanilla ANSI C
@@ -23,42 +43,18 @@ and should run on any Unixoid OS.
 Note: not all options are necessarily discussed here.  Please check the
 output of 'cvsps -h' and/or the manual page for the most up-to-date info.
 
-CVSps operates by parsing the 'cvs log' output.  So to run it, you must
-be in the working directory of a cvs project.  CVSps handles
-subdirectories fine, so run it in the top directory of your project.
+a) General theory of operation
 
-a) the ~/.cvsps/cvsps.cache file (or so it's called)
-
-Because you may have a *lot* of revision history in your project, and/or
-your connection to the cvs server may be slow or congested, CVSps uses a
-cache file for most operations.  The first time you run CVSps, just issue:
-
-cvsps
-
-and will begin reading and parsing the cvs log.  When it is finished it
-will output all of the patchset information to stdout, and it will also
-generate the '~/.cvsps/cvsps.cache' file.  Note: for historical reasons
-this file is still called the cvsps.cache file, but in reality it is named
-based on the CVS/Root and CVS/Repository contents, and thus is shared for
-the same repository checked out in multiple places.
-
-If the cache file exists, it won't ever be automatically updated.  To
-update the cache with cvs activity that has occurred since the
-~/.cvsps/cvsps.cache was last updated, use:
-
-cvsps -u
-
-If you question the integrity of the ~/.cvsps/cvsps.cache, or for some
-other reason want to force a full cache rebuild, use (you could also
-'rm' the cache file):
-
-cvsps -x
-
-b) Reading the output.
+CVSps operates by parsing 'cvs rlog' output fetched from the CVS
+server.  To run it, you must be in the working directory of a cvs
+project.  CVSps handles subdirectories fine, so run it in the top
+directory of your project.
 
 The --fast-export switch produces a git-style fast-import stream on
 standard output.  The rest of this section describes the older default
 format intended for human inspection.
+
+b) Old-style changeset reporting
 
 CVSps's output is information about patchsets.  A patchset looks like:
 
@@ -88,9 +84,9 @@ file that was modified.  For each file the pre-commit and post-commit
 revisions are given.  You can also see if the files are on a branch,
 as well as the tag (see TAGS below).
 
-Patchsets are ordered by commit timestamp, so as long as the clock on your
-CVS server is monotonic, the numbering of patchsets should be invariant
-across cache-rebuilds. (see COMPATIBILITY below).
+Patchsets are ordered by commit timestamp, so as long as the clock on
+your CVS server is monotonic, the numbering of patchsets should be
+invariant. (see COMPATIBILITY below).
 
 c) Limiting the patchset output.
 

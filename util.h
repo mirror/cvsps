@@ -21,7 +21,6 @@ char *get_string(char const *str);
 void convert_date(time_t *, const char *);
 void timing_start();
 void timing_stop(const char *);
-int my_system(const char *);
 int escape_filename(char *, int, const char *);
 void strcpy_a(char * dst, const char * src, int n);
 

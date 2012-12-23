@@ -24,7 +24,6 @@
 #include <cbtcommon/debug.h>
 #include <cbtcommon/rcsid.h>
 
-#include "cache.h"
 #include "cvsps_types.h"
 #include "cvsps.h"
 #include "util.h"
@@ -76,10 +75,6 @@ static void * ps_tree;
 static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
-static time_t cache_date;
-static bool update_cache;
-static bool ignore_cache;
-static bool do_write_cache;
 static bool statistics;
 static const char * test_log_file;
 static struct hash_table * branch_heads;
@@ -183,31 +178,10 @@ int main(int argc, char *argv[])
      */
     init_paths();
 
-    if (!ignore_cache)
-    {
-	int save_fuzz_factor = timestamp_fuzz_factor;
-
-	/* the timestamp fuzz should only be in effect when loading from
-	 * CVS, not re-fuzzed when loading from cache.  This is a hack
-	 * working around bad use of global variables
-	 */
-
-	timestamp_fuzz_factor = 0;
-
-	if ((cache_date = read_cache()) < 0)
-	    update_cache = true;
-
-	timestamp_fuzz_factor = save_fuzz_factor;
-    }
-
-    if (do_diff || (update_cache && !test_log_file))
+    if (!test_log_file)
 	cvs_direct_ctx = open_cvs_server(root_path, compress);
 
-    if (update_cache)
-    {
-	load_from_cvs();
-	do_write_cache = true;
-    }
+    load_from_cvs();
 
     //XXX
     //handle_collisions();
@@ -220,9 +194,6 @@ int main(int argc, char *argv[])
     handle_collisions();
 
     resolve_global_symbols();
-
-    if (do_write_cache)
-	write_cache(cache_date);
 
     if (statistics)
 	print_statistics(ps_tree);
@@ -295,7 +266,7 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
 
 static void load_from_cvs()
 {
-    FILE * cvsfp;
+    FILE * cvsfp = NULL;
     char buff[BUFSIZ];
     int state = NEED_FILE;
     CvsFile * file = NULL;
@@ -309,59 +280,16 @@ static void load_from_cvs()
     char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
     bool have_log = false;
-    char cmd[BUFSIZ];
     char date_str[64];
-    char use_rep_buff[PATH_MAX];
-    char * ltype;
 
-    if (!test_log_file && cvs_check_cap(CAP_HAVE_RLOG))
-    {
-	ltype = "rlog";
-	snprintf(use_rep_buff, PATH_MAX, "%s", repository_path);
-    }
-    else
-    {
-	ltype = "log";
-	use_rep_buff[0] = 0;
-    }
-
-    if (cache_date > 0)
-    {
-	struct tm * tm = gmtime(&cache_date);
-	strftime(date_str, 64, "%d %b %Y %H:%M:%S %z", tm);
-
-	/* this command asks for logs using two different date
-	 * arguments, separated by ';' (see man rlog).  The first
-	 * gets all revisions more recent than date, the second 
-	 * gets a single revision no later than date, which combined
-	 * get us all revisions that have occurred since last update
-	 * and overlaps what we had before by exactly one revision,
-	 * which is necessary to fill in the pre_rev stuff for a 
-	 * PatchSetMember
-	 */
-	snprintf(cmd, BUFSIZ, "cvs -q %s %s %s -d '%s<;%s' %s", compress_arg, norc, ltype, date_str, date_str, use_rep_buff);
-    }
-    else
-    {
-	date_str[0] = 0;
-	snprintf(cmd, BUFSIZ, "cvs -q %s %s %s %s", compress_arg, norc, ltype, use_rep_buff);
-    }
-    
-    debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
-
-    cache_date = time(NULL);
-
-    /* FIXME: this is ugly, need to virtualize the accesses away from here */
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
     else if (cvs_direct_ctx)
 	cvsfp = cvs_rlog_open(cvs_direct_ctx, repository_path, date_str);
-    else
-	cvsfp = popen(cmd, "r");
 
     if (!cvsfp)
     {
-	debug(DEBUG_SYSERROR, "can't open cvs pipe using command %s", cmd);
+	debug(DEBUG_SYSERROR, "can't get CVS log data");
 	exit(1);
     }
 
@@ -632,14 +560,6 @@ static void load_from_cvs()
     {
 	cvs_rlog_close(cvs_direct_ctx);
     }
-    else
-    {
-	if (pclose(cvsfp) < 0)
-	{
-	    debug(DEBUG_APPERROR, "cvs rlog command exited with error. aborting");
-	    exit(1);
-	}
-    }
 }
 
 static int usage(const char * str1, const char * str2)
@@ -658,8 +578,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
-    debug(DEBUG_APPERROR, "  -x ignore (and rebuild) cvsps.cache file");
-    debug(DEBUG_APPERROR, "  -u update cvsps.cache file");
     debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
     debug(DEBUG_APPERROR, "  -g generate diffs of the selected patch sets");
     debug(DEBUG_APPERROR, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
@@ -831,21 +749,6 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-u") == 0)
-	{
-	    update_cache = true;
-	    i++;
-	    continue;
-	}
-	
-	if (strcmp(argv[i], "-x") == 0)
-	{
-	    ignore_cache = true;
-	    update_cache = true;
-	    i++;
-	    continue;
-	}
-
 	if (strcmp(argv[i], "-b") == 0)
 	{
 	    if (++i >= argc)
@@ -978,7 +881,6 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--fast-export") == 0)
 	{
 	    fast_export = true;
-	    update_cache = true;
 	    i++;
 	    continue;
 	}
@@ -987,6 +889,18 @@ static int parse_args(int argc, char *argv[])
 	    return usage("invalid argument", argv[i]);
 	
 	strcpy(repository_path, argv[i++]);
+    }
+
+    if (fast_export && test_log_file)
+    {
+	fprintf(stderr, "cvsps: --fast-export and --test-log are not compatible.\n");
+	exit(1);
+    }
+
+    if (do_diff && test_log_file)
+    {
+	fprintf(stderr, "cvsps: -g and --test-log are not compatible.\n");
+	exit(1);
     }
 
     return 0;
@@ -1679,35 +1593,19 @@ static void print_fast_export(PatchSet * ps)
 
 	if (!psm->post_rev->dead) 
 	{
-	    if (cvs_direct_ctx)
+	    FILE *ofp = fopen(tf, "w");
+
+	    if (ofp == NULL)
 	    {
-		FILE *ofp = fopen(tf, "w");
-
-		if (ofp == NULL)
-		{
-		    fprintf(stderr, "CVS direct retrieval of %s failed.\n",
-			    psm->file->filename);
-		    exit(1);
-		}
-
-		cvs_rupdate(cvs_direct_ctx,
-			    repository_path,
-			    psm->file->filename,
-			    psm->post_rev->rev, ofp);
+		fprintf(stderr, "CVS direct retrieval of %s failed.\n",
+			psm->file->filename);
+		exit(1);
 	    }
-	    else
-	    {
-		char cmdbuf[256];
 
-		snprintf(cmdbuf, sizeof(cmdbuf),
-			 "cvs -Q up -r%s -p %s >%s",
-			 psm->post_rev->rev, psm->file->filename, tf);
-		if (my_system(cmdbuf) != 0)
-		{
-		    fprintf(stderr, "CVS retrieval '%s' failed.\n", cmdbuf);
-		    exit(1);
-		}
-	    }
+	    cvs_rupdate(cvs_direct_ctx,
+			repository_path,
+			psm->file->filename,
+			psm->post_rev->rev, ofp);
 
 	    /* coverity[toctou] */
 	    if (stat(tf, &st) != 0)
@@ -2053,30 +1951,16 @@ static bool patch_set_affects_branch(PatchSet * ps, const char * branch)
 static void do_cvs_diff(PatchSet * ps)
 {
     struct list_head * next;
-    const char * dtype;
     const char * dopts;
-    const char * utype;
     char use_rep_path[PATH_MAX];
     char esc_use_rep_path[PATH_MAX];
 
     fflush(stdout);
     fflush(stderr);
 
-    /* 
-     * if cvs_direct is not in effect, and diff options are specified,
-     * then we have to use diff instead of rdiff and we'll get a -p0 
-     * diff (instead of -p1) [in a manner of speaking].  So to make sure
-     * that the add/remove diffs get generated likewise, we need to use
-     * 'update' instead of 'co' 
-     *
-     * cvs_direct will always use diff (not rdiff), but will also always
-     * generate -p1 diffs.
-     */
     if (diff_opts == NULL) 
     {
 	dopts = "-u";
-	dtype = "rdiff";
-	utype = "co";
 	sprintf(use_rep_path, "%s/", repository_path);
 	/* the rep_path may contain characters that the shell will barf on */
 	escape_filename(esc_use_rep_path, PATH_MAX, use_rep_path);
@@ -2084,8 +1968,6 @@ static void do_cvs_diff(PatchSet * ps)
     else
     {
 	dopts = diff_opts;
-	dtype = "diff";
-	utype = "update";
 	use_rep_path[0] = 0;
 	esc_use_rep_path[0] = 0;
     }
@@ -2093,19 +1975,14 @@ static void do_cvs_diff(PatchSet * ps)
     for (next = ps->members.next; next != &ps->members; next = next->next)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	char cmdbuff[PATH_MAX * 2+1];
 	char esc_file[PATH_MAX];
-	int ret; 
-	bool check_ret = false;
-
-	cmdbuff[0] = 0;
-	cmdbuff[PATH_MAX*2] = 0;
 
 	/* the filename may contain characters that the shell will barf on */
 	escape_filename(esc_file, PATH_MAX, psm->file->filename);
 
 	/*
-	 * Check the patchset funk. we may not want to diff this particular file 
+	 * Check the patchset funk. We may not want to diff this
+	 * particular file
 	 */
 	if (ps->funk_factor == FNK_SHOW_SOME && psm->bad_funk)
 	{
@@ -2139,6 +2016,8 @@ static void do_cvs_diff(PatchSet * ps)
 	{
 	    bool cr;
 	    const char * rev;
+	    char cmdbuff[BUFSIZ];
+	    FILE *fp;
 
 	    if (!psm->pre_rev || psm->pre_rev->dead)
 	    {
@@ -2151,73 +2030,29 @@ static void do_cvs_diff(PatchSet * ps)
 		rev = psm->pre_rev->rev;
 	    }
 
-	    if (cvs_direct_ctx)
+	    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
+		     dopts, cr?"":"-", cr?"-":"", cr?"2":"1", repository_path, psm->file->filename);
+
+	    /* debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff); */
+
+	    if (!(fp = popen(cmdbuff, "w")))
 	    {
-		char cmdbuff[BUFSIZ];
-		FILE *fp;
-
-		snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
-			 dopts, cr?"":"-", cr?"-":"", cr?"2":"1", repository_path, psm->file->filename);
-
-		/* debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff); */
-
-		if (!(fp = popen(cmdbuff, "w")))
-		{
-		    debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
-		    exit(1);
-		}
-
-		cvs_rupdate(cvs_direct_ctx, 
-			    repository_path, psm->file->filename, rev, fp);
-		pclose(fp);
-	    }
-	    else
-	    {
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s -p -r %s %s%s | diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s%s|g'",
-			 compress_arg, norc, utype, rev, esc_use_rep_path, esc_file, dopts,
-			 cr?"":"-",cr?"-":"", cr?"2":"1",
-			 use_rep_path, psm->file->filename);
-	    }
-	}
-	else
-	{
-	    /* a regular diff */
-	    if (cvs_direct_ctx)
-	    {
-		cvs_diff(cvs_direct_ctx, repository_path, psm->file->filename, psm->pre_rev->rev, psm->post_rev->rev, dopts);
-	    }
-	    else
-	    {
-		/* 'cvs diff' exit status '1' is ok, just means files are different */
-		if (strcmp(dtype, "diff") == 0)
-		    check_ret = true;
-
-		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s %s -r %s -r %s %s%s",
-			 compress_arg, norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, 
-			 esc_use_rep_path, esc_file);
-	    }
-	}
-
-	/*
-	 * my_system doesn't block signals the way system does.
-	 * if ctrl-c is pressed while in there, we probably exit
-	 * immediately and hope the shell has sent the signal
-	 * to all of the process group members
-	 */
-	if (cmdbuff[0] && (ret = my_system(cmdbuff)))
-	{
-	    int stat = WEXITSTATUS(ret);
-	    
-	    /* 
-	     * cvs diff returns 1 in exit status for 'files are different'
-	     * so use a better method to check for failure
-	     */
-	    if (stat < 0 || stat > check_ret || WIFSIGNALED(ret))
-	    {
-		debug(DEBUG_APPERROR, "system command returned non-zero exit status: %d: aborting", stat);
+		debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
 		exit(1);
 	    }
+
+	    cvs_rupdate(cvs_direct_ctx, 
+			repository_path, psm->file->filename, rev, fp);
+	    pclose(fp);
 	}
+	else
+	    cvs_diff(cvs_direct_ctx, 
+		     repository_path, 
+		     psm->file->filename, 
+		     psm->pre_rev->rev, 
+		     psm->post_rev->rev,
+		     dopts);
+
     }
 }
 

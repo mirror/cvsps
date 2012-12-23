@@ -251,34 +251,6 @@ void timing_stop(const char * msg)
 
 extern char ** environ;
 
-/* taken from the linux manual page for system */
-int my_system (const char *command) 
-{
-    int pid, status;
-    
-    if (command == 0)
-	return 1;
-    pid = fork();
-    if (pid == -1)
-	return -1;
-    if (pid == 0) {
-	char *argv[4];
-	argv[0] = "sh";
-	argv[1] = "-c";
-	argv[2] = (char*)command; /* discard const */
-	argv[3] = 0;
-	execve("/bin/sh", argv, environ);
-	exit(127);
-    }
-    do {
-	if (waitpid(pid, &status, 0) == -1) {
-	    if (errno != EINTR)
-		return -1;
-	} else
-	    return status;
-    } while(1);
-}
-
 int escape_filename(char * dst, int len, const char * src)
 {
     static char * naughty_chars = " \\\"'@<>=;|&()#$`?*[!:{";

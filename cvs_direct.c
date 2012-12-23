@@ -142,7 +142,6 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 
 	if (!strstr(buff, " version") ||
 	    !strstr(buff, " rlog") ||
-	    !strstr(buff, " rdiff") || 
 	    !strstr(buff, " diff") ||
 	    !strstr(buff, " co"))
 	{
@@ -168,7 +167,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    ctx->compressed = true;
 	}
 
-	debug(DEBUG_APPMSG1, "cvs_direct initialized to CVSROOT %s", ctx->root);
+	debug(DEBUG_APPMSG2, "cvs_direct: initialized to CVSROOT %s", ctx->root);
     }
 
     return ctx;

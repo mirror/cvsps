@@ -11,7 +11,6 @@ OBJS=\
 	cbtcommon/sio.o\
 	cbtcommon/tcpsocket.o\
 	cvsps.o\
-	cache.o\
 	util.o\
 	stats.o\
 	cap.o\
