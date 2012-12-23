@@ -108,7 +108,6 @@ static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
-static bool no_rlog;
 static int compress;
 static char compress_arg[8];
 static bool track_branch_ancestry;
@@ -315,7 +314,7 @@ static void load_from_cvs()
     char use_rep_buff[PATH_MAX];
     char * ltype;
 
-    if (!no_rlog && !test_log_file && cvs_check_cap(CAP_HAVE_RLOG))
+    if (!test_log_file && cvs_check_cap(CAP_HAVE_RLOG))
     {
 	ltype = "rlog";
 	snprintf(use_rep_buff, PATH_MAX, "%s", repository_path);
@@ -653,9 +652,9 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--norc] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
-    debug(DEBUG_APPERROR, "             [--no-rlog] [--diff-opts <option string>] [--cvs-direct]");
+    debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [-q] [-A] [<repository>]");
+    debug(DEBUG_APPERROR, "             [-q] [-A] [-T] [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -923,13 +922,6 @@ static int parse_args(int argc, char *argv[])
 		diff_opts = NULL;
 	    else
 		diff_opts = argv[i];
-	    i++;
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--no-rlog") == 0)
-	{
-	    no_rlog = true;
 	    i++;
 	    continue;
 	}
