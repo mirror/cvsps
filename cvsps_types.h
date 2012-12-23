@@ -7,6 +7,7 @@
 #define CVSPS_TYPES_H
 
 #include <time.h>
+#include <stdbool.h>
 
 #define LOG_STR_MAX 32768
 #define AUTH_STR_MAX 64
@@ -27,7 +28,7 @@ typedef struct _Branch Branch;
 struct _CvsFileRevision
 {
     char * rev;
-    int dead;
+    bool dead;
     CvsFile * file;
     char * branch;
     /*
@@ -35,7 +36,7 @@ struct _CvsFileRevision
      * revisions that don't exist. track 'confirmed' revisions
      * so as to not let them screw us up.
      */
-    int present;
+    bool present;
 
     /*
      * A revision can be part of many PatchSets because it may
@@ -72,7 +73,7 @@ struct _CvsFile
      * we don't have the branch info, so the CvsFileRevisions get created 
      * with the branch attribute NULL.  Later we need to resolve these.
      */
-    int have_branches;
+    bool have_branches;
 };
 
 struct _PatchSetMember
@@ -84,7 +85,7 @@ struct _PatchSetMember
     /*
      * bad_funk is only set w.r.t the -r tags
      */
-    int bad_funk;
+    bool bad_funk;
     struct list_head link;
 };
 
@@ -126,7 +127,7 @@ struct _PatchSet
      * we want to ignore these.  fortunately, there's a way to detect them
      * without resorting to looking at the log message.
      */
-    int branch_add;
+    bool branch_add;
     /*
      * If the '-r' option specifies a funky tag, we will need to detect the
      * PatchSets that come chronologically before the tag, but are logically

@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdbool.h>
 #include <fcntl.h>
 #include <regex.h>
 #include <sys/wait.h> /* for WEXITSTATUS - see system(3) */
@@ -76,10 +77,10 @@ static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
 static time_t cache_date;
-static int update_cache;
-static int ignore_cache;
-static int do_write_cache;
-static int statistics;
+static bool update_cache;
+static bool ignore_cache;
+static bool do_write_cache;
+static bool statistics;
 static const char * test_log_file;
 static struct hash_table * branch_heads;
 static struct list_head all_patch_sets;
@@ -88,18 +89,18 @@ static struct hash_table * branches;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
-static int do_diff;
+static bool do_diff;
 static const char * restrict_author;
-static int have_restrict_log;
+static bool have_restrict_log;
 static regex_t restrict_log;
-static int have_restrict_file;
+static bool have_restrict_file;
 static regex_t restrict_file;
 static time_t restrict_date_start;
 static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static int summary_first;
-static int fast_export;
+static bool fast_export;
 static const char * norc = "";
 static const char * patch_set_dir;
 static const char * restrict_tag_start;
@@ -107,11 +108,11 @@ static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
-static int no_rlog;
-static int cvs_direct;
+static bool no_rlog;
+static bool cvs_direct;
 static int compress;
 static char compress_arg[8];
-static int track_branch_ancestry;
+static bool track_branch_ancestry;
 static time_t regression_time;
 
 static void check_norc(int, char *[]);
@@ -206,7 +207,7 @@ int main(int argc, char *argv[])
 	timestamp_fuzz_factor = 0;
 
 	if ((cache_date = read_cache()) < 0)
-	    update_cache = 1;
+	    update_cache = true;
 
 	timestamp_fuzz_factor = save_fuzz_factor;
     }
@@ -217,7 +218,7 @@ int main(int argc, char *argv[])
     if (update_cache)
     {
 	load_from_cvs();
-	do_write_cache = 1;
+	do_write_cache = true;
     }
 
     //XXX
@@ -319,7 +320,7 @@ static void load_from_cvs()
     char cidbuff[CID_STR_MAX];
     char logbuff[LOG_STR_MAX + 1];
     int loglen = 0;
-    int have_log = 0;
+    bool have_log = false;
     char cmd[BUFSIZ];
     char date_str[64];
     char use_rep_buff[PATH_MAX];
@@ -407,7 +408,7 @@ static void load_from_cvs()
 	    if (!isspace(buff[0]))
 	    {
 		/* see cvsps_types.h for commentary on have_branches */
-		file->have_branches = 1;
+		file->have_branches = true;
 		state = NEED_START_LOG;
 	    }
 	    else
@@ -493,7 +494,7 @@ static void load_from_cvs()
 		    op = strchr(p, ';');
 		    if (op)
 			if (strncmp(p, "dead", MIN(4, op - p)) == 0)
-			    psm->post_rev->dead = 1;
+			    psm->post_rev->dead = true;
 		}
 
 		cidbuff[0] = 0;
@@ -540,7 +541,7 @@ static void load_from_cvs()
 
 		logbuff[0] = 0;
 		loglen = 0;
-		have_log = 0;
+		have_log = false;
 		state = NEED_REVISION;
 	    }
 	    else if (strcmp(buff, CVS_FILE_BOUNDARY) == 0)
@@ -572,7 +573,7 @@ static void load_from_cvs()
 
 		logbuff[0] = 0;
 		loglen = 0;
-		have_log = 0;
+		have_log = false;
 		psm = NULL;
 		file = NULL;
 		state = NEED_FILE;
@@ -609,7 +610,7 @@ static void load_from_cvs()
 			memcpy(logbuff + loglen, buff, len);
 			loglen += len;
 			logbuff[loglen] = 0;
-			have_log = 1;
+			have_log = true;
 		    }
 		}
 		else 
@@ -722,7 +723,7 @@ static int parse_args(int argc, char *argv[])
 	
 	if (strcmp(argv[i], "-g") == 0)
 	{
-	    do_diff = 1;
+	    do_diff = true;
 	    i++;
 	    continue;
 	}
@@ -783,7 +784,7 @@ static int parse_args(int argc, char *argv[])
 		return usage("bad regex to -l", errbuf);
 	    }
 
-	    have_restrict_log = 1;
+	    have_restrict_log = true;
 
 	    continue;
 	}
@@ -802,7 +803,7 @@ static int parse_args(int argc, char *argv[])
 		return usage("bad regex to -f", errbuf);
 	    }
 
-	    have_restrict_file = 1;
+	    have_restrict_file = true;
 
 	    continue;
 	}
@@ -844,15 +845,15 @@ static int parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-u") == 0)
 	{
-	    update_cache = 1;
+	    update_cache = true;
 	    i++;
 	    continue;
 	}
 	
 	if (strcmp(argv[i], "-x") == 0)
 	{
-	    ignore_cache = 1;
-	    update_cache = 1;
+	    ignore_cache = true;
+	    update_cache = true;
 	    i++;
 	    continue;
 	}
@@ -889,7 +890,7 @@ static int parse_args(int argc, char *argv[])
 	
 	if (strcmp(argv[i], "-t") == 0)
 	{
-	    statistics = 1;
+	    statistics = true;
 	    i++;
 	    continue;
 	}
@@ -939,21 +940,21 @@ static int parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "--no-rlog") == 0)
 	{
-	    no_rlog = 1;
+	    no_rlog = true;
 	    i++;
 	    continue;
 	}
 
 	if (strcmp(argv[i], "--cvs-direct") == 0)
 	{
-	    cvs_direct = 1;
+	    cvs_direct = true;
 	    i++;
 	    continue;
 	}
 
 	if (strcmp(argv[i], "--no-cvs-direct") == 0)
 	{
-	    cvs_direct = 0;
+	    cvs_direct = false;
 	    i++;
 	    continue;
 	}
@@ -1002,14 +1003,14 @@ static int parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-A") == 0)
 	{
-	    track_branch_ancestry = 1;
+	    track_branch_ancestry = true;
 	    i++;
 	    continue;
 	}
 
 	if (strcmp(argv[i], "--fast-export") == 0)
 	{
-	    fast_export = 1;
+	    fast_export = true;
 	    i++;
 	    continue;
 	}
@@ -1185,7 +1186,7 @@ static CvsFile * parse_file(const char * buff)
     char * p;
 
     /* once a single file has been parsed ok we set this */
-    static int path_ok;
+    static bool path_ok;
     
     /* chop the ",v" string and the "LF" */
     len -= 3;
@@ -1236,7 +1237,7 @@ static CvsFile * parse_file(const char * buff)
     }
 
  ok:
-    path_ok = 1;
+    path_ok = true;
 
     /* remove from beginning the 'strip_path' string */
     len -= strip_path_len;
@@ -2125,7 +2126,8 @@ static void do_cvs_diff(PatchSet * ps)
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 	char cmdbuff[PATH_MAX * 2+1];
 	char esc_file[PATH_MAX];
-	int ret, check_ret = 0;
+	int ret; 
+	bool check_ret = false;
 
 	cmdbuff[0] = 0;
 	cmdbuff[PATH_MAX*2] = 0;
@@ -2152,28 +2154,31 @@ static void do_cvs_diff(PatchSet * ps)
 	}
 
 	/* 
-	 * When creating diffs for INITIAL or DEAD revisions, we have to use 'cvs co'
-	 * or 'cvs update' to get the file, because cvs won't generate these diffs.
-	 * The problem is that this must be piped to diff, and so the resulting
-	 * diff doesn't contain the filename anywhere! (diff between - and /dev/null).
-	 * sed is used to replace the '-' with the filename. 
+	 * When creating diffs for INITIAL or DEAD revisions, we have
+	 * to use 'cvs co' or 'cvs update' to get the file, because
+	 * cvs won't generate these diffs.  The problem is that this
+	 * must be piped to diff, and so the resulting diff doesn't
+	 * contain the filename anywhere! (diff between - and
+	 * /dev/null).  sed is used to replace the '-' with the
+	 * filename.
 	 *
-	 * It's possible for pre_rev to be a 'dead' revision. This happens when a file 
-	 * is added on a branch. post_rev will be dead dead for remove
+	 * It's possible for pre_rev to be a 'dead' revision. This
+	 * happens when a file is added on a branch. post_rev will be
+	 * dead dead for remove
 	 */
 	if (!psm->pre_rev || psm->pre_rev->dead || psm->post_rev->dead)
 	{
-	    int cr;
+	    bool cr;
 	    const char * rev;
 
 	    if (!psm->pre_rev || psm->pre_rev->dead)
 	    {
-		cr = 1;
+		cr = true;
 		rev = psm->post_rev->rev;
 	    }
 	    else
 	    {
-		cr = 0;
+		cr = false;
 		rev = psm->pre_rev->rev;
 	    }
 
@@ -2216,7 +2221,7 @@ static void do_cvs_diff(PatchSet * ps)
 	    {
 		/* 'cvs diff' exit status '1' is ok, just means files are different */
 		if (strcmp(dtype, "diff") == 0)
-		    check_ret = 1;
+		    check_ret = true;
 
 		snprintf(cmdbuff, PATH_MAX * 2, "cvs %s %s %s %s -r %s -r %s %s%s",
 			 compress_arg, norc, dtype, dopts, psm->pre_rev->rev, psm->post_rev->rev, 
@@ -2273,7 +2278,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	rev->rev = get_string(rev_str);
 	rev->file = file;
 	rev->branch = NULL;
-	rev->present = 0;
+	rev->present = false;
 	rev->pre_psm = NULL;
 	rev->post_psm = NULL;
 	INIT_LIST_HEAD(&rev->branch_children);
@@ -2289,9 +2294,10 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
     }
 
     /* 
-     * note: we are guaranteed to get here at least once with 'have_branches' == 1.
-     * we may pass through once before this, because of symbolic tags, then once
-     * always when processing the actual revision logs
+     * note: we are guaranteed to get here at least once with
+     * 'have_branches' == true.  we may pass through once before this,
+     * because of symbolic tags, then once always when processing the
+     * actual revision logs
      *
      * rev->branch will always be set to something, maybe "HEAD"
      */
@@ -2303,7 +2309,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	 * that don't exist.  let's mark every 'known to exist' 
 	 * version
 	 */
-	rev->present = 1;
+	rev->present = true;
 
 	/* determine the branch this revision was committed on */
 	if (!get_branch(branch_str, rev->rev))
@@ -2344,7 +2350,7 @@ CvsFile * create_cvsfile()
     f->branches = create_hash_table(13);
     f->branches_sym = create_hash_table(13);
     f->symbols = create_hash_table(253);
-    f->have_branches = 0;
+    f->have_branches = false;
 
     if (!f->revisions || !f->branches || !f->branches_sym)
     {
@@ -2376,7 +2382,7 @@ static PatchSet * create_patch_set()
 	ps->author = NULL;
 	ps->tag = NULL;
 	ps->tag_flags = 0;
-	ps->branch_add = 0;
+	ps->branch_add = false;
 	ps->commitid = "";
 	ps->funk_factor = 0;
 	ps->ancestor_branch = NULL;
@@ -2393,7 +2399,7 @@ PatchSetMember * create_patch_set_member()
     psm->post_rev = NULL;
     psm->ps = NULL;
     psm->file = NULL;
-    psm->bad_funk = 0;
+    psm->bad_funk = false;
     return psm;
 }
 
@@ -2771,7 +2777,7 @@ static void set_psm_initial(PatchSetMember * psm)
 	 */
 	if (psm->ps->branch_add)
 	    debug(DEBUG_APPMSG1, "WARNING: branch_add already set!");
-	psm->ps->branch_add = 1;
+	psm->ps->branch_add = true;
     }
 }
 
@@ -2828,7 +2834,7 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 		/* only set bad_funk for one of the -r tags */
 		if (next_ps->funk_factor)
 		{
-		    psm->bad_funk = 1;
+		    psm->bad_funk = true;
 		    next_ps->funk_factor = 
 			(next_ps->funk_factor == FNK_SHOW_ALL) ? FNK_SHOW_SOME : FNK_HIDE_SOME;
 		}

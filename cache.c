@@ -107,7 +107,7 @@ time_t read_cache()
     char authbuff[AUTH_STR_MAX] = "";
     char tagbuff[LOG_STR_MAX] = "";
     char branchbuff[LOG_STR_MAX] = "";
-    int branch_add = 0;
+    bool branch_add = false;
     char cidbuff[CID_STR_MAX] = "";
     char logbuff[LOG_STR_MAX] = "";
     time_t cache_date = -1;
@@ -178,7 +178,7 @@ time_t read_cache()
 	    }
 	    else
 	    {
-		f->have_branches = 1;
+		f->have_branches = true;
 		state = CACHE_NEED_SYMBOLS;
 	    }
 	    break;
@@ -277,7 +277,7 @@ time_t read_cache()
 	    {
 		/* remove prefix "branch_add: " and LF from len */
 		len -= 12;
-		branch_add = atoi(buff + 12);
+		branch_add = atoi(buff + 12) != 0;
 		state = CACHE_NEED_PS_COMMITID_OR_DESCR;
 	    }
 	    break;
@@ -325,7 +325,7 @@ time_t read_cache()
 		authbuff[0] = 0;
 		tagbuff[0] = 0;
 		branchbuff[0] = 0;
-		branch_add = 0;
+		branch_add = false;
 		cidbuff[0] = 0;
 		logbuff[0] = 0;
 		state = CACHE_NEED_PS;
@@ -520,11 +520,11 @@ static void dump_patch_set(FILE * fp, PatchSet * ps)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	int bp = 1;
+	bool bp = true;
 	
 	/* this actually deduces if this revision is a branch point... */
 	if (!psm->pre_rev || (psm->pre_rev->pre_psm && psm->pre_rev->pre_psm == psm))
-	    bp = 0;
+	    bp = false;
 
 	fflush(fp);
     

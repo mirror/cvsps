@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <zlib.h>
 #include <sys/socket.h>
 #include <cbtcommon/debug.h>
@@ -26,14 +27,14 @@ struct _CvsServerCtx
     int write_fd;
     char root[PATH_MAX];
 
-    int is_pserver;
+    bool is_pserver;
 
     /* buffered reads from descriptor */
     char read_buff[RD_BUFF_SIZE];
     char * head;
     char * tail;
 
-    int compressed;
+    bool compressed;
     z_stream zout;
     z_stream zin;
 
@@ -61,8 +62,8 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 
     ctx->head = ctx->tail = ctx->read_buff;
     ctx->read_fd = ctx->write_fd = -1;
-    ctx->compressed = 0;
-    ctx->is_pserver = 0;
+    ctx->compressed = false;
+    ctx->is_pserver = false;
 
     if (compress)
     {
@@ -164,7 +165,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	if (compress)
 	{
 	    send_string(ctx, "Gzip-stream %d\n", compress);
-	    ctx->compressed = 1;
+	    ctx->compressed = true;
 	}
 
 	debug(DEBUG_APPMSG1, "cvs_direct initialized to CVSROOT %s", ctx->root);
@@ -245,7 +246,7 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 	goto out_close_err;
 
     strcpy_a(ctx->root, p, PATH_MAX);
-    ctx->is_pserver = 1;
+    ctx->is_pserver = true;
 
     return ctx;
 

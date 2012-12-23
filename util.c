@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -179,7 +180,7 @@ static time_t mktime_utc(struct tm * tm, const char* tzbuf)
 void convert_date(time_t * t, const char * dte)
 {
     static regex_t date_re;
-    static int init_re;
+    static bool init_re;
 
 #define MAX_MATCH 16
     size_t nmatch = MAX_MATCH;
@@ -192,7 +193,7 @@ void convert_date(time_t * t, const char * dte)
 	    fprintf(stderr, "FATAL: date regex compilation error\n");
 	    exit(1);
 	}
-	init_re = 1;
+	init_re = true;
     }
     
     if (regexec(&date_re, dte, nmatch, match, 0) == 0)
