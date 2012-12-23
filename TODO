@@ -56,25 +56,15 @@ A commenter on my blog says:
   Take it for whatever little it is worth. :) And thanks for creating a
   great tool...
 
-Bugs on the git-cvsimport page:
+Bugs on the git-cvsimport page (some others have been fixed):
 
     Problems related to timestamps:
-
-	If timestamps of commits in the CVS repository are not stable
-	enough to be used for ordering commits changes may show up in the
-	wrong order.
 
 	If any files were ever "cvs import"ed more than once (e.g., import
 	of more than one vendor release) the HEAD contains the wrong
 	content.
 
-	If the timestamp order of different files cross the revision order
-	within the commit matching time window the order of commits may be
-	wrong.
-
     Problems related to branches:
-
-	Branches on which no commits have been made are not imported.
 
 	All files from the branching point are added to a branch even if
 	never added in CVS.
