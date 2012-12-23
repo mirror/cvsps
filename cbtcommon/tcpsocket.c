@@ -27,12 +27,9 @@
 
 #include "tcpsocket.h"
 #include "debug.h"
-#include "rcsid.h"
 #ifdef WIN32
 #include "win32fd.h"
 #endif
-
-RCSID("$Id: tcpsocket.c,v 1.6 1999/12/27 20:35:34 david Exp $");
 
 int
 tcp_create_socket(int reuse_addr)

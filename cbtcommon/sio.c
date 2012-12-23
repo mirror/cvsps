@@ -14,9 +14,6 @@
 #include <errno.h>
 
 #include "sio.h"
-#include "rcsid.h"
-
-RCSID("$Id: sio.c,v 1.5 2001/10/25 18:36:11 adam Exp $");
 
 ssize_t readn(int fd, void *buf, size_t len)
 {

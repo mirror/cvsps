@@ -22,7 +22,6 @@
 #include <cbtcommon/list.h>
 #include <cbtcommon/text_util.h>
 #include <cbtcommon/debug.h>
-#include <cbtcommon/rcsid.h>
 
 #include "cvsps_types.h"
 #include "cvsps.h"
@@ -31,8 +30,6 @@
 #include "cap.h"
 #include "cvs_direct.h"
 #include "list_sort.h"
-
-RCSID("$Id: cvsps.c,v 4.108 2005/06/05 22:52:43 david Exp $");
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
 #define CVS_FILE_BOUNDARY "=============================================================================\n"

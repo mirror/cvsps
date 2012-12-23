@@ -9,9 +9,6 @@
 
 #include "debug.h"
 #include "hash.h"
-#include "rcsid.h"
-
-RCSID("$Id: hash.c,v 1.6 2003/05/07 15:42:38 david Exp $");
 
 #define HASH_CONST 37
 

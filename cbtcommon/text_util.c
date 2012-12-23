@@ -15,9 +15,6 @@
 #include <stdlib.h>
 
 #include "text_util.h"
-#include "rcsid.h"
-
-RCSID("$Id: text_util.c,v 1.9 2001/10/25 18:36:11 adam Exp $");
 
 char* 
 chop( char* src )

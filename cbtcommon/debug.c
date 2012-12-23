@@ -10,13 +10,10 @@
 #include <string.h>
 
 #include "debug.h"
-#include "rcsid.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
-
-RCSID("$Id: debug.c,v 1.14 2001/11/29 00:00:30 amb Exp $");
 
 unsigned int debuglvl = ~0;
 static FILE *debug_output_channel[DEBUG_NUM_FACILITIES];
