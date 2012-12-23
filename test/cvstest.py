@@ -139,7 +139,7 @@ class CVSCheckout:
         "Report the history of the repository as seen from here."
         with directory_context(self.directory):
             if self.repo.fast_export:
-                do_or_die("cvsps -x --fast-export -T " + timebase)
+                do_or_die("cvsps --fast-export -T " + timebase)
             else:
                 do_or_die("cvsps -x")
     def cleanup(self):
