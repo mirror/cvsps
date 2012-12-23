@@ -10,3 +10,4 @@ cvsps
 dist
 htdocs
 *.py[co]
+test/*.repo
