@@ -1011,6 +1011,7 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--fast-export") == 0)
 	{
 	    fast_export = true;
+	    ignore_cache = true;
 	    i++;
 	    continue;
 	}
