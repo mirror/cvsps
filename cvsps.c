@@ -27,7 +27,6 @@
 #include "cvsps.h"
 #include "util.h"
 #include "stats.h"
-#include "cap.h"
 #include "cvs_direct.h"
 #include "list_sort.h"
 

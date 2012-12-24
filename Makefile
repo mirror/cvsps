@@ -13,7 +13,6 @@ OBJS=\
 	cvsps.o\
 	util.o\
 	stats.o\
-	cap.o\
 	cvs_direct.o\
 	list_sort.o
 
@@ -66,14 +65,12 @@ release: cvsps-$(VERSION).tar.gz cvsps.html
 .PHONY: install clean version dist check
 # DO NOT DELETE
 
-cap.o: ./cbtcommon/debug.h ./cbtcommon/inline.h ./cbtcommon/text_util.h cap.h
-cap.o: cvs_direct.h
 cvs_direct.o: ./cbtcommon/debug.h ./cbtcommon/inline.h
 cvs_direct.o: ./cbtcommon/text_util.h ./cbtcommon/tcpsocket.h
 cvs_direct.o: ./cbtcommon/sio.h cvs_direct.h util.h
 cvsps.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
 cvsps.o: ./cbtcommon/list.h ./cbtcommon/text_util.h ./cbtcommon/debug.h
-cvsps.o: cvsps_types.h cvsps.h util.h stats.h cap.h cvs_direct.h list_sort.h
+cvsps.o: cvsps_types.h cvsps.h util.h stats.h cvs_direct.h list_sort.h
 list_sort.o: list_sort.h ./cbtcommon/list.h
 stats.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
 stats.o: cvsps_types.h cvsps.h
