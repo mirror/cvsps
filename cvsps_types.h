@@ -25,6 +25,7 @@ typedef struct _GlobalSymbol GlobalSymbol;
 typedef struct _Tag Tag;
 typedef struct _TagName TagName;
 typedef struct _Branch Branch;
+typedef struct _MapEntry MapEntry;
 
 struct _CvsFileRevision
 {
@@ -188,6 +189,13 @@ struct _Branch
     char * name;
     PatchSet * ps;
     /* every patchset will have a list of branches that branch from there */
+    struct list_head link;
+};
+
+struct _MapEntry
+{
+    char * shortname;
+    char * longname;
     struct list_head link;
 };
 

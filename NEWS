@@ -1,5 +1,8 @@
 			CVSps project news
 
+3.3
+  There's a new -A option that does author-name mapping in the expected way.
+
 3.2 @ 2012-12-24
   DEPRECATION WARNING: non-fast-export reporting may be removed in the future.
   The tool now always runs in cvs_direct client mode for better performance.

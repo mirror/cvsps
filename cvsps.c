@@ -91,6 +91,7 @@ static time_t restrict_date_start;
 static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
+static struct list_head authormap;
 static int summary_first;
 static bool fast_export;
 static const char * patch_set_dir;
@@ -139,8 +140,6 @@ static void handle_collisions();
 static Branch * create_branch(const char * name) ;
 static void find_branch_points(PatchSet * ps);
 
-#define INSIDE(p, a)	(((p) - (a)) < sizeof(a)/sizeof(a[0]))
-
 int main(int argc, char *argv[])
 {
     struct list_head * next;
@@ -148,6 +147,7 @@ int main(int argc, char *argv[])
     debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
+    INIT_LIST_HEAD(&authormap);
 
     if (parse_rc() < 0)
 	exit(1);
@@ -589,7 +589,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
-    debug(DEBUG_APPERROR, "             [-p <directory>] [-v] [-t] [--summary-first]");
+    debug(DEBUG_APPERROR, "             [-p <directory>] [-a 'authormap'] [-v] [-t] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
@@ -696,6 +696,49 @@ static int parse_args(int argc, char *argv[])
 		return usage("argument to -a missing", "");
 
 	    restrict_author = argv[i++];
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-A") == 0)
+	{
+	    FILE *fp;
+	    char authorline[BUFSIZ];
+	    if (++i >= argc)
+		return usage("argument to -A missing", "");
+
+	    fp = fopen(argv[i++], "r");
+	    if (fp == NULL) {
+		fprintf(stderr, "cvsps: coouldn't open specified author map.\n");
+		exit(1);
+	    }
+	    while (fgets(authorline, sizeof(authorline), fp) != NULL)
+	    {
+		char *shortname, *longname, *eq, *cp;
+		MapEntry *mapentry;
+
+		if ((eq = strchr(authorline, '=')) == NULL)
+		    continue;
+		shortname = authorline;
+		while (isspace(*shortname))
+		    ++shortname;
+		if (*shortname == '#')
+		    continue;
+		for (cp = eq; cp >= shortname; --cp)
+		    if (*cp == '=')
+			continue;
+		    else if (isspace(*cp))
+			*cp = '\0';
+		for (longname = eq + 1; isspace(*longname); ++longname)
+		    continue;
+		for (cp = longname + strlen(longname) - 1; isspace(*cp); --cp)
+		    *cp = '\0';
+
+		mapentry = (MapEntry*)malloc(sizeof(*mapentry));
+		mapentry->shortname = strdup(shortname);
+		mapentry->longname = strdup(longname);
+		list_add(&mapentry->link, &authormap);
+	    }
+	    
 	    continue;
 	}
 
@@ -1579,7 +1622,7 @@ static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
 static void print_fast_export(PatchSet * ps)
 {
     struct tm *tm;
-    struct list_head * next, * tagl;
+    struct list_head * next, * tagl, * mapl;
     static int mark = 0;
     char *tf = tmpnam(NULL);	/* ugly necessity */
     struct stat st;
@@ -1587,6 +1630,7 @@ static void print_fast_export(PatchSet * ps)
     int c;
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
+    char *match;
  
     struct branch_head {
 	char *name;
@@ -1681,12 +1725,24 @@ static void print_fast_export(PatchSet * ps)
 	next = next->next;
     }
 
+    match = NULL;
+    for (mapl = authormap.next; mapl != &authormap; mapl = mapl->next)
+    {
+	MapEntry* mapentry = list_entry (mapl, MapEntry, link);
+	if (strcmp(mapentry->shortname, ps->author) == 0)
+	    match = mapentry->longname;
+    }
+
     /* map HEAD branch to master, leave others unchanged */
     printf("commit refs/heads/%s\n", 
 	   strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master");
     printf("mark :%d\n", ++mark);
-    printf("committer %s <%s> %zd %c%02d%02d\n",
-	   ps->author, ps->author, mktime(tm) - tm->tm_gmtoff,
+    if (match != NULL)
+	printf("committer %s", match);
+    else
+	printf("committer %s <%s>", ps->author, ps->author);
+    printf(" %zd %c%02d%02d\n",
+	   mktime(tm) - tm->tm_gmtoff,
 	   tm->tm_gmtoff < 0 ? '-' : '+',
 	   abs(tm->tm_gmtoff / 3600), abs(tm->tm_gmtoff % 3600));
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
