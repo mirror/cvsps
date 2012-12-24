@@ -5,7 +5,7 @@
   The tool now always runs in cvs_direct client mode for better performance.
   Multiple tags per revision will be reported (previously only the latest was).
   Local CVS commands are no longer used.  Caching and -x are gone.
-  The --norc and -u options are now dummies accepted for compatibility only.
+  The ever-malfunctioning -A option has been removed.
 
 3.1 @ 2012-12-22
   If the CVS version is new enough to do commitids, they are used.
