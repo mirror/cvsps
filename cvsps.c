@@ -885,6 +885,12 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
+	if (strcmp(argv[i], "-V") == 0)
+	{
+	    printf("cvsps: version " VERSION "\n");
+	    exit(0);
+	}
+
 	if (argv[i][0] == '-')
 	    return usage("invalid argument", argv[i]);
 	
