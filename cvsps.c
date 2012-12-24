@@ -593,7 +593,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [-A] [-T] [<repository>]");
+    debug(DEBUG_APPERROR, "             [-T] [-V] [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -619,9 +619,9 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
-    debug(DEBUG_APPERROR, "  -A track and report branch ancestry");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
     debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
+    debug(DEBUG_APPERROR, "  -V emit version and exit");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository. Overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
 
