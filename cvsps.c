@@ -653,6 +653,7 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-u") == 0)
 	{
 	    fprintf(stderr, "cvsps: -u is no longer supported.\n");
+	    fprintf(stderr, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
 	    exit(1);
 	}
 
