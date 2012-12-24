@@ -23,6 +23,7 @@ typedef struct _PatchSetRange PatchSetRange;
 typedef struct _CvsFileRevision CvsFileRevision;
 typedef struct _GlobalSymbol GlobalSymbol;
 typedef struct _Tag Tag;
+typedef struct _TagName TagName;
 typedef struct _Branch Branch;
 
 struct _CvsFileRevision
@@ -115,9 +116,8 @@ struct _PatchSet
     time_t max_date;
     char *descr;
     char *author;
-    char *tag;
     char *commitid;
-    int tag_flags;
+    struct list_head tags;
     char *branch;
     char *ancestor_branch;
     struct list_head members;
@@ -141,14 +141,6 @@ struct _PatchSet
      * the complications around first commits after branching.
      */
     int mark;              
-
-    /* 
-     * For fast-export mode, we need not just the latest tag but *all*
-     * tags that point at this patchset.  This will never be a large
-     * set and we don't need to worry about collisions or global accessibility
-     * through a hash, so we keep things simple with static allocation.
-     */
-    char *export_tags[32];
 
     /* 
      * a list of 'Branch' objects that branch from here
@@ -182,6 +174,13 @@ struct _Tag
     char * tag;
     struct list_head global_link;
     struct list_head rev_link;
+};
+
+struct _TagName
+{
+    char * name;
+    int flags;
+    struct list_head link;
 };
 
 struct _Branch

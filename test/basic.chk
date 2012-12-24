@@ -107,10 +107,10 @@ Only README should be visible here.
 from :13
 M 100644 :14 README
 
-reset refs/tags/random
+reset refs/tags/samplebranch_root
 from :15
 
-reset refs/tags/samplebranch_root
+reset refs/tags/random
 from :15
 
 blob
