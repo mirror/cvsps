@@ -1006,24 +1006,9 @@ static void init_paths()
      */
     if (!root_path[0])
     {
-	if (!(fp = fopen("CVS/Root", "r")))
+	if ((fp = fopen("CVS/Root", "r")) != NULL)
 	{
-	    const char * e;
-
-	    debug(DEBUG_STATUS, "Can't open CVS/Root");
-	    e = getenv("CVSROOT");
-
-	    if (!e)
-	    {
-		debug(DEBUG_APPERROR, "cannot determine CVSROOT");
-		exit(1);
-	    }
-	    
-	    strcpy(root_path, e);
-	}
-	else
-	{
-	    if (!fgets(root_path, PATH_MAX, fp))
+	    if (fgets(root_path, PATH_MAX, fp) == NULL)
 	    {
 		debug(DEBUG_APPERROR, "Error reading CVSROOT");
 		exit(1);
@@ -1037,6 +1022,22 @@ static void init_paths()
 	    if (root_path[len - 1] == '/')
 		root_path[--len] = 0;
 	}
+	else
+	{
+	    const char * e;
+
+	    debug(DEBUG_STATUS, "Can't open CVS/Root");
+	    e = getenv("CVSROOT");
+
+	    if (e)
+		strcpy(root_path, e);
+	    else
+	    {
+		debug(DEBUG_APPERROR, "cannot determine CVSROOT");
+		exit(1);
+	    }
+	    
+	}
     }
 
     /* Determine the repository path, precedence:
@@ -1046,13 +1047,13 @@ static void init_paths()
       
     if (!repository_path[0])
     {
-	if (!(fp = fopen("CVS/Repository", "r")))
+	if ((fp = fopen("CVS/Repository", "r")) == NULL)
 	{
 	    debug(DEBUG_SYSERROR, "Can't open CVS/Repository");
 	    exit(1);
 	}
 	
-	if (!fgets(repository_path, PATH_MAX, fp))
+	if (fgets(repository_path, PATH_MAX, fp) == NULL)
 	{
 	    debug(DEBUG_APPERROR, "Error reading repository path");
 	    exit(1);
