@@ -226,6 +226,9 @@ int main(int argc, char *argv[])
     if (cvs_direct_ctx)
 	close_cvs_server(cvs_direct_ctx);
 
+    if (fast_export)
+	fputs("done\n", stdout);
+
     exit(0);
 }
 
