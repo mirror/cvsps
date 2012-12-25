@@ -2,7 +2,7 @@
 
 3.3
   There's a new -A option that does author-name mapping in the expected way.
-  cvsps run from within a repository directory will do the righ thing.
+  cvsps run from within a repository directory will do the right thing.
 
 3.2 @ 2012-12-24
   DEPRECATION WARNING: non-fast-export reporting may be removed in the future.

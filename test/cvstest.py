@@ -50,8 +50,6 @@ class CVSRepository:
         global verbose
         verbose += sys.argv[1:].count("-v")
         self.directory = os.path.join(os.getcwd(), self.name)
-        do_or_die("rm -fr {0}; mkdir {0}".format(self.name))
-        self.do("init")
         self.checkouts = []
     def do(self, *cmd):
         "Execute a CVS command in context of this repo."
@@ -62,6 +60,9 @@ class CVSRepository:
         do_or_die("cvs %s -d:local:%s %s" % (mute,
                                              self.directory,
                                              " ".join(cmd)))
+    def init(self):
+        do_or_die("rm -fr {0}; mkdir {0}".format(self.name))
+        self.do("init")
     def module(self, mname):
         "Create an empty module with a specified name."
         module = os.path.join(self.directory, mname)
