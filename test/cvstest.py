@@ -1,7 +1,7 @@
 """
 Test framework for cvsps.
 """
-import sys, os, shutil, subprocess, time
+import sys, os, shutil, subprocess, time, filecmp
 
 DEBUG_STEPS    = 1
 DEBUG_COMMANDS = 2
@@ -149,5 +149,11 @@ class CVSCheckout:
     def cleanup(self):
         "Clean up the checkout directory."
         shutil.rmtree(self.directory)
+
+def expect_same(a, b):
+    "Complain if two files aren't identical"
+    if not filecmp.cmp(a, b, shallow=False):
+        sys.stderr.write("%s and %s are not the same.\n" % (a, b))
+    
 
 # End.
