@@ -9,10 +9,10 @@ git-cvsimport - Salvage your data out of another SCM people love to hate
 SYNOPSIS
 --------
 [verse]
-'git cvsimport' [-o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
-	      [-A <author-conv-file>] [-p <options-for-cvsps>] [-P <file>]
-	      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
-	      [-a] [-m] [-M <regex>] [-S <regex>] [-L <commitlimit>]
+'git cvsimport' [-h] [-v] [-d <CVSROOT>]
+	      [-A <author-conv-file>] [-p <options-for-cvsps>]
+	      [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
+	      [-m] [-M <regex>] [-S <regex>]
 	      [-r <remote>] [-R] [<CVS_module>]
 
 
@@ -67,34 +67,20 @@ OPTIONS
 	The git remote to import this CVS repository into.
 	Moves all CVS branches into remotes/<remote>/<branch>
 	akin to the way 'git clone' uses 'origin' by default.
-
--o <branch-for-HEAD>::
-	When no remote is specified (via -r) the 'HEAD' branch
-	from CVS is imported to the 'origin' branch within the git
-	repository, as 'HEAD' already has a special meaning for git.
-	When a remote is specified the 'HEAD' branch is named
-	remotes/<remote>/master mirroring 'git clone' behaviour.
-	Use this option if you want to import into a different
-	branch.
-+
-Use '-o master' for continuing an import that was initially done by
-the old cvs2git tool.
+	Not presently implemented; see <<COMPATIBILITY>>.
 
 -i::
 	Import-only: don't perform a checkout after importing.  This option
 	ensures the working directory and index remain untouched and will
 	not create them if they do not exist.
 
--k::
-	Kill keywords: will extract files with '-kk' from the CVS archive
-	to avoid noisy changesets. Highly recommended, but off by default
-	to preserve compatibility with early imported trees.
-
 -u::
 	Convert underscores in tag and branch names to dots.
+	Not presently implemented; see <<COMPATIBILITY>>.
 
 -s <subst>::
 	Substitute the character "/" in branch names with <subst>
+	Not presently implemented; see <<COMPATIBILITY>>.
 
 -p <options-for-cvsps>::
 	Additional options for cvsps.
@@ -106,14 +92,11 @@ If you need to pass multiple options, separate them with a comma.
 	Pass the timestamp fuzz factor to cvsps, in seconds. If unset,
 	cvsps defaults to 300s.
 
--P <cvsps-output-file>::
-	Instead of calling cvsps, read the provided cvsps output file. Useful
-	for debugging or when cvsps is being handled outside cvsimport.
-
 -m::
 	Attempt to detect merges based on the commit message. This option
 	will enable default regexes that try to capture the source
 	branch name from the commit message.
+	Not presently implemented; see <<COMPATIBILITY>>.
 
 -M <regex>::
 	Attempt to detect merges based on the commit message with a custom
@@ -123,17 +106,13 @@ If you need to pass multiple options, separate them with a comma.
 The regex must capture the source branch name in $1.
 +
 This option can be used several times to provide several detection regexes.
++
+Not presently implemented; see <<COMPATIBILITY>>.
 
 -S <regex>::
-	Skip paths matching the regex.
+	Skip paths matching the regex. 	Not presently implemented; see 
+	<<COMPATIBILITY>>.
 
--a::
-	Import all commits, including recent ones. cvsimport by default
-	skips commits that have a timestamp less than 10 minutes ago.
-
--L <limit>::
-	Limit the number of commits imported. Workaround for cases where
-	cvsimport leaks memory.
 
 -A <author-conv-file>::
 	CVS by default uses the Unix username when writing its
@@ -175,6 +154,9 @@ doing incremental imports.
 +
 This option may be useful if you have CVS revision numbers stored in commit
 messages, bug-tracking systems, email archives, and the like.
++
+Not presently implemented; see <<COMPATIBILITY>>.
+
 
 -h::
 	Print a short usage message and exit.
@@ -186,14 +168,33 @@ If '-v' is specified, the script reports what it is doing.
 Otherwise, success is indicated the Unix way, i.e. by simply exiting with
 a zero exit status.
 
+COMPATIBILITY
+-------------
+In 2012 a serious bug dating back to 2006 in cvsps was exposed.  The
+ancestry-branch tracking formerly enabled by -A did not work;
+translations of branchy repos could be mangled.  While the
+--fast-export mode in 3.x releases of cvsps solved the problem, it
+required an emergency rewrite of git-cvsimport.  Some compatibility
+with older versions was unavoidably lost
+
+The -a, -k, -o, -L and -P options in older versions of this tool have been
+removed; -kk (keyword expansion suppression) is always on.  
+
+The -r, -u, -s, -m, -M, -R, and -S options are not presently
+implemented. It is planned that some of these will be restored
+in future versions of this program; others may be retired in favor 
+of more flexible editing tools such as 'git-filter-branch' and
+'reposurgeon'.
+
 [[issues]]
 ISSUES
 ------
-Recent versions of CVS create a 'commitid' field to tie together 
+Recent versions of CVS create a 'commitid' field to tie together
 changesets, which prevents various problems arising from timestamp
 skew.  If the 'cvsps' program used by 'git-cvsimport' finds a portion
-of your history that does not have commitids, it will warn you of
-this; see the cvsps manual page for details on what this implies.  
+of your history that does not have commitids (which is normal if you
+have commits from before 2004), it will warn you of this; see the
+cvsps manual page for details on what this implies.
 
 Here are some other known bugs:
 
