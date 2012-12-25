@@ -111,10 +111,14 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
     try:
         if outdir:
             try:
+                # If the output directory does not exist, create it
+                # and initialize it as a git repository.
                 os.mkdir(outdir)
+                do_or_die("git init " + outdir)
             except:
-                raise Fatal("output directory creation failed")
-            do_or_die("git init " + outdir)
+                # Otherwise, assume user wants incremental import.
+                if not os.path.exists(os.path.join(outdir, ".git")):
+                    raise Fatal("output directory is not a git repository")
         do_or_die("cvsps --fast-export %s | (cd %s >/dev/null; git fast-import --quiet)" \
                   % (cvsps_opts, outdir))
         os.chdir(outdir)
@@ -122,7 +126,7 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
         if not import_only:
             do_or_die("git checkout -q")
     except Fatal, err:
-        sys.stderr.write(err.msg + "\n")
+        sys.stderr.write("git_cvsimport: " + err.msg + "\n")
         sys.exit(1)
     except KeyboardInterrupt:
         pass
