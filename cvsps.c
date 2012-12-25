@@ -103,6 +103,7 @@ static const char * diff_opts;
 static int compress;
 static char compress_arg[8];
 static time_t regression_time;
+static bool selection_sense = true;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -591,7 +592,7 @@ static int usage(const char * str1, const char * str2)
 
     debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
-    debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-r <tag> [-r <tag>]] ");
+    debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-a 'authormap'] [-v] [-t] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
@@ -610,6 +611,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "     show revisions between two dates.");
     debug(DEBUG_APPERROR, "  -b <branch> restrict output to patch sets affecting history of branch");
     debug(DEBUG_APPERROR, "  -l <regex> restrict output to patch sets matching <regex> in log message");
+    debug(DEBUG_APPERROR, "  -n negate filter sense, print all patchsetss *not* matching.");
     debug(DEBUG_APPERROR, "  -r <tag1> -r <tag2> if just one tag specified, show");
     debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
     debug(DEBUG_APPERROR, "     revisions between the two tags.");
@@ -780,6 +782,13 @@ static int parse_args(int argc, char *argv[])
 
 	    have_restrict_file = true;
 
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-n") == 0)
+	{
+	    selection_sense = false;
+	    i++;
 	    continue;
 	}
 	
@@ -1542,7 +1551,7 @@ static void check_print_patch_set(PatchSet * ps)
     if (ps->psid < 0)
 	return;
 
-    if (!visible(ps))
+    if (visible(ps) != selection_sense)
 	return;
 
     if (patch_set_dir)
