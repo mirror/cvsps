@@ -15,6 +15,8 @@
 #include <windows.h>
 #endif
 
+#define BUGPREFIX	"cvsps: "
+
 unsigned int debuglvl = ~0;
 static FILE *debug_output_channel[DEBUG_NUM_FACILITIES];
 
@@ -61,10 +63,10 @@ void vdebug(int dtype, const char *fmt, va_list ap)
 	  errmsg = strerror(errno);
 #endif
 
-	  fprintf(channel, "%s: %s\n", msgbuff, errmsg);
+	  fprintf(channel, BUGPREFIX "%s: %s\n", msgbuff, errmsg);
       }
       else
-	  fprintf(channel, "%s\n", msgbuff);
+	  fprintf(channel, BUGPREFIX "%s\n", msgbuff);
       
       fflush(channel);
 #ifdef _WIN32
