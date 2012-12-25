@@ -18,9 +18,6 @@ Discard branch-root tags if they have a name that's a prefix of a tip tag.
 Make regression-test loads that create funky and invalid tags.  Add some
 more test loads derived from CVS repos found in the wild.
 
-git-cvsimport is a wrapper around cvsps; talk with its maintainer
-and simplify that code.
-
 Branch-merge detection.  Not sure it's possible but I want to look
 into it.  Are merge_ tags standardized enough to use?
 
