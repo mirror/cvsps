@@ -89,7 +89,7 @@ if __name__ == '__main__':
             sys.stderr.write("git-cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
             sys.exit(1)
         elif opt == '-S':
-            pathselect = False	# FIXME: Not implemented
+            pathselect = " -n -f '%s'" % val
         elif opt == '-a':
             sys.stderr.write("git-cvsimport: -a is no longer supported.\n")
             sys.exit(1)

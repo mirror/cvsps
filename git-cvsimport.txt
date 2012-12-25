@@ -110,9 +110,7 @@ This option can be used several times to provide several detection regexes.
 Not presently implemented; see <<COMPATIBILITY>>.
 
 -S <regex>::
-	Skip paths matching the regex. 	Not presently implemented; see 
-	<<COMPATIBILITY>>.
-
+	Skip paths matching the regex.
 
 -A <author-conv-file>::
 	CVS by default uses the Unix username when writing its
@@ -180,10 +178,10 @@ with older versions was unavoidably lost
 The -a, -k, -o, -L and -P options in older versions of this tool have been
 removed; -kk (keyword expansion suppression) is always on.  
 
-The -r, -u, -s, -m, -M, -R, and -S options are not presently
-implemented. It is planned that some of these will be restored
-in future versions of this program; others may be retired in favor 
-of more flexible editing tools such as 'git-filter-branch' and
+The -r, -u, -s, -m, -M, and -R options are not presently
+implemented. It is planned that some of these will be restored in
+future versions of this program; others may be retired in favor of
+more flexible editing tools such as 'git-filter-branch' and
 'reposurgeon'.
 
 [[issues]]
