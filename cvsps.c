@@ -999,13 +999,16 @@ static void init_paths()
     char * p;
     int len;
 
-    /* determine the CVSROOT. precedence:
+    /* Determine the CVSROOT. Precedence:
      * 1) command line
-     * 2) working directory (if present)
-     * 3) environment variable CVSROOT
+     * 2) checkout directory
+     * 3) top level of repository
+     * 4) module directory just beneath a repository root.
+     * 5) environment variable CVSROOT
      */
     if (!root_path[0])
     {
+	/* Are we in a working directory? */
 	if ((fp = fopen("CVS/Root", "r")) != NULL)
 	{
 	    if (fgets(root_path, PATH_MAX, fp) == NULL)
@@ -1030,7 +1033,7 @@ static void init_paths()
 	    debug(DEBUG_STATUS, "Can't open CVS/Root");
 
 	    /* 
-	     * We're not in a working directory; are we in a repository?
+	     * We're not in a working directory; are we in a repository root?
 	     * If so, monkey up a local path to access it.
 	     */
 	    if (stat("CVSROOT", &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -1041,6 +1044,30 @@ static void init_paths()
 		    debug(DEBUG_APPERROR, "cannot get working directory");
 		    exit(1);
 		}
+	    }
+	    /*
+	     * We might be in a module directory just below a repository root.
+	     * The right thing to do in this case is also clear.
+	     */
+	    else if (stat("../CVSROOT", &st) == 0 && S_ISDIR(st.st_mode)) {
+		char *sl;
+		strcpy(root_path, ":local:");
+		if (getcwd(root_path + strlen(root_path),
+			   sizeof(root_path) - strlen(root_path) - 1) == NULL)
+		{
+		    debug(DEBUG_APPERROR, "cannot get working directory");
+		    exit(1);
+		}
+		sl = strrchr(root_path, '/');
+		*sl++ = '\0';
+		if (repository_path[0])
+		{
+		    memmove(repository_path + strlen(sl) + 1, 
+			    repository_path,
+			    strlen(repository_path) + 1); 
+		    repository_path[strlen(sl)] = '/';
+		}
+		strcpy(repository_path, sl);
 	    }
 	    else 
 	    {
@@ -1060,6 +1087,7 @@ static void init_paths()
     /* Determine the repository path, precedence:
      * 1) command line
      * 2) working directory
+     * Note that one of the root-directory cases above prepends to this path.
      */
       
     if (!repository_path[0])
