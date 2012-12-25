@@ -1476,46 +1476,44 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
     list_add(&psm->post_rev->link, &psm->pre_rev->branch_children);
 }
 
-static void check_print_patch_set(PatchSet * ps)
+static bool visible(PatchSet * ps)
+/* should we display this patch set? */
 {
-    if (ps->psid < 0)
-	return;
-
     /* the funk_factor overrides the restrict_tag_start and end */
     if (ps->funk_factor == FNK_SHOW_SOME || ps->funk_factor == FNK_SHOW_ALL)
 	goto ok;
 
     if (ps->funk_factor == FNK_HIDE_ALL)
-	return;
+	return false;
 
     if (ps->psid <= restrict_tag_ps_start)
     {
 	if (ps->psid == restrict_tag_ps_start)
 	    debug(DEBUG_STATUS, "PatchSet %d matches tag %s.", ps->psid, restrict_tag_start);
 	
-	return;
+	return false;
     }
     
     if (ps->psid > restrict_tag_ps_end)
-	return;
+	return false;
 
  ok:
     if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
 	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
-	return;
+	return false;
 
     if (restrict_author && strcmp(restrict_author, ps->author) != 0)
-	return;
+	return false;
 
     if (have_restrict_log && regexec(&restrict_log, ps->descr, 0, NULL, 0) != 0)
-	return;
+	return false;
 
     if (have_restrict_file && !patch_set_member_regex(ps, &restrict_file))
-	return;
+	return false;
 
     if (restrict_branch && !patch_set_affects_branch(ps, restrict_branch))
-	return;
+	return false;
     
     if (!list_empty(&show_patch_set_ranges))
     {
@@ -1533,8 +1531,19 @@ static void check_print_patch_set(PatchSet * ps)
 	}
 	
 	if (next == &show_patch_set_ranges)
-	    return;
+	    return false;
     }
+
+    return true;
+}
+
+static void check_print_patch_set(PatchSet * ps)
+{
+    if (ps->psid < 0)
+	return;
+
+    if (!visible(ps))
+	return;
 
     if (patch_set_dir)
     {
