@@ -1025,18 +1025,35 @@ static void init_paths()
 	else
 	{
 	    const char * e;
+	    struct stat st;
 
 	    debug(DEBUG_STATUS, "Can't open CVS/Root");
-	    e = getenv("CVSROOT");
 
-	    if (e)
-		strcpy(root_path, e);
-	    else
-	    {
-		debug(DEBUG_APPERROR, "cannot determine CVSROOT");
-		exit(1);
+	    /* 
+	     * We're not in a working directory; are we in a repository?
+	     * If so, monkey up a local path to access it.
+	     */
+	    if (stat("CVSROOT", &st) == 0 && S_ISDIR(st.st_mode)) {
+		strcpy(root_path, ":local:");
+		if (getcwd(root_path + strlen(root_path),
+			   sizeof(root_path) - strlen(root_path) - 1) == NULL)
+		{
+		    debug(DEBUG_APPERROR, "cannot get working directory");
+		    exit(1);
+		}
 	    }
-	    
+	    else 
+	    {
+		e = getenv("CVSROOT");
+
+		if (e)
+		    strcpy(root_path, e);
+		else
+		{
+		    debug(DEBUG_APPERROR, "cannot determine CVSROOT");
+		    exit(1);
+		}
+	    }
 	}
     }
 
