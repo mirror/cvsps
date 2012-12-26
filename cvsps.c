@@ -718,7 +718,7 @@ static int parse_args(int argc, char *argv[])
 	    }
 	    while (fgets(authorline, sizeof(authorline), fp) != NULL)
 	    {
-		char *shortname, *longname, *eq, *cp;
+		char *shortname, *longname, *timezone, *eq, *cp;
 		MapEntry *mapentry;
 
 		if ((eq = strchr(authorline, '=')) == NULL)
@@ -735,12 +735,18 @@ static int parse_args(int argc, char *argv[])
 			*cp = '\0';
 		for (longname = eq + 1; isspace(*longname); ++longname)
 		    continue;
-		for (cp = longname + strlen(longname) - 1; isspace(*cp); --cp)
+		timezone = strchr(longname, '>');
+		if (timezone == NULL)
+		    continue;
+		for (++timezone; isspace(*timezone); timezone++)
+		    continue;
+		for (cp = timezone + strlen(timezone) - 1; isspace(*cp); --cp)
 		    *cp = '\0';
 
 		mapentry = (MapEntry*)malloc(sizeof(*mapentry));
 		mapentry->shortname = strdup(shortname);
 		mapentry->longname = strdup(longname);
+		mapentry->timezone = strdup(timezone);
 		list_add(&mapentry->link, &authormap);
 	    }
 	    

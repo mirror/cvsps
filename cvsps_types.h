@@ -196,6 +196,7 @@ struct _MapEntry
 {
     char * shortname;
     char * longname;
+    char * timezone;
     struct list_head link;
 };
 
