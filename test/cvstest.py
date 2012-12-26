@@ -74,10 +74,10 @@ class CVSRepository:
         self.checkouts.append(CVSCheckout(self, module, checkout))
         return self.checkouts[-1]
     def convert(self, module, gitdir):
-        "Convert a specified module"
+        "Convert a specified module.  Leave the stream dump in a log file."
         vopt = "-v " * verbose
         do_or_die("rm -fr {0} && mkdir {0} && git init --quiet {0}".format(gitdir))
-        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
+        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | tee {2}.log | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
     def cleanup(self):
         "Clean up the repository checkout directories."
         if not self.retain:

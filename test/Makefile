@@ -35,4 +35,4 @@ regress:
 	@rm -f /tmp/regress /tmp/cvsps
 
 clean:
-	rm -fr *.checkout *.repo *.pyc
+	rm -fr *.checkout *.repo *.pyc *.log

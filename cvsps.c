@@ -1770,6 +1770,10 @@ static void print_fast_export(PatchSet * ps)
 		exit(1);
 	    }
 
+	    debug(DEBUG_APPMSG2, "retrieving %s for %s at :%d", 
+		  psm->post_rev->rev,
+		  psm->file->filename, 
+		  mark+1);
 	    cvs_rupdate(cvs_direct_ctx,
 			repository_path,
 			psm->file->filename,
