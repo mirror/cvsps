@@ -739,7 +739,7 @@ static int parse_args(int argc, char *argv[])
 		if (timezone == NULL)
 		    continue;
 		for (++timezone; isspace(*timezone); timezone++)
-		    continue;
+		    *timezone = '\0';
 		for (cp = timezone + strlen(timezone) - 1; isspace(*cp); --cp)
 		    *cp = '\0';
 
@@ -1703,7 +1703,7 @@ static void print_fast_export(PatchSet * ps)
     int c;
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
-    char *match;
+    char *match, *tz;
  
     struct branch_head {
 	char *name;
@@ -1799,11 +1799,16 @@ static void print_fast_export(PatchSet * ps)
     }
 
     match = NULL;
+    tz = "+0000";
     for (mapl = authormap.next; mapl != &authormap; mapl = mapl->next)
     {
 	MapEntry* mapentry = list_entry (mapl, MapEntry, link);
 	if (strcmp(mapentry->shortname, ps->author) == 0)
+	{
 	    match = mapentry->longname;
+	    if (mapentry->timezone[0])
+		tz = mapentry->timezone;
+	}
     }
 
     /* map HEAD branch to master, leave others unchanged */
@@ -1814,10 +1819,7 @@ static void print_fast_export(PatchSet * ps)
 	printf("committer %s", match);
     else
 	printf("committer %s <%s>", ps->author, ps->author);
-    printf(" %zd %c%02d%02d\n",
-	   mktime(tm) - tm->tm_gmtoff,
-	   tm->tm_gmtoff < 0 ? '-' : '+',
-	   abs(tm->tm_gmtoff / 3600), abs(tm->tm_gmtoff % 3600));
+    printf(" %zd %s\n", mktime(tm) - tm->tm_gmtoff, tz);
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
     if (ancestor_mark)
 	printf("from :%d\n", ancestor_mark);
@@ -2297,7 +2299,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch", rev->rev, rev->file->filename);
+		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch %s", rev->rev, rev->file->filename, branch_str);
 		rev->branch = "#CVSPS_NO_BRANCH";
 	    }
 	    else
