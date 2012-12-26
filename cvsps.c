@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
     if (fast_export) {
 	fputs("done\n", stdout);
 	if (dubious_branches > 1)
-	    debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect");
+	    debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect.");
     }
 
     exit(0);
