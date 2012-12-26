@@ -2300,7 +2300,9 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch at %s", rev->rev, rev->file->filename, branch_str);
+		debug(DEBUG_APPMSG2, 
+		      "revision %s of file %s on unnamed branch at %s", 
+		      rev->rev, rev->file->filename, branch_str);
 		rev->branch = "#CVSPS_NO_BRANCH";
 		/* this is just to suppress a warning on re-import */
 		cvs_file_add_branch(rev->file, rev->rev, rev->branch);
