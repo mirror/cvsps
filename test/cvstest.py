@@ -76,8 +76,8 @@ class CVSRepository:
     def convert(self, module, gitdir):
         "Convert a specified module"
         vopt = "-v " * verbose
-        do_or_die("rm -fr {0} && mkdir {0} && git init {0}".format(gitdir))
-        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | (cd {2}; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
+        do_or_die("rm -fr {0} && mkdir {0} && git init --quiet {0}".format(gitdir))
+        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
     def cleanup(self):
         "Clean up the repository checkout directories."
         if not self.retain:

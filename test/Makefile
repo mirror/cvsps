@@ -11,6 +11,7 @@ PATH := ${PATH}:..
 	cvs -d :local:${PWD}/$*.repo -Q checkout $* && mv $* $*.checkout
 
 test: regress
+	@python t9601-cvsimport-vendor-branch.py
 
 testlist:
 	@grep '^##' *.tst
