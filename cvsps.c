@@ -1407,6 +1407,7 @@ static bool get_branch_ext(char * buff, const char * rev, int * leaf)
 }
 
 static int get_branch(char * buff, const char * rev)
+/* return true if rev is a non-trunk branch */
 {
     return get_branch_ext(buff, rev, NULL);
 }
@@ -2299,8 +2300,11 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch %s", rev->rev, rev->file->filename, branch_str);
+		debug(DEBUG_APPWARN, "WARNING: revision %s of file %s on unnamed branch at %s", rev->rev, rev->file->filename, branch_str);
 		rev->branch = "#CVSPS_NO_BRANCH";
+		/* this is just to suppress a warning on re-import */
+		cvs_file_add_branch(rev->file, rev->rev, rev->branch);
+
 	    }
 	    else
 	    {
