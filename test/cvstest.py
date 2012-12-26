@@ -156,5 +156,10 @@ def expect_same(a, b):
     if not filecmp.cmp(a, b, shallow=False):
         sys.stderr.write("%s and %s are not the same.\n" % (a, b))
     
+def expect_different(a, b):
+    "Rejoice if two files are unexpectedly identical"
+    if filecmp.cmp(a, b, shallow=False):
+        sys.stderr.write("%s and %s are unexpectedly the same.\n" % (a, b))
+    
 
 # End.

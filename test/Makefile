@@ -17,7 +17,7 @@ testlist:
 
 TESTLOADS := $(shell ls -1 *.tst | sed '/.tst/s///')
 rebuild:
-	@echo "$${USER} = foo <foo>" >/tmp/cvsps;
+	@echo "$${USER} = foo <foo> -0500" >/tmp/cvsps;
 	@-for file in $(TESTLOADS); do \
 	    echo "Remaking $${file}.chk"; \
 	    make --quiet $${file}.repo; \
@@ -25,7 +25,7 @@ rebuild:
 	done;
 	@rm /tmp/cvsps
 regress:
-	@echo "$${USER} = foo <foo>" >/tmp/cvsps;
+	@echo "$${USER} = foo <foo> -0500" >/tmp/cvsps;
 	@-for file in $(TESTLOADS); do \
 	    echo -n "  $${file} "; grep '##' $${file}.tst  || echo ' ## (no description)'; \
 	    make --quiet $${file}.repo; \

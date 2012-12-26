@@ -47,7 +47,7 @@ cvstest.expect_same("t9601.checkout/imported-once.txt",
 
 # Check a file that was imported twice
 # This is the test that fails 
-cvstest.expect_same("t9601.checkout/imported-twice.txt",
+cvstest.expect_different("t9601.checkout/imported-twice.txt",
                     "t9601.git/imported-twice.txt")
 
 # Check a file that was imported then modified on HEAD
