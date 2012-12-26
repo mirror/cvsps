@@ -194,10 +194,11 @@ of your history that does not have commitids (which is normal if you
 have commits from before 2004), it will warn you of this; see the
 cvsps manual page for details on what this implies.
 
+Not all sequences of CVS operation can be translated into an import stream.
+'cvsps' tries to warn you about repository histories it can't handle.
+
 Here are some other known bugs:
 
- * If any files were ever "cvs import"ed more than once (e.g., import of
-   more than one vendor release) the HEAD contains the wrong content.
  * All files from the branching point are added to a branch even if
    never added in CVS.
  * This applies to files added to the source branch *after* a daughter

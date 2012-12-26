@@ -104,6 +104,7 @@ static int compress;
 static char compress_arg[8];
 static time_t regression_time;
 static bool selection_sense = true;
+static int dubious_branches = 0;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -227,8 +228,11 @@ int main(int argc, char *argv[])
     if (cvs_direct_ctx)
 	close_cvs_server(cvs_direct_ctx);
 
-    if (fast_export)
+    if (fast_export) {
 	fputs("done\n", stdout);
+	if (dubious_branches > 1)
+	    debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect");
+    }
 
     exit(0);
 }
@@ -2310,7 +2314,13 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 		rev->branch = "#CVSPS_NO_BRANCH";
 		/* this is just to suppress a warning on re-import */
 		cvs_file_add_branch(rev->file, rev->rev, rev->branch,
-				    is_vendor_branch(branch_str));
+				    is_vendor_branch(rev->rev));
+		/*
+		 * This triggers a warning about a the broken case
+		 * in the t9601 case. I haven't figured it out yet,
+		 * but we can at least warn when it might happen.
+		 */
+		dubious_branches++;
 
 	    }
 	    else
@@ -2540,6 +2550,8 @@ char * cvs_file_add_branch(CvsFile * file,
 	debug(DEBUG_STATUS, "adding new branch to branches hash: %s", tag);
 	Branch * branch = create_branch(tag);
 	branch->vendor_branch = vendor_branch;
+	if (vendor_branch)
+	    dubious_branches += 1;
 	put_hash_object_ex(branches, new_tag, branch, HT_NO_KEYCOPY, NULL, NULL);
     }
     
