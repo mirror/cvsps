@@ -2309,7 +2309,8 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 		      rev->rev, rev->file->filename, branch_str);
 		rev->branch = "#CVSPS_NO_BRANCH";
 		/* this is just to suppress a warning on re-import */
-		cvs_file_add_branch(rev->file, rev->rev, rev->branch);
+		cvs_file_add_branch(rev->file, rev->rev, rev->branch,
+				    is_vendor_branch(branch_str));
 
 	    }
 	    else
@@ -2463,7 +2464,7 @@ static void parse_sym(CvsFile * file, char * sym)
 	snprintf(rev, REV_STR_MAX, "%s.%d", rev2, leaf);
 	debug(DEBUG_STATUS, "got sym: %s for %s", tag, rev);
 	
-	cvs_file_add_branch(file, rev, tag);
+	cvs_file_add_branch(file, rev, tag, false);
     }
     else
     {
@@ -2472,7 +2473,7 @@ static void parse_sym(CvsFile * file, char * sym)
 
 	/* see cvs manual: what is this vendor tag? */
 	if (is_vendor_branch(rev))
-	    cvs_file_add_branch(file, rev, tag);
+	    cvs_file_add_branch(file, rev, tag, true);
 	else
 	    cvs_file_add_symbol(file, rev, tag);
     }
@@ -2513,7 +2514,10 @@ void cvs_file_add_symbol(CvsFile * file, const char * rev_str, const char * p_ta
     list_add(&tag->rev_link, &rev->tags);
 }
 
-char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
+char * cvs_file_add_branch(CvsFile * file,
+			   const char * rev, 
+			   const char * tag,
+			   bool vendor_branch)
 {
     char * new_tag;
     char * new_rev;
@@ -2535,6 +2539,7 @@ char * cvs_file_add_branch(CvsFile * file, const char * rev, const char * tag)
     if (get_hash_object(branches, tag) == NULL) {
 	debug(DEBUG_STATUS, "adding new branch to branches hash: %s", tag);
 	Branch * branch = create_branch(tag);
+	branch->vendor_branch = vendor_branch;
 	put_hash_object_ex(branches, new_tag, branch, HT_NO_KEYCOPY, NULL, NULL);
     }
     

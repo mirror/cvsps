@@ -24,7 +24,7 @@ extern char repository_path[];
 CvsFile * create_cvsfile();
 CvsFileRevision * cvs_file_add_revision(CvsFile *, const char *);
 void cvs_file_add_symbol(CvsFile * file, const char * rev, const char * tag);
-char * cvs_file_add_branch(CvsFile *, const char *, const char *);
+char * cvs_file_add_branch(CvsFile *, const char *, const char *, bool);
 PatchSet * get_patch_set(const char *, const char *, const char *, const char *, const char *, PatchSetMember *);
 PatchSetMember * create_patch_set_member();
 CvsFileRevision * file_get_revision(CvsFile *, const char *);
