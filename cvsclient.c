@@ -11,11 +11,11 @@
 #include <stdbool.h>
 #include <zlib.h>
 #include <sys/socket.h>
-#include <cbtcommon/debug.h>
-#include <cbtcommon/text_util.h>
-#include <cbtcommon/tcpsocket.h>
-#include <cbtcommon/sio.h>
 
+#include "debug.h"
+#include "text_util.h"
+#include "tcpsocket.h"
+#include "sio.h"
 #include "cvsclient.h"
 #include "util.h"
 

@@ -20,8 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <cbtcommon/debug.h>
-
+#include "debug.h"
 #include "util.h"
 
 typedef int (*compare_func)(const void *, const void *);

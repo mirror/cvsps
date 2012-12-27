@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <search.h>
-#include <cbtcommon/hash.h>
 
+#include "hash.h"
 #include "cvsps_types.h"
 #include "cvsps.h"
 

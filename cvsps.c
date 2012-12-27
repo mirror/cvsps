@@ -18,10 +18,10 @@
 #include <regex.h>
 #include <sys/wait.h> /* for WEXITSTATUS - see system(3) */
 
-#include <cbtcommon/hash.h>
-#include <cbtcommon/list.h>
-#include <cbtcommon/text_util.h>
-#include <cbtcommon/debug.h>
+#include "hash.h"
+#include "list.h"
+#include "text_util.h"
+#include "debug.h"
 
 #include "cvsps_types.h"
 #include "cvsps.h"
