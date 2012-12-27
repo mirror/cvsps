@@ -16,7 +16,7 @@
 #include <cbtcommon/tcpsocket.h>
 #include <cbtcommon/sio.h>
 
-#include "cvs_direct.h"
+#include "cvsclient.h"
 #include "util.h"
 
 #define RD_BUFF_SIZE 4096
@@ -110,7 +110,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	}
 	else
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: unsupported cvs access method: %s", method);
+	    debug(DEBUG_APPERROR, "cvsclient: unsupported cvs access method: %s", method);
 	    free(ctx);
 	    ctx = NULL;
 	}
@@ -135,7 +135,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	read_line(ctx, buff, BUFSIZ);
 	if (strncmp(buff, "Valid-requests", 14) != 0)
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: bad response to valid-requests command");
+	    debug(DEBUG_APPERROR, "cvsclient: bad response to valid-requests command");
 	    close_cvs_server(ctx);
 	    return NULL;
 	}
@@ -145,7 +145,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    !strstr(buff, " diff") ||
 	    !strstr(buff, " co"))
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: cvs server too old for cvs_direct");
+	    debug(DEBUG_APPERROR, "cvsclient: cvs server too old for cvsclient");
 	    close_cvs_server(ctx);
 	    return NULL;
 	}
@@ -153,7 +153,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	read_line(ctx, buff, BUFSIZ);
 	if (strcmp(buff, "ok") != 0)
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: bad ok trailer to valid-requests command");
+	    debug(DEBUG_APPERROR, "cvsclient: bad ok trailer to valid-requests command");
 	    close_cvs_server(ctx);
 	    return NULL;
 	}
@@ -167,7 +167,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    ctx->compressed = true;
 	}
 
-	debug(DEBUG_APPMSG2, "cvs_direct: initialized to CVSROOT %s", ctx->root);
+	debug(DEBUG_APPMSG2, "cvsclient: initialized to CVSROOT %s", ctx->root);
     }
 
     return ctx;
@@ -302,13 +302,13 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 
     if (pipe(to_cvs) < 0)
     {
-	debug(DEBUG_SYSERROR, "cvs_direct: failed to create pipe to_cvs");
+	debug(DEBUG_SYSERROR, "cvsclient: failed to create pipe to_cvs");
 	goto out_free_err;
     }
 
     if (pipe(from_cvs) < 0)
     {
-	debug(DEBUG_SYSERROR, "cvs_direct: failed to create pipe from_cvs");
+	debug(DEBUG_SYSERROR, "cvsclient: failed to create pipe from_cvs");
 	goto out_close_err;
     }
 
@@ -316,7 +316,7 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 
     if ((pid = fork()) < 0)
     {
-	debug(DEBUG_SYSERROR, "cvs_direct: can't fork");
+	debug(DEBUG_SYSERROR, "cvsclient: can't fork");
 	goto out_close2_err;
     }
     else if (pid == 0) /* child */
@@ -332,18 +332,18 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 	
 	close(0);
 	if (dup(to_cvs[0]) < 0) {
-	    debug(DEBUG_APPERROR, "cvs_direct: dup of input failed");
+	    debug(DEBUG_APPERROR, "cvsclient: dup of input failed");
 	    exit(1);
 	}
 	close(1);
 	if (dup(from_cvs[1]) < 0) {
-	    debug(DEBUG_APPERROR, "cvs_direct: dup of output failed");
+	    debug(DEBUG_APPERROR, "cvsclient: dup of output failed");
 	    exit(1);
 	}
 
 	execv("/bin/sh",argp);
 
-	debug(DEBUG_APPERROR, "cvs_direct: fatal: shouldn't be reached");
+	debug(DEBUG_APPERROR, "cvsclient: fatal: shouldn't be reached");
 	exit(1);
     }
 
@@ -391,19 +391,19 @@ void close_cvs_server(CvsServerCtx * ctx)
 	    {
 		len = BUFSIZ - ctx->zout.avail_out;
 		if (writen(ctx->write_fd, buff, len) != len)
-		    debug(DEBUG_APPERROR, "cvs_direct: zout: error writing final state");
+		    debug(DEBUG_APPERROR, "cvsclient: zout: error writing final state");
 		    
-		//hexdump(buff, len, "cvs_direct: zout: sending unsent data");
+		//hexdump(buff, len, "cvsclient: zout: sending unsent data");
 	    }
 	} while (ret == Z_OK);
 
 	if ((ret = deflateEnd(&ctx->zout)) != Z_OK)
-	    debug(DEBUG_APPERROR, "cvs_direct: zout: deflateEnd error: %s: %s", 
+	    debug(DEBUG_APPERROR, "cvsclient: zout: deflateEnd error: %s: %s", 
 		  (ret == Z_STREAM_ERROR) ? "Z_STREAM_ERROR":"Z_DATA_ERROR", ctx->zout.msg);
     }
     
     /* we're done writing now */
-    debug(DEBUG_TCP, "cvs_direct: closing cvs server write connection %d", ctx->write_fd);
+    debug(DEBUG_TCP, "cvsclient: closing cvs server write connection %d", ctx->write_fd);
     close(ctx->write_fd);
 
     /* 
@@ -413,9 +413,9 @@ void close_cvs_server(CvsServerCtx * ctx)
      */
     if (ctx->is_pserver)
     {
-	debug(DEBUG_TCP, "cvs_direct: shutdown on read socket");
+	debug(DEBUG_TCP, "cvsclient: shutdown on read socket");
 	if (shutdown(ctx->read_fd, SHUT_WR) < 0)
-	    debug(DEBUG_SYSERROR, "cvs_direct: error with shutdown on pserver socket");
+	    debug(DEBUG_SYSERROR, "cvsclient: error with shutdown on pserver socket");
     }
 
     if (ctx->compressed)
@@ -440,9 +440,9 @@ void close_cvs_server(CvsServerCtx * ctx)
 	     */
 	    if (ctx->zin.avail_in == 0 && ctx->zin.avail_out != 0)
 	    {
-		debug(DEBUG_TCP, "cvs_direct: doing final slurp");
+		debug(DEBUG_TCP, "cvsclient: doing final slurp");
 		len = read(ctx->read_fd, ctx->zread_buff, RD_BUFF_SIZE);
-		debug(DEBUG_TCP, "cvs_direct: did final slurp: %d", len);
+		debug(DEBUG_TCP, "cvsclient: did final slurp: %d", len);
 
 		if (len <= 0)
 		{
@@ -473,27 +473,27 @@ void close_cvs_server(CvsServerCtx * ctx)
 		debug(DEBUG_APPERROR, "Z_BUF_ERROR");
 
 	    if (ret == Z_OK && len == 0)
-		debug(DEBUG_TCP, "cvs_direct: no data out of inflate");
+		debug(DEBUG_TCP, "cvsclient: no data out of inflate");
 
 	    if (ret == Z_STREAM_END)
-		debug(DEBUG_TCP, "cvs_direct: got Z_STREAM_END");
+		debug(DEBUG_TCP, "cvsclient: got Z_STREAM_END");
 
 	    if ((ret == Z_OK || ret == Z_STREAM_END) && len > 0)
-		hexdump((char *)buff, BUFSIZ - ctx->zin.avail_out, "cvs_direct: zin: unread data at close");
+		hexdump((char *)buff, BUFSIZ - ctx->zin.avail_out, "cvsclient: zin: unread data at close");
 	}
 
 	if (ret != Z_STREAM_END)
-	    debug(DEBUG_APPERROR, "cvs_direct: zin: Z_STREAM_END not encountered (premature EOF?)");
+	    debug(DEBUG_APPERROR, "cvsclient: zin: Z_STREAM_END not encountered (premature EOF?)");
 
 	if (eof == 0)
-	    debug(DEBUG_APPERROR, "cvs_direct: zin: EOF not encountered (premature Z_STREAM_END?)");
+	    debug(DEBUG_APPERROR, "cvsclient: zin: EOF not encountered (premature Z_STREAM_END?)");
 
 	if ((ret = inflateEnd(&ctx->zin)) != Z_OK)
-	    debug(DEBUG_APPERROR, "cvs_direct: zin: inflateEnd error: %s: %s", 
+	    debug(DEBUG_APPERROR, "cvsclient: zin: inflateEnd error: %s: %s", 
 		  (ret == Z_STREAM_ERROR) ? "Z_STREAM_ERROR":"Z_DATA_ERROR", ctx->zin.msg ? ctx->zin.msg : "");
     }
 
-    debug(DEBUG_TCP, "cvs_direct: closing cvs server read connection %d", ctx->read_fd);
+    debug(DEBUG_TCP, "cvsclient: closing cvs server read connection %d", ctx->read_fd);
     close(ctx->read_fd);
 
     free(ctx);
@@ -557,7 +557,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 
     if (len >= BUFSIZ)
     {
-	debug(DEBUG_APPERROR, "cvs_direct: command send string overflow");
+	debug(DEBUG_APPERROR, "cvsclient: command send string overflow");
 	exit(1);
     }
 
@@ -567,7 +567,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 
 	if  (ctx->zout.avail_in != 0)
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: zout: last output command not flushed");
+	    debug(DEBUG_APPERROR, "cvsclient: zout: last output command not flushed");
 	    exit(1);
 	}
 
@@ -591,13 +591,13 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
 		
 		if (writen(ctx->write_fd, zbuff, len) != len)
 		{
-		    debug(DEBUG_SYSERROR, "cvs_direct: zout: can't write");
+		    debug(DEBUG_SYSERROR, "cvsclient: zout: can't write");
 		    exit(1);
 		}
 	    }
 	    else
 	    {
-		debug(DEBUG_APPERROR, "cvs_direct: zout: error %d %s", ret, ctx->zout.msg);
+		debug(DEBUG_APPERROR, "cvsclient: zout: error %d %s", ret, ctx->zout.msg);
 	    }
 	}
     }
@@ -605,7 +605,7 @@ static void send_string(CvsServerCtx * ctx, const char * str, ...)
     {
 	if (writen(ctx->write_fd, buff, len)  != len)
 	{
-	    debug(DEBUG_SYSERROR, "cvs_direct: can't send command");
+	    debug(DEBUG_SYSERROR, "cvsclient: can't send command");
 	    exit(1);
 	}
     }
@@ -619,7 +619,7 @@ static int refill_buffer(CvsServerCtx * ctx)
 
     if (ctx->head != ctx->tail)
     {
-	debug(DEBUG_APPERROR, "cvs_direct: refill_buffer called on non-empty buffer");
+	debug(DEBUG_APPERROR, "cvsclient: refill_buffer called on non-empty buffer");
 	exit(1);
     }
 
@@ -637,7 +637,7 @@ static int refill_buffer(CvsServerCtx * ctx)
 	    {
 		if (ctx->zin.avail_in != 0)
 		{
-		    debug(DEBUG_APPERROR, "cvs_direct: zin: expect 0 avail_in");
+		    debug(DEBUG_APPERROR, "cvsclient: zin: expect 0 avail_in");
 		    exit(1);
 		}
 		zlen = read(ctx->read_fd, ctx->zread_buff, RD_BUFF_SIZE);
@@ -659,7 +659,7 @@ static int refill_buffer(CvsServerCtx * ctx)
 	}
 	else
 	{
-	    debug(DEBUG_APPERROR, "cvs_direct: zin: error %d %s", ret, ctx->zin.msg);
+	    debug(DEBUG_APPERROR, "cvsclient: zin: error %d %s", ret, ctx->zin.msg);
 	    exit(1);
 	}
     }
@@ -881,7 +881,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     int len;
 
     len = read_line(ctx, lbuff, BUFSIZ);
-    debug(DEBUG_TCP, "cvs_direct: rlog: read %s", lbuff);
+    debug(DEBUG_TCP, "cvsclient: rlog: read %s", lbuff);
 
     if (memcmp(lbuff, "M ", 2) == 0)
     {
@@ -895,7 +895,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     }
     else if (strcmp(lbuff, "ok") == 0 || strncmp(lbuff, "error", 5) == 0)
     {
-	debug(DEBUG_TCP, "cvs_direct: rlog: got command completion");
+	debug(DEBUG_TCP, "cvsclient: rlog: got command completion");
 	return NULL;
     }
 
@@ -915,15 +915,15 @@ void cvs_version(CvsServerCtx * ctx, char * client_version, char * server_versio
     if (memcmp(lbuff, "M ", 2) == 0)
 	snprintf(server_version, svlen, "Server: %s", lbuff + 2);
     else
-	debug(DEBUG_APPERROR, "cvs_direct: didn't read version: %s", lbuff);
+	debug(DEBUG_APPERROR, "cvsclient: didn't read version: %s", lbuff);
     
     read_line(ctx, lbuff, BUFSIZ);
     if (strstr(lbuff,"CVSACL")!=NULL) {
 	read_line(ctx, lbuff, BUFSIZ);
     }
     if (strcmp(lbuff, "ok") != 0)
-	debug(DEBUG_APPERROR, "cvs_direct: protocol error reading version");
+	debug(DEBUG_APPERROR, "cvsclient: protocol error reading version");
 
-    debug(DEBUG_TCP, "cvs_direct: client version %s", client_version);
-    debug(DEBUG_TCP, "cvs_direct: server version %s", server_version);
+    debug(DEBUG_TCP, "cvsclient: client version %s", client_version);
+    debug(DEBUG_TCP, "cvsclient: server version %s", server_version);
 }

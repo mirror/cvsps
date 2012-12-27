@@ -27,7 +27,7 @@
 #include "cvsps.h"
 #include "util.h"
 #include "stats.h"
-#include "cvs_direct.h"
+#include "cvsclient.h"
 #include "list_sort.h"
 
 #define CVS_LOG_BOUNDARY "----------------------------\n"
@@ -47,7 +47,7 @@ enum
 
 /* true globals */
 struct hash_table * file_hash;
-CvsServerCtx * cvs_direct_ctx;
+CvsServerCtx * cvsclient_ctx;
 char root_path[PATH_MAX];
 char repository_path[PATH_MAX];
 
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     init_paths();
 
     if (!test_log_file)
-	cvs_direct_ctx = open_cvs_server(root_path, compress);
+	cvsclient_ctx = open_cvs_server(root_path, compress);
 
     load_from_cvs();
 
@@ -226,8 +226,8 @@ int main(int argc, char *argv[])
     if (summary_first++)
 	walk_all_patch_sets(check_print_patch_set);
 
-    if (cvs_direct_ctx)
-	close_cvs_server(cvs_direct_ctx);
+    if (cvsclient_ctx)
+	close_cvs_server(cvsclient_ctx);
 
     if (fast_export) {
 	fputs("done\n", stdout);
@@ -302,8 +302,8 @@ static void load_from_cvs()
 
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
-    else if (cvs_direct_ctx)
-	cvsfp = cvs_rlog_open(cvs_direct_ctx, repository_path, date_str);
+    else if (cvsclient_ctx)
+	cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path, date_str);
 
     if (!cvsfp)
     {
@@ -318,8 +318,8 @@ static void load_from_cvs()
     for (;;)
     {
 	char * tst;
-	if (cvs_direct_ctx)
-	    tst = cvs_rlog_fgets(buff, BUFSIZ, cvs_direct_ctx);
+	if (cvsclient_ctx)
+	    tst = cvs_rlog_fgets(buff, BUFSIZ, cvsclient_ctx);
 	else
 	    tst = fgets(buff, BUFSIZ, cvsfp);
 
@@ -586,9 +586,9 @@ static void load_from_cvs()
     {
 	fclose(cvsfp);
     }
-    else if (cvs_direct_ctx)
+    else if (cvsclient_ctx)
     {
-	cvs_rlog_close(cvs_direct_ctx);
+	cvs_rlog_close(cvsclient_ctx);
     }
 }
 
@@ -1796,7 +1796,7 @@ static void print_fast_export(PatchSet * ps)
 		  psm->post_rev->rev,
 		  psm->file->filename, 
 		  mark+1);
-	    cvs_rupdate(cvs_direct_ctx,
+	    cvs_rupdate(cvsclient_ctx,
 			repository_path,
 			psm->file->filename,
 			psm->post_rev->rev, ofp);
@@ -2240,16 +2240,16 @@ static void do_cvs_diff(PatchSet * ps)
 
 	    if (!(fp = popen(cmdbuff, "w")))
 	    {
-		debug(DEBUG_APPERROR, "cvs_direct: popen for diff failed: %s", cmdbuff);
+		debug(DEBUG_APPERROR, "cvsclient: popen for diff failed: %s", cmdbuff);
 		exit(1);
 	    }
 
-	    cvs_rupdate(cvs_direct_ctx, 
+	    cvs_rupdate(cvsclient_ctx, 
 			repository_path, psm->file->filename, rev, fp);
 	    pclose(fp);
 	}
 	else
-	    cvs_diff(cvs_direct_ctx, 
+	    cvs_diff(cvsclient_ctx, 
 		     repository_path, 
 		     psm->file->filename, 
 		     psm->pre_rev->rev, 

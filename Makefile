@@ -13,7 +13,7 @@ OBJS=\
 	cvsps.o\
 	util.o\
 	stats.o\
-	cvs_direct.o\
+	cvsclient.o\
 	list_sort.o
 
 all: cvsps 
@@ -65,12 +65,12 @@ release: cvsps-$(VERSION).tar.gz cvsps.html
 .PHONY: install clean version dist check
 # DO NOT DELETE
 
-cvs_direct.o: ./cbtcommon/debug.h ./cbtcommon/inline.h
-cvs_direct.o: ./cbtcommon/text_util.h ./cbtcommon/tcpsocket.h
-cvs_direct.o: ./cbtcommon/sio.h cvs_direct.h util.h
+cvsclient.o: ./cbtcommon/debug.h ./cbtcommon/inline.h
+cvsclient.o: ./cbtcommon/text_util.h ./cbtcommon/tcpsocket.h
+cvsclient.o: ./cbtcommon/sio.h cvsclient.h util.h
 cvsps.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
 cvsps.o: ./cbtcommon/list.h ./cbtcommon/text_util.h ./cbtcommon/debug.h
-cvsps.o: cvsps_types.h cvsps.h util.h stats.h cvs_direct.h list_sort.h
+cvsps.o: cvsps_types.h cvsps.h util.h stats.h cvsclient.h list_sort.h
 list_sort.o: list_sort.h ./cbtcommon/list.h
 stats.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
 stats.o: cvsps_types.h cvsps.h

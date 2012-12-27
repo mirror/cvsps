@@ -17,7 +17,7 @@ typedef struct _CvsServerCtx CvsServerCtx;
 
 extern struct hash_table * file_hash;
 extern const char * tag_flag_descr[];
-extern CvsServerCtx * cvs_direct_ctx;
+extern CvsServerCtx * cvsclient_ctx;
 extern char root_path[];
 extern char repository_path[];
 
