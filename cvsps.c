@@ -1736,7 +1736,7 @@ static void print_fast_export(PatchSet * ps)
     int c;
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
-    char *match, *tz;
+    char *match, *tz, *outbranch;
  
     struct branch_head {
 	char *name;
@@ -1855,8 +1855,12 @@ static void print_fast_export(PatchSet * ps)
     }
 
     /* map HEAD branch to master, leave others unchanged */
-    printf("commit refs/heads/%s\n", 
-	   strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master");
+    outbranch = strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master";
+
+
+    debug(DEBUG_RETRIEVAL, "commit :%d goes to %s", mark+1, outbranch);
+
+    printf("commit refs/heads/%s\n", outbranch);
     printf("mark :%d\n", ++mark);
     if (match != NULL)
 	printf("committer %s", match);
