@@ -600,7 +600,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
-    debug(DEBUG_APPERROR, "             [-p <directory>] [-a 'authormap'] [-v] [-t] [--summary-first]");
+    debug(DEBUG_APPERROR, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
@@ -720,7 +720,7 @@ static int parse_args(int argc, char *argv[])
 
 	    fp = fopen(argv[i++], "r");
 	    if (fp == NULL) {
-		fprintf(stderr, "cvsps: coouldn't open specified author map.\n");
+		fprintf(stderr, "cvsps: couldn't open specified author map.\n");
 		exit(1);
 	    }
 	    while (fgets(authorline, sizeof(authorline), fp) != NULL)
