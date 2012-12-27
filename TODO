@@ -15,9 +15,6 @@ Merge the msysgit port patches from http://repo.or.cz/w/cvsps/4msysgit.git?
 
 Discard branch-root tags if they have a name that's a prefix of a tip tag.
 
-Make regression-test loads that create funky and invalid tags.  Add some
-more test loads derived from CVS repos found in the wild.
-
 Branch-merge detection.  Not sure it's possible but I want to look
 into it.  Are merge_ tags standardized enough to use?
 
@@ -26,12 +23,6 @@ is going to be limited by network latency anyway, so Python or Ruby
 might be better tools - code size would drop by about x4, I think.
 
 Bugs on the git-cvsimport page (some others have been fixed):
-
-    Problems related to timestamps:
-
-	If any files were ever "cvs import"ed more than once (e.g., import
-	of more than one vendor release) the HEAD contains the wrong
-	content.
 
     Problems related to branches:
 
