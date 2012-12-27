@@ -1,19 +1,7 @@
-Emit a fossil map that reposurgeon can use.
-
 Simulate CVS's default ignore patterns in a generated .gitignore?
-
-Michael Haggerty writes:
-> In 2009 I added tests demonstrating some of the erroneous behavior
-> of git-cvsimport.  The failing tests in t9601-t9603 [in the git
-> tree] are concrete examples of the problems mentioned in the
-> manpage.
 
 Mine the cvs2svn design notes for idea:
 http://cvs2svn.tigris.org/source/browse/*checkout*/cvs2svn/trunk/doc/design-notes.txt
-
-Merge the msysgit port patches from http://repo.or.cz/w/cvsps/4msysgit.git?
-
-Discard branch-root tags if they have a name that's a prefix of a tip tag.
 
 Branch-merge detection.  Not sure it's possible but I want to look
 into it.  Are merge_ tags standardized enough to use?
@@ -21,18 +9,4 @@ into it.  Are merge_ tags standardized enough to use?
 Way in the future...does this belong in C?  Maybe not.  Performance
 is going to be limited by network latency anyway, so Python or Ruby
 might be better tools - code size would drop by about x4, I think.
-
-Bugs on the git-cvsimport page (some others have been fixed):
-
-    Problems related to branches:
-
-	All files from the branching point are added to a branch even if
-	never added in CVS.
-
-	This applies to files added to the source branch after a daughter
-	branch was created: if previously no commit was made on the
-	daughter branch they will erroneously be added to the daughter
-	branch in git.
-
-Can we fix any of these?  We should develop test loads to demonstrate.
 
