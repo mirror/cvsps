@@ -244,7 +244,6 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
 
     time_t smaller;
     time_t bigger;
-    struct tm *ts;
     char *rev_end;
 
     /* if last_date does not exist do nothing */
@@ -265,6 +264,7 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
     convert_date(&smaller, date);
 
     if (difftime(bigger, smaller) <= 0) {
+        struct tm *ts;
         debug(DEBUG_APPWARN,"broken revision date: %s -> %s file: %s, repairing.\n",
               date, last_date, psm->file->filename);
         if (!(bigger > 0)) {
@@ -753,6 +753,8 @@ static int parse_args(int argc, char *argv[])
 		mapentry->timezone = strdup(timezone);
 		list_add(&mapentry->link, &authormap);
 	    }
+
+	    fclose(fp);
 	    
 	    continue;
 	}
@@ -1049,7 +1051,6 @@ static void init_paths()
 	}
 	else
 	{
-	    const char * e;
 	    struct stat st;
 
 	    debug(DEBUG_STATUS, "Can't open CVS/Root");
@@ -1093,7 +1094,7 @@ static void init_paths()
 	    }
 	    else 
 	    {
-		e = getenv("CVSROOT");
+		const char * e = getenv("CVSROOT");
 
 		if (e)
 		    strcpy(root_path, e);
@@ -1766,11 +1767,11 @@ static void print_fast_export(PatchSet * ps)
     while (next != &ps->members)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	FILE *cfp;
 
 	if (!psm->post_rev->dead) 
 	{
 	    FILE *ofp = fopen(tf, "w");
+	    FILE *cfp;
 
 	    if (ofp == NULL)
 	    {

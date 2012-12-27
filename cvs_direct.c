@@ -261,7 +261,7 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 {
     char root[PATH_MAX];
-    char * p = root, *tok, *tok2, *rep;
+    char * p = root, *tok, *rep;
     char execcmd[PATH_MAX];
     int to_cvs[2];
     int from_cvs[2];
@@ -278,6 +278,7 @@ static CvsServerCtx * open_ctx_forked(CvsServerCtx * ctx, const char * p_root)
 
     if (p)
     {
+	char * tok2;
 	/* coverity[tainted_data] */
 	const char * cvs_rsh = getenv("CVS_RSH");
 
