@@ -67,7 +67,6 @@ OPTIONS
 	The git remote to import this CVS repository into.
 	Moves all CVS branches into remotes/<remote>/<branch>
 	akin to the way 'git clone' uses 'origin' by default.
-	Not presently implemented; see <<COMPATIBILITY>>.
 
 -i::
 	Import-only: don't perform a checkout after importing.  This option
@@ -76,11 +75,9 @@ OPTIONS
 
 -u::
 	Convert underscores in tag and branch names to dots.
-	Not presently implemented; see <<COMPATIBILITY>>.
 
 -s <subst>::
 	Substitute the character "/" in branch names with <subst>
-	Not presently implemented; see <<COMPATIBILITY>>.
 
 -p <options-for-cvsps>::
 	Additional options for cvsps.
@@ -178,11 +175,10 @@ with older versions was unavoidably lost
 The -a, -k, -o, -L and -P options in older versions of this tool have been
 removed; -kk (keyword expansion suppression) is always on.  
 
-The -r, -u, -s, -m, -M, and -R options are not presently
-implemented. It is planned that some of these will be restored in
-future versions of this program; others may be retired in favor of
-more flexible editing tools such as 'git-filter-branch' and
-'reposurgeon'.
+The -m, -M, and -R options are not presently implemented. It is
+planned that -R will be restored in future versions of this program;
+-m and -M may be either restored or retired in favor of more flexible
+editing tools such as 'git-filter-branch' and 'reposurgeon'.
 
 [[issues]]
 ISSUES

@@ -59,14 +59,14 @@ if __name__ == '__main__':
             verbose += 1
         elif opt == '-d':
             if not val.startswith(":"):
-                if not val.startswith("/"):
+                if not val.startswith(os.sep):
                     val = os.path.abspath(val)
                 val = ":local:" + val
             cvsps_opts += " --root '%s'" % val
         elif opt == '-C':
             outdir = val
         elif opt == '-r':
-            remotize = True	# FIXME: Not implemented
+            remotize = True
         elif opt == '-o':
             sys.stderr.write("git-cvsimport: -o is no longer supported.\n")
             sys.exit(1)
@@ -75,9 +75,9 @@ if __name__ == '__main__':
         elif opt == '-k':
             sys.stderr.write("git-cvsimport: -k is permanently on.\n")
         elif opt == '-u':
-            underscore_to_dot = True	# FIXME: Not implemented
+            underscore_to_dot = True
         elif opt == '-s':
-            slashsubst = val	# FIXME: Not implemented
+            slashsubst = val
         elif opt == '-p':
             cvsps_opts += val.replace(",", " ")
         elif opt == '-z':
@@ -122,6 +122,30 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
         do_or_die("cvsps --fast-export %s | (cd %s >/dev/null; git fast-import --quiet)" \
                   % (cvsps_opts, outdir))
         os.chdir(outdir)
+        tagnames = capture_or_die("git tag -l")
+        for tag in tags.split():
+            if tag:
+                changed = tag
+                if underscore_to_dot:
+                    changed = changed.replace("_", ".")
+                if slashsubst:
+                    changed = changed.replace(os.sep, slashsubst)
+                if changed != tag:
+                    do_or_die("git tag -f %s %s >/dev/null" % (tag, changed))
+        branchnames = capture_or_die("git branch -l")
+        for branch in branchnames.split():
+            if branch:
+                # Ugh - fragile dependency on branch -l output format
+                branch = branch[2:]
+                changed = branch
+                if underscore_to_dot:
+                    changed = changed.replace("_", ".")
+                if slashsubst:
+                    changed = changed.replace(os.sep, slashsubst)
+                if remotize:
+                    changed = os.path.join("remotes", remotize, branch)
+                if changed != branch:
+                    do_or_die("branch --m %s %s >/dev/null" % (branch, changed))
         # Implementation of postprocessing options go here
         if not import_only:
             do_or_die("git checkout -q")
