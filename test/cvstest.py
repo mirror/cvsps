@@ -179,6 +179,8 @@ class ConvertComparison:
                     if ignore not in path.split(os.sep):
                         yield path
         self.checkout.update(tag)
+        with directory_context(self.stem + ".git"):
+            do_or_die("git checkout --quiet %s" % tag)
         cvspaths = list(recursive_file_gen(self.stem + ".checkout", ignore="CVS"))
         cvsfiles = [fn[len(self.stem+".checkout")+1:] for fn in cvspaths]
         gitpaths = list(recursive_file_gen(self.stem + ".git", ignore=".git"))
@@ -192,15 +194,21 @@ class ConvertComparison:
                 print >>sys.stderr, cvsfiles, gitfiles
             return False
         else:
+            success = True
             for (a, b) in zip(cvspaths, gitpaths):
                 if not filecmp.cmp(a, b, shallow=False):
+                    success = False
                     if success_expected:
                         sys.stderr.write("%s %s %s: %s and %s are different.\n" % (self.stem, legend, tag, a, b))
-                        return False
-        if not success_expected:
-            sys.stderr.write("%s %s %s: trees unexpectedly match\n" \
-                             % (self.stem, legend, tag))
-        return True
+                        #do_or_die("diff -u %s %s" % (a, b))
+        if success:
+            if not success_expected:
+                sys.stderr.write("%s %s %s: trees unexpectedly match\n" \
+                                 % (self.stem, legend, tag))
+            elif verbose >= DEBUG_STEPS:
+                sys.stderr.write("%s %s %s: trees matched as expected\n" \
+                                 % (self.stem, legend, tag))
+        return success
     def cleanup(self):
         os.system("rm -fr {0}.git {0}.checkout".format(self.stem))
 
