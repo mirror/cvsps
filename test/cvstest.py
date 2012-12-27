@@ -201,13 +201,15 @@ class ConvertComparison:
                     if success_expected:
                         sys.stderr.write("%s %s %s: %s and %s are different.\n" % (self.stem, legend, tag, a, b))
                         #do_or_die("diff -u %s %s" % (a, b))
+        preamble = "%s %s %s: trees " % (self.stem, legend, tag)
         if success:
             if not success_expected:
-                sys.stderr.write("%s %s %s: trees unexpectedly match\n" \
-                                 % (self.stem, legend, tag))
+                sys.stderr.write(preamble + "unexpectedly match\n")
             elif verbose >= DEBUG_STEPS:
-                sys.stderr.write("%s %s %s: trees matched as expected\n" \
-                                 % (self.stem, legend, tag))
+                sys.stderr.write(preamble + "matched as expected\n")
+        elif not success:
+            if not success_expected and verbose >= DEBUG_STEPS:
+                sys.stderr.write(preamble + "diverged as expected\n")
         return success
     def cleanup(self):
         os.system("rm -fr {0}.git {0}.checkout".format(self.stem))
