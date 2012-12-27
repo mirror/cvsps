@@ -93,7 +93,7 @@ void print_statistics(void * ps_tree)
 
     /* Other vars */
     struct hash_entry *he;
-   
+
     printf("Statistics:\n");
     fflush(stdout);
 
@@ -115,26 +115,26 @@ void print_statistics(void * ps_tree)
     }
 
     /* Print file statistics */
-    printf("Num files: %d\nMax filename len: %d, Average filename len: %.2f\n",
+    printf("Num files: %u\nMax filename len: %u, Average filename len: %.2f\n",
 	    num_files, max_file_len, (float)total_file_len/num_files);
 
-    printf("Max revisions for file: %d, Average revisions for file: %.2f\n",
+    printf("Max revisions for file: %u, Average revisions for file: %.2f\n",
 	  max_revisions_for_file, (float)total_revisions/num_files);
-    printf("Max branches for file: %d, Average branches for file: %.2f\n",
+    printf("Max branches for file: %u, Average branches for file: %.2f\n",
 	  max_branches_for_file, (float)total_branches/num_files);
-    printf("Max branches_sym for file: %d, Average branches_sym for file: %.2f\n",
+    printf("Max branches_sym for file: %u, Average branches_sym for file: %.2f\n",
 	  max_branches_sym_for_file, (float)total_branches_sym/num_files);
 
     /* Gather patchset statistics */
     twalk(ps_tree, stat_ps_tree_node);
 
     /* Print patchset statistics */
-    printf("Num patchsets: %d\n", num_patch_sets);
-    printf("Max PS members in PS: %d\nAverage PS members in PS: %.2f\n",
+    printf("Num patchsets: %u\n", num_patch_sets);
+    printf("Max PS members in PS: %u\nAverage PS members in PS: %.2f\n",
 	    max_ps_member_in_ps, (float)num_ps_member/num_patch_sets);
-    printf("Num authors: %d, Max author len: %d, Avg. author len: %.2f\n", 
+    printf("Num authors: %u, Max author len: %u, Avg. author len: %.2f\n",
 	    num_authors, max_author_len, (float)total_author_len/num_authors);
-    printf("Max desc len: %d, Avg. desc len: %.2f\n",
+    printf("Max desc len: %u, Avg. desc len: %.2f\n",
 	    max_descr_len, (float)total_descr_len/num_patch_sets);
 }
 
