@@ -1189,17 +1189,16 @@ static void init_paths()
 static CvsFile * parse_rcs_file(const char * buff)
 {
     char fn[PATH_MAX];
-    int len = strlen(buff + 10);
+    size_t len = strlen(buff + 10);
     char * p;
 
     /* once a single file has been parsed ok we set this */
     static bool path_ok;
-    
+
     /* chop the ",v" string and the "LF" */
     len -= 3;
     memcpy(fn, buff + 10, len);
     fn[len] = 0;
-    
     if (strncmp(fn, strip_path, strip_path_len) != 0)
     {
 	/* if the very first file fails the strip path,
@@ -1220,10 +1219,10 @@ static CvsFile * parse_rcs_file(const char * buff)
 
 	    while ((p = strstr(p, repository_path)))
 		lastp = p++;
-      
+
 	    if (lastp)
 	    {
-		int len = strlen(repository_path);
+		size_t len = strlen(repository_path);
 		memcpy(strip_path, fn, lastp - fn + len + 1);
 		strip_path_len = lastp - fn + len + 1;
 		strip_path[strip_path_len] = 0;
@@ -1247,16 +1246,22 @@ static CvsFile * parse_rcs_file(const char * buff)
 	 *
 	 * For now just ignore such files
 	 */
-	debug(DEBUG_APPWARN, "WARNING: file %s doesn't match strip_path %s. ignoring", 
+	debug(DEBUG_APPWARN, "WARNING: file %s doesn't match strip_path %s. ignoring",
 	      fn, strip_path);
 	return NULL;
     }
 
  ok:
-    path_ok = true;
-
+    if(len <= strip_path_len)
+    {
+        debug(DEBUG_APPWARN, "WARNING: file %s doesn't match strip_path %s. ignoring",
+	      fn, strip_path);
+        return NULL;
+    }
     /* remove from beginning the 'strip_path' string */
     len -= strip_path_len;
+    path_ok = true;
+
     memmove(fn, fn + strip_path_len, len);
     fn[len] = 0;
 
