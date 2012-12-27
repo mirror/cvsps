@@ -13,7 +13,6 @@
 #include <sys/socket.h>
 
 #include "debug.h"
-#include "text_util.h"
 #include "tcpsocket.h"
 #include "sio.h"
 #include "cvsclient.h"

@@ -20,7 +20,6 @@
 
 #include "hash.h"
 #include "list.h"
-#include "text_util.h"
 #include "debug.h"
 
 #include "cvsps_types.h"

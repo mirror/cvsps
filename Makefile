@@ -6,7 +6,6 @@ CPPFLAGS+=-I. -DVERSION=\"$(VERSION)\"
 prefix?=/usr/local
 OBJS= debug.o \
 	hash.o \
-	text_util.o \
 	sio.o \
 	tcpsocket.o \
 	cvsps.o \
@@ -62,10 +61,10 @@ release: cvsps-$(VERSION).tar.gz cvsps.html
 # DO NOT DELETE
 
 cvsclient.o: debug.h inline.h
-cvsclient.o: text_util.h tcpsocket.h
+cvsclient.o: tcpsocket.h
 cvsclient.o: sio.h cvsclient.h util.h
 cvsps.o: hash.h list.h inline.h
-cvsps.o: list.h text_util.h debug.h
+cvsps.o: list.h debug.h
 cvsps.o: cvsps_types.h cvsps.h util.h stats.h cvsclient.h list_sort.h
 list_sort.o: list_sort.h list.h
 stats.o: hash.h list.h inline.h
@@ -77,4 +76,4 @@ hash.o: list.h
 sio.o: sio.h
 tcpsocket.o: tcpsocket.h debug.h
 tcpsocket.o: inline.h
-text_util.o: text_util.h
+

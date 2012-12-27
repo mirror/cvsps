@@ -23,9 +23,32 @@
 #include "debug.h"
 #include "util.h"
 
+extern char ** environ;
+
 typedef int (*compare_func)(const void *, const void *);
 
 static void * string_tree;
+
+char *chop( char* src )
+{
+    char* p = src + strlen(src) - 1;
+
+    while( p >= src )
+    {
+	if ( *p == '\n' || *p == '\r' )
+	{
+	    *p-- = 0;
+	} 
+
+	else
+	{
+	    break;
+	}
+    }
+
+    return( src );
+}
+
 char *readfile(char const *filename, char *buf, size_t size)
 {
     FILE *fp;
@@ -248,8 +271,6 @@ void timing_stop(const char * msg)
 
     printf("Elapsed time for %s: %d.%06d\n", msg, (int)stop_time.tv_sec, (int)stop_time.tv_usec);
 }
-
-extern char ** environ;
 
 int escape_filename(char * dst, int len, const char * src)
 {
