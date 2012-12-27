@@ -15,14 +15,14 @@
 #include "inline.h"
 
 #define DEBUG_NUM_FACILITIES  32 /* should be 64 on 64bit CPU... */
-#define DEBUG_SYSERROR  1  /* same as DEBUG_ERROR, but here for clarity */
-#define DEBUG_ERROR     1
-#define DEBUG_STATUS    2
-#define DEBUG_TCP       4
-#define DEBUG_PARSE	8
-#define DEBUG_APPERROR  16
-#define DEBUG_APPWARN   32
-#define DEBUG_APPMSG2   64
+#define DEBUG_SYSERROR  0x0001  /* same as DEBUG_ERROR, but here for clarity */
+#define DEBUG_ERROR     0x0001
+#define DEBUG_APPERROR  0x0002
+#define DEBUG_APPWARN   0x0004
+#define DEBUG_RETRIEVAL	0x0010
+#define DEBUG_STATUS    0x0020
+#define DEBUG_TCP       0x0040
+#define DEBUG_PARSE	0x0080
 
 #ifdef __cplusplus
 extern "C" 

@@ -145,9 +145,9 @@ static void find_branch_points(PatchSet * ps);
 
 static int debug_levels[] = {
     DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN,
+    DEBUG_RETRIEVAL,
     DEBUG_STATUS,
     DEBUG_TCP,
-    DEBUG_APPMSG2,
     DEBUG_PARSE,
 };
 
@@ -999,7 +999,6 @@ static int parse_args(int argc, char *argv[])
     if (debuglvl == 0)
 	for (i = 0; i <= verbose && i < sizeof(debug_levels)/sizeof(debug_levels[0]); i++)
 	    debuglvl |= debug_levels[i];
-
     return 0;
 }
 
@@ -1803,7 +1802,7 @@ static void print_fast_export(PatchSet * ps)
 		exit(1);
 	    }
 
-	    debug(DEBUG_APPMSG2, "retrieving %s for %s at :%d", 
+	    debug(DEBUG_RETRIEVAL, "retrieving %s for %s at :%d",
 		  psm->post_rev->rev,
 		  psm->file->filename, 
 		  mark+1);
@@ -2343,7 +2342,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 	{
 	    if (get_branch(branch_str, branch_str))
 	    {
-		debug(DEBUG_APPMSG2, 
+		debug(DEBUG_RETRIEVAL,
 		      "revision %s of file %s on unnamed branch at %s", 
 		      rev->rev, rev->file->filename, branch_str);
 		rev->branch = "#CVSPS_NO_BRANCH";
@@ -2352,7 +2351,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 				    is_vendor_branch(rev->rev));
 		/*
 		 * This triggers a warning about a the broken case
-		 * in the t9601 case. I haven't figured it out yet,
+		 * in the t9601 test. I haven't figured it out yet,
 		 * but we can at least warn when it might happen.
 		 */
 		dubious_branches++;

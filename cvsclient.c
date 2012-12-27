@@ -166,7 +166,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	    ctx->compressed = true;
 	}
 
-	debug(DEBUG_APPMSG2, "cvsclient: initialized to CVSROOT %s", ctx->root);
+	debug(DEBUG_STATUS, "cvsclient: initialized to CVSROOT %s", ctx->root);
     }
 
     return ctx;
