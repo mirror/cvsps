@@ -201,7 +201,7 @@ void convert_date(time_t * t, const char * dte)
 	regmatch_t * pm = match;
 	struct tm tm = {0};
 	char tzbuf[32];
-	int offseth = 0, offsetm = 0;
+	int offseth, offsetm;
 
 	/* first regmatch_t is match location of entire re */
 	pm++;
@@ -214,9 +214,10 @@ void convert_date(time_t * t, const char * dte)
 	tm.tm_sec  = get_int_substr(dte, pm++);
 	offseth    = -get_int_substr(dte, pm++);
 
-	offsetm= offseth%100;
-	if(offsetm<0) offsetm*=-1;
-	offseth/=100;
+	offsetm = offseth % 100;
+	if(offsetm < 0)
+	    offsetm *= -1;
+	offseth /= 100;
 	snprintf(tzbuf, sizeof(tzbuf), "UTC%+d:%d", offseth, offsetm);
 
 	tm.tm_year -= 1900;
