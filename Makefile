@@ -45,10 +45,7 @@ tags: *.c *.h *.c *.h
 	ctags *.c *.h *.c *.h
 
 clean:
-	rm -f cvsps *.o *.o core tags cvsps.spec cvsps.1 cvsps.html
-
-cvsps.spec: cvsps.spec.dist
-	echo "Version: $(VERSION)" >cvsps.spec
+	rm -f cvsps *.o *.o core tags cvsps.1 cvsps.html
 
 SOURCES = Makefile *.[ch] *.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.asc TODO
