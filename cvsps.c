@@ -78,6 +78,7 @@ static struct hash_table * branch_heads;
 static struct list_head all_patch_sets;
 static struct list_head collisions;
 static struct hash_table * branches;
+static int dubious_branches = 0;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
@@ -104,7 +105,7 @@ static int compress;
 static char compress_arg[8];
 static time_t regression_time;
 static bool selection_sense = true;
-static int dubious_branches = 0;
+static FILE *revfp;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -232,6 +233,8 @@ int main(int argc, char *argv[])
 	fputs("done\n", stdout);
 	if (dubious_branches > 1)
 	    debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect.");
+	if (revfp)
+	    fclose(revfp);
     }
 
     exit(0);
@@ -756,6 +759,15 @@ static int parse_args(int argc, char *argv[])
 
 	    fclose(fp);
 	    
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-R") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to -R missing", "");
+
+	    revfp = fopen(argv[i++], "w");
 	    continue;
 	}
 
@@ -1808,6 +1820,12 @@ static void print_fast_export(PatchSet * ps)
 		putchar(c);
 	    (void)fclose(cfp);
 	    putchar('\n');
+
+	    if (revfp)
+		fprintf(revfp, "%s %s :%d\n",
+			psm->file->filename,
+			psm->post_rev->rev,
+			mark);
 	}
 
 	next = next->next;
