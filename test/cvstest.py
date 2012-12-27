@@ -92,6 +92,7 @@ class CVSCheckout:
         self.checkout = checkout or module
         self.repo.do("co", self.module)
         if checkout:
+            shutil.rmtree(checkout)
             os.rename(module, checkout)
         self.directory = os.path.join(os.getcwd(), self.checkout)
     def do(self, cmd, *args):

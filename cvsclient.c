@@ -853,17 +853,8 @@ void cvs_diff(CvsServerCtx * ctx,
  * the compression state, and there was no way to resynchronize that state with
  * the parent process.  We could use threads...
  */
-FILE * cvs_rlog_open(CvsServerCtx * ctx, const char * rep, const char * date_str)
+FILE * cvs_rlog_open(CvsServerCtx * ctx, const char * rep)
 {
-    /* note: use of the date_str is handled in a non-standard, cvsps specific way */
-    if (date_str && date_str[0])
-    {
-	send_string(ctx, "Argument -d\n", rep);
-	send_string(ctx, "Argument %s<1 Jan 2038 05:00:00 -0000\n", date_str);
-	send_string(ctx, "Argument -d\n", rep);
-	send_string(ctx, "Argument %s\n", date_str);
-    }
-
     send_string(ctx, "Argument %s\n", rep);
     send_string(ctx, "rlog\n");
 

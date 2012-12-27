@@ -305,12 +305,11 @@ static void load_from_cvs()
     char * logbuff = malloc(logbufflen);
     int loglen = 0;
     bool have_log = false;
-    char date_str[64];
 
     if (test_log_file)
 	cvsfp = fopen(test_log_file, "r");
     else if (cvsclient_ctx)
-	cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path, date_str);
+	cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path);
 
     if (!cvsfp)
     {
