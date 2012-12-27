@@ -19,15 +19,10 @@
 #define DEBUG_ERROR     1
 #define DEBUG_STATUS    2
 #define DEBUG_TCP       4
-#define DEBUG_SIGNALS   8
+#define DEBUG_PARSE	8
 #define DEBUG_APPERROR  16
 #define DEBUG_APPWARN   32
 #define DEBUG_APPMSG2   64
-#define DEBUG_APPMSG3   128
-#define DEBUG_APPMSG4   256
-#define DEBUG_APPMSG5   512
-#define DEBUG_LIBERROR  1024
-#define DEBUG_LIBSTATUS 2048
 
 #ifdef __cplusplus
 extern "C" 

@@ -105,6 +105,7 @@ static char compress_arg[8];
 static time_t regression_time;
 static bool selection_sense = true;
 static FILE *revfp;
+static int verbose = 0;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -142,11 +143,18 @@ static void handle_collisions();
 static Branch * create_branch(const char * name) ;
 static void find_branch_points(PatchSet * ps);
 
+static int debug_levels[] = {
+    DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN,
+    DEBUG_STATUS,
+    DEBUG_TCP,
+    DEBUG_APPMSG2,
+    DEBUG_PARSE,
+};
+
+
 int main(int argc, char *argv[])
 {
     struct list_head * next;
-
-    debuglvl = DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
     INIT_LIST_HEAD(&authormap);
@@ -325,7 +333,7 @@ static void load_from_cvs()
 	if (!tst)
 	    break;
 
-	debug(DEBUG_STATUS, "state: %d read line:%s", state, buff);
+	debug(DEBUG_PARSE, "state: %d read line:%s", state, buff);
 
 	switch(state)
 	{
@@ -541,7 +549,7 @@ static void load_from_cvs()
  			
 			if (len >= logbufflen - loglen)
  			{
-			    debug(DEBUG_STATUS, "reallocating logbufflen to %d bytes for file %s", logbufflen, file->filename);
+			    debug(DEBUG_PARSE, "reallocating logbufflen to %d bytes for file %s", logbufflen, file->filename);
 			    logbufflen += (len >= LOG_STR_MAX ? (len+1) : LOG_STR_MAX);
 			    char * newlogbuff = realloc(logbuff, logbufflen);
 			    if (newlogbuff == NULL)
@@ -552,7 +560,7 @@ static void load_from_cvs()
 			    logbuff = newlogbuff;
  			}
 
-			debug(DEBUG_STATUS, "appending %s to log", buff);
+			debug(DEBUG_PARSE, "appending %s to log", buff);
 			memcpy(logbuff + loglen, buff, len);
 			loglen += len;
 			logbuff[loglen] = 0;
@@ -561,7 +569,7 @@ static void load_from_cvs()
 		}
 		else 
 		{
-		    debug(DEBUG_STATUS, "ignoring unhandled info %s", buff);
+		    debug(DEBUG_PARSE, "ignoring unhandled info %s", buff);
 		}
 	    }
 
@@ -875,7 +883,7 @@ static int parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-v") == 0)
 	{
-	    debuglvl = ~0;
+	    verbose++;
 	    i++;
 	    continue;
 	}
@@ -987,6 +995,10 @@ static int parse_args(int argc, char *argv[])
 	fprintf(stderr, "cvsps: -g and --test-log are not compatible.\n");
 	exit(1);
     }
+
+    if (debuglvl == 0)
+	for (i = 0; i <= verbose && i < sizeof(debug_levels)/sizeof(debug_levels[0]); i++)
+	    debuglvl |= debug_levels[i];
 
     return 0;
 }
@@ -1190,12 +1202,12 @@ static void init_paths()
 
     if (strip_path_len > 3 && !strcmp(strip_path + strip_path_len - 3, "/./"))
     {
-	debug(DEBUG_STATUS, "pruning /./ off end of strip_path");
+	debug(DEBUG_PARSE, "pruning /./ off end of strip_path");
 	strip_path_len -= 2;
 	strip_path[strip_path_len] = '\0';
     }
 
-    debug(DEBUG_STATUS, "strip_path: %s", strip_path);
+    debug(DEBUG_PARSE, "strip_path: %s", strip_path);
 }
 
 static CvsFile * parse_rcs_file(const char * buff)
@@ -1286,7 +1298,7 @@ static CvsFile * parse_rcs_file(const char * buff)
 	fn[len] = 0;
     }
 
-    debug(DEBUG_STATUS, "stripped filename %s", fn);
+    debug(DEBUG_PARSE, "stripped filename %s", fn);
 
     return build_file_by_name(fn);
 }
@@ -1301,7 +1313,7 @@ static CvsFile * parse_working_file(const char * buff)
     memcpy(fn, buff + 14, len);
     fn[len] = 0;
 
-    debug(DEBUG_STATUS, "working filename %s", fn);
+    debug(DEBUG_PARSE, "working filename %s", fn);
 
     return build_file_by_name(fn);
 }
@@ -2495,7 +2507,7 @@ static void parse_sym(CvsFile * file, char * sym)
     if (final_branch == 0)
     {
 	snprintf(rev, REV_STR_MAX, "%s.%d", rev2, leaf);
-	debug(DEBUG_STATUS, "got sym: %s for %s", tag, rev);
+	debug(DEBUG_PARSE, "got sym: %s for %s", tag, rev);
 	
 	cvs_file_add_branch(file, rev, tag, false);
     }
@@ -2521,7 +2533,7 @@ void cvs_file_add_symbol(CvsFile * file, const char * rev_str, const char * p_ta
     /* get a permanent storage string */
     char * tag_str = get_string(p_tag_str);
 
-    debug(DEBUG_STATUS, "adding symbol to file: %s %s->%s", file->filename, tag_str, rev_str);
+    debug(DEBUG_PARSE, "adding symbol to file: %s %s->%s", file->filename, tag_str, rev_str);
     rev = cvs_file_add_revision(file, rev_str);
     put_hash_object_ex(file->symbols, tag_str, rev, HT_NO_KEYCOPY, NULL, NULL);
     

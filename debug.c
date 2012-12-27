@@ -17,7 +17,7 @@
 
 #define BUGPREFIX	"cvsps: "
 
-unsigned int debuglvl = ~0;
+unsigned int debuglvl = 0;
 static FILE *debug_output_channel[DEBUG_NUM_FACILITIES];
 
 #ifdef MACINTOSH
