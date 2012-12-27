@@ -1781,7 +1781,7 @@ static void print_fast_export(PatchSet * ps)
 	tm = localtime(&ps->date);
     else
     {
-	time_t clock_tick = regression_time + ps->psid;
+	time_t clock_tick = regression_time + ps->psid * timestamp_fuzz_factor * 2;
 	tm = localtime(&clock_tick);
     }
 
@@ -1856,7 +1856,6 @@ static void print_fast_export(PatchSet * ps)
 
     /* map HEAD branch to master, leave others unchanged */
     outbranch = strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master";
-
 
     debug(DEBUG_RETRIEVAL, "commit :%d goes to %s", mark+1, outbranch);
 
