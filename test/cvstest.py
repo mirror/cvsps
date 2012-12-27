@@ -6,6 +6,7 @@ import sys, os, shutil, subprocess, time, filecmp
 DEBUG_STEPS    = 1
 DEBUG_COMMANDS = 2
 DEBUG_CVS      = 3
+DEBUG_CVSPS    = 4
 
 verbose = 0
 
@@ -75,7 +76,7 @@ class CVSRepository:
         return self.checkouts[-1]
     def convert(self, module, gitdir):
         "Convert a specified module.  Leave the stream dump in a log file."
-        vopt = "-v " * verbose
+        vopt = "-v " if verbose >= DEBUG_CVSPS else ""
         do_or_die("rm -fr {0} && mkdir {0} && git init --quiet {0}".format(gitdir))
         do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | tee {2}.log | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
     def cleanup(self):
@@ -140,13 +141,11 @@ class CVSCheckout:
         with directory_context(self.directory):
             with open(fn, "a") as fp:
                 fp.write(content)
-    def emit(self, timebase):
-        "Report the history of the repository as seen from here."
-        with directory_context(self.directory):
-            if self.repo.fast_export:
-                do_or_die("cvsps --fast-export -T " + timebase)
-            else:
-                do_or_die("cvsps")
+    def update(self, rev):
+        "Update the content to the specified revision or tag."
+        if rev == 'master':
+            rev = "HEAD"
+        self.do("up", "-kk", "-r", rev) 
     def cleanup(self):
         "Clean up the checkout directory."
         shutil.rmtree(self.directory)
@@ -160,6 +159,47 @@ def expect_different(a, b):
     "Rejoice if two files are unexpectedly identical"
     if filecmp.cmp(a, b, shallow=False):
         sys.stderr.write("%s and %s are unexpectedly the same.\n" % (a, b))
-    
+
+class ConvertComparison:
+    "Compare a CVS repository and its conversion for equality."
+    def __init__(self, stem, module):
+        self.stem = stem
+        self.module = module
+        self.repo = CVSRepository(stem + ".testrepo")
+        self.checkout = self.repo.checkout(module, stem + ".checkout")
+        self.repo.convert("module", stem + ".git")
+    def cmp_branch_tree(self, legend, tag, success_expected):
+        "Test to see if a tag checkout has the expected content."
+        def recursive_file_gen(mydir, ignore):
+            for root, dirs, files in os.walk(mydir):
+                for file in files:
+                    path = os.path.join(root, file)
+                    if ignore not in path.split(os.sep):
+                        yield path
+        self.checkout.update(tag)
+        cvspaths = list(recursive_file_gen(self.stem + ".checkout", ignore="CVS"))
+        cvsfiles = [fn[len(self.stem+".checkout")+1:] for fn in cvspaths]
+        gitpaths = list(recursive_file_gen(self.stem + ".git", ignore=".git"))
+        gitfiles = [fn[len(self.stem+".git")+1:] for fn in gitpaths]
+        cvsfiles.sort()
+        gitfiles.sort()
+        if cvsfiles != gitfiles:
+            if success_expected:
+                sys.stderr.write("%s %s %s: file manifests don't match\n" \
+                                 % (self.stem, legend, tag))
+                print >>sys.stderr, cvsfiles, gitfiles
+            return False
+        else:
+            for (a, b) in zip(cvspaths, gitpaths):
+                if not filecmp.cmp(a, b, shallow=False):
+                    if success_expected:
+                        sys.stderr.write("%s %s %s: %s and %s are different.\n" % (self.stem, legend, tag, a, b))
+                        return False
+        if not success_expected:
+            sys.stderr.write("%s %s %s: trees unexpectedly match\n" \
+                             % (self.stem, legend, tag))
+        return True
+    def cleanup(self):
+        os.system("rm -fr {0}.git {0}.checkout".format(self.stem))
 
 # End.
