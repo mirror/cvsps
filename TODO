@@ -1,6 +1,10 @@
+Fix the broken double-import case in the t9601 test.
+
+Fully incorporate the t9602 and t9603 tests from the git tree.
+
 Simulate CVS's default ignore patterns in a generated .gitignore?
 
-Mine the cvs2svn design notes for idea:
+Mine the cvs2svn design notes for ideas:
 http://cvs2svn.tigris.org/source/browse/*checkout*/cvs2svn/trunk/doc/design-notes.txt
 
 Branch-merge detection.  Not sure it's possible but I want to look
