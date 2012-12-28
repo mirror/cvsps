@@ -189,6 +189,7 @@ struct _Branch
     char * name;
     PatchSet * ps;
     bool vendor_branch;
+    bool realized;
     /* every patchset will have a list of branches that branch from there */
     struct list_head link;
 };

@@ -119,6 +119,7 @@ static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
 static void check_print_patch_set(PatchSet *);
 static void print_patch_set(PatchSet *);
 static void print_fast_export(PatchSet *);
+static void fast_export_finalize(void);
 static void assign_patchset_id(PatchSet *);
 static int compare_rev_strings(const char *, const char *);
 static int compare_patch_sets_by_members(const PatchSet * ps1, const PatchSet * ps2);
@@ -140,7 +141,8 @@ static int check_rev_funk(PatchSet *, CvsFileRevision *);
 static CvsFileRevision * rev_follow_branch(CvsFileRevision *, const char *);
 static bool before_tag(CvsFileRevision * rev, const char * tag);
 static void handle_collisions();
-static Branch * create_branch(const char * name) ;
+static Branch * create_branch(const char * name);
+static Branch * lookup_branch(const char * name);
 static void find_branch_points(PatchSet * ps);
 
 static int debug_levels[] = {
@@ -236,13 +238,8 @@ int main(int argc, char *argv[])
     if (cvsclient_ctx)
 	close_cvs_server(cvsclient_ctx);
 
-    if (fast_export) {
-	fputs("done\n", stdout);
-	if (dubious_branches > 1)
-	    debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect.");
-	if (revfp)
-	    fclose(revfp);
-    }
+    if (fast_export)
+	fast_export_finalize();
 
     exit(0);
 }
@@ -1736,6 +1733,7 @@ static void print_fast_export(PatchSet * ps)
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
     char *match, *tz, *outbranch;
+    Branch *branch;
  
     struct branch_head {
 	char *name;
@@ -1856,6 +1854,11 @@ static void print_fast_export(PatchSet * ps)
     /* map HEAD branch to master, leave others unchanged */
     outbranch = strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master";
 
+    /* mark branches that have been realized by having commits on them */
+    if (strcmp("master", outbranch))
+	if ((branch = lookup_branch(outbranch)) != NULL)
+	    branch->realized = true;
+
     debug(DEBUG_RETRIEVAL, "commit :%d goes to %s", mark+1, outbranch);
 
     printf("commit refs/heads/%s\n", outbranch);
@@ -1908,6 +1911,38 @@ static void print_fast_export(PatchSet * ps)
     }
 
     unlink(tf);
+}
+
+static void fast_export_finalize(void)
+{
+    struct hash_entry * he_sym;
+    char sanitized[BUFSIZ];
+
+    /* all unrealized branches turm into lightweight tags */
+    reset_hash_iterator(branches);
+    while ((he_sym = next_hash_entry(branches)))
+    {
+	Branch * branch = (Branch *)he_sym->he_obj;
+	if (!branch->realized)
+	{
+	    char * name = fast_export_sanitize(branch->name, 
+					       sanitized, 
+					       sizeof(sanitized));
+	    if (branch->ps == NULL)
+		debug(DEBUG_APPWARN, "no commit for unrealized branch %s",
+		      name);
+	    else
+		printf("reset refs/tags/%s\nfrom :%d\n\n", 
+		       name, branch->ps->mark);
+	}
+    }
+
+    fputs("done\n", stdout);
+    if (dubious_branches > 1)
+	debug(DEBUG_APPWARN, "multiple vendor or anonymous branches; head content may be incorrect.");
+    if (revfp)
+	fclose(revfp);
+
 }
 
 /* walk all the patchsets to assign monotonic psid, 
@@ -2987,7 +3022,19 @@ static Branch * create_branch(const char * name)
     Branch * branch = (Branch*)calloc(1, sizeof(*branch));
     branch->name = get_string(name);
     branch->ps = NULL;
+    branch->realized = false;
+    branch->vendor_branch = false;
     CLEAR_LIST_NODE(&branch->link);
+    return branch;
+}
+
+static Branch * lookup_branch(const char * name) 
+{
+    Branch * branch = get_hash_object(branches, name);
+    if (branch == NULL) {
+	debug(DEBUG_APPERROR, "branch %s not found in global branch hash", name);
+	return NULL;
+    }
     return branch;
 }
 
@@ -3009,12 +3056,9 @@ static void find_branch_points(PatchSet * ps)
 
 	for (child_iter = rev->branch_children.next; child_iter != &rev->branch_children; child_iter = child_iter->next) {
 	    CvsFileRevision * branch_child = list_entry(child_iter, CvsFileRevision, link);
-	    Branch * branch = get_hash_object(branches, branch_child->branch);
-	    if (branch == NULL) {
-		debug(DEBUG_APPERROR, "branch %s not found in global branch hash", branch_child->branch);
+	    Branch *branch = lookup_branch(branch_child->branch);
+	    if (branch == NULL)
 		return;
-	    }
-	    
 	    if (branch->ps != NULL) {
 		list_del(&branch->link);
 	    }
