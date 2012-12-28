@@ -11,7 +11,7 @@ PATH := ${PATH}:..
 	cvs -d :local:${PWD}/$*.repo -Q checkout $* && mv $* $*.checkout
 
 test: regress
-	@python t9601.py
+	@python t9601.py 2>&1 | diff t9601.err -
 
 testlist:
 	@grep '^##' *.tst
