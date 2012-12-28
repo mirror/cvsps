@@ -648,69 +648,26 @@ static int parse_args(int argc, char *argv[])
     int i = 1;
     while (i < argc)
     {
-	if (strcmp(argv[i], "-z") == 0)
-	{
-	    if (++i >= argc)
-		return usage("argument to -z missing", "");
-
-	    timestamp_fuzz_factor = atoi(argv[i++]);
-	    continue;
-	}
-	
-	if (strcmp(argv[i], "-g") == 0)
-	{
-	    do_diff = true;
-	    i++;
-	    continue;
-	}
-	
-	/* leave this in place so git-cvsimport will cause graceful death */
-	if (strcmp(argv[i], "-u") == 0)
-	{
-	    fprintf(stderr, "cvsps: -u is no longer supported.\n");
-	    fprintf(stderr, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
-	    exit(1);
-	}
-
-	if (strcmp(argv[i], "-s") == 0)
-	{
-	    PatchSetRange * range;
-	    char * min_str, * max_str;
-
-	    if (++i >= argc)
-		return usage("argument to -s missing", "");
-
-	    min_str = strtok(argv[i++], ",");
-	    do
-	    {
-		range = create_patch_set_range();
-
-		max_str = strrchr(min_str, '-');
-		if (max_str)
-		    *max_str++ = '\0';
-		else
-		    max_str = min_str;
-
-		range->min_counter = atoi(min_str);
-
-		if (*max_str)
-		    range->max_counter = atoi(max_str);
-		else
-		    range->max_counter = INT_MAX;
-
-		list_add(&range->link, show_patch_set_ranges.prev);
-	    }
-	    while ((min_str = strtok(NULL, ",")));
-
-	    continue;
-	}
-	
 	if (strcmp(argv[i], "-a") == 0)
 	{
 	    if (++i >= argc)
 		return usage("argument to -a missing", "");
 
 	    restrict_author = argv[i++];
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-b") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to -b missing", "");
+
+	    restrict_branch = argv[i++];
+	    /* Warn if the user tries to use TRUNK. Should eventually
+	     * go away as TRUNK may be a valid branch within CVS
+	     */
+	    if (strcmp(restrict_branch, "TRUNK") == 0)
+		debug(DEBUG_APPWARN, "WARNING: The HEAD branch of CVS is called HEAD, not TRUNK");
 	    continue;
 	}
 
@@ -765,31 +722,15 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-R") == 0)
+	if (strcmp(argv[i], "-d") == 0)
 	{
-	    if (++i >= argc)
-		return usage("argument to -R missing", "");
-
-	    revfp = fopen(argv[i++], "w");
-	    continue;
-	}
-
-	if (strcmp(argv[i], "-l") == 0)
-	{
-	    int err;
+	    time_t *pt;
 
 	    if (++i >= argc)
-		return usage("argument to -l missing", "");
+		return usage("argument to -d missing", "");
 
-	    if ((err = regcomp(&restrict_log, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
-	    {
-		char errbuf[256];
-		regerror(err, &restrict_log, errbuf, 256);
-		return usage("bad regex to -l", errbuf);
-	    }
-
-	    have_restrict_log = true;
-
+	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
+	    convert_date(pt, argv[i++]);
 	    continue;
 	}
 
@@ -812,6 +753,35 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 	
+	if (strcmp(argv[i], "-g") == 0)
+	{
+	    do_diff = true;
+	    i++;
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-h") == 0)
+	    return usage(NULL, NULL);
+
+	if (strcmp(argv[i], "-l") == 0)
+	{
+	    int err;
+
+	    if (++i >= argc)
+		return usage("argument to -l missing", "");
+
+	    if ((err = regcomp(&restrict_log, argv[i++], REG_EXTENDED|REG_NOSUB)) != 0)
+	    {
+		char errbuf[256];
+		regerror(err, &restrict_log, errbuf, 256);
+		return usage("bad regex to -l", errbuf);
+	    }
+
+	    have_restrict_log = true;
+
+	    continue;
+	}
+
 	if (strcmp(argv[i], "-n") == 0)
 	{
 	    selection_sense = false;
@@ -819,24 +789,12 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 	
-	if (strcmp(argv[i], "-d") == 0)
-	{
-	    time_t *pt;
-
-	    if (++i >= argc)
-		return usage("argument to -d missing", "");
-
-	    pt = (restrict_date_start == 0) ? &restrict_date_start : &restrict_date_end;
-	    convert_date(pt, argv[i++]);
-	    continue;
-	}
-
-	if (strcmp(argv[i], "-T") == 0)
+	if (strcmp(argv[i], "-p") == 0)
 	{
 	    if (++i >= argc)
-		return usage("argument to -T missing", "");
-
-	    convert_date(&regression_time, argv[i++]);
+		return usage("argument to -p missing", "");
+	    
+	    patch_set_dir = argv[i++];
 	    continue;
 	}
 
@@ -854,33 +812,45 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-b") == 0)
+	if (strcmp(argv[i], "-R") == 0)
 	{
 	    if (++i >= argc)
-		return usage("argument to -b missing", "");
+		return usage("argument to -R missing", "");
 
-	    restrict_branch = argv[i++];
-	    /* Warn if the user tries to use TRUNK. Should eventually
-	     * go away as TRUNK may be a valid branch within CVS
-	     */
-	    if (strcmp(restrict_branch, "TRUNK") == 0)
-		debug(DEBUG_APPWARN, "WARNING: The HEAD branch of CVS is called HEAD, not TRUNK");
+	    revfp = fopen(argv[i++], "w");
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-p") == 0)
+	if (strcmp(argv[i], "-s") == 0)
 	{
-	    if (++i >= argc)
-		return usage("argument to -p missing", "");
-	    
-	    patch_set_dir = argv[i++];
-	    continue;
-	}
+	    PatchSetRange * range;
+	    char * min_str, * max_str;
 
-	if (strcmp(argv[i], "-v") == 0)
-	{
-	    verbose++;
-	    i++;
+	    if (++i >= argc)
+		return usage("argument to -s missing", "");
+
+	    min_str = strtok(argv[i++], ",");
+	    do
+	    {
+		range = create_patch_set_range();
+
+		max_str = strrchr(min_str, '-');
+		if (max_str)
+		    *max_str++ = '\0';
+		else
+		    max_str = min_str;
+
+		range->min_counter = atoi(min_str);
+
+		if (*max_str)
+		    range->max_counter = atoi(max_str);
+		else
+		    range->max_counter = INT_MAX;
+
+		list_add(&range->link, show_patch_set_ranges.prev);
+	    }
+	    while ((min_str = strtok(NULL, ",")));
+
 	    continue;
 	}
 	
@@ -891,22 +861,68 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "--summary-first") == 0)
+	if (strcmp(argv[i], "-T") == 0)
 	{
-	    summary_first = 1;
-	    i++;
+	    if (++i >= argc)
+		return usage("argument to -T missing", "");
+
+	    convert_date(&regression_time, argv[i++]);
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-h") == 0)
-	    return usage(NULL, NULL);
+	/* leave this in place so git-cvsimport will cause graceful death */
+	if (strcmp(argv[i], "-u") == 0)
+	{
+	    fprintf(stderr, "cvsps: -u is no longer supported.\n");
+	    fprintf(stderr, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
+	    exit(1);
+	}
 
-	if (strcmp(argv[i], "--test-log") == 0)
+	if (strcmp(argv[i], "-v") == 0)
+	{
+	    verbose++;
+	    i++;
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-V") == 0)
+	{
+	    printf("cvsps: version " VERSION "\n");
+	    exit(0);
+	}
+
+	if (strcmp(argv[i], "-z") == 0)
 	{
 	    if (++i >= argc)
-		return usage("argument to --test-log missing", "");
+		return usage("argument to -z missing", "");
 
-	    test_log_file = argv[i++];
+	    timestamp_fuzz_factor = atoi(argv[i++]);
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "-Z") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to -Z", "");
+
+	    compress = atoi(argv[i++]);
+
+	    if (compress < 0 || compress > 9)
+		return usage("-Z level must be between 1 and 9 inclusive (0 disables compression)", argv[i-1]);
+
+	    if (compress == 0)
+		compress_arg[0] = 0;
+	    else
+		snprintf(compress_arg, 8, "-z%d", compress);
+	    continue;
+	}
+	
+	if (strcmp(argv[i], "--debuglvl") == 0)
+	{
+	    if (++i >= argc)
+		return usage("argument to --debuglvl missing", "");
+
+	    debuglvl = atoi(argv[i++]);
 	    continue;
 	}
 
@@ -926,32 +942,13 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "--debuglvl") == 0)
+	if (strcmp(argv[i], "--fast-export") == 0)
 	{
-	    if (++i >= argc)
-		return usage("argument to --debuglvl missing", "");
-
-	    debuglvl = atoi(argv[i++]);
+	    fast_export = true;
+	    i++;
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-Z") == 0)
-	{
-	    if (++i >= argc)
-		return usage("argument to -Z", "");
-
-	    compress = atoi(argv[i++]);
-
-	    if (compress < 0 || compress > 9)
-		return usage("-Z level must be between 1 and 9 inclusive (0 disables compression)", argv[i-1]);
-
-	    if (compress == 0)
-		compress_arg[0] = 0;
-	    else
-		snprintf(compress_arg, 8, "-z%d", compress);
-	    continue;
-	}
-	
 	if (strcmp(argv[i], "--root") == 0)
 	{
 	    if (++i >= argc)
@@ -961,17 +958,20 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "--fast-export") == 0)
+	if (strcmp(argv[i], "--summary-first") == 0)
 	{
-	    fast_export = true;
+	    summary_first = 1;
 	    i++;
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-V") == 0)
+	if (strcmp(argv[i], "--test-log") == 0)
 	{
-	    printf("cvsps: version " VERSION "\n");
-	    exit(0);
+	    if (++i >= argc)
+		return usage("argument to --test-log missing", "");
+
+	    test_log_file = argv[i++];
+	    continue;
 	}
 
 	if (argv[i][0] == '-')
