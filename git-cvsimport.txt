@@ -207,10 +207,9 @@ Here are some other known bugs:
    branch they will erroneously be added to the daughter branch in git.
 
 If you suspect that any of these issues may apply to the repository you
-want to import consider using these alternative tools:
+want to import, consider using cvs2git:
 
-* cvs2git (part of cvs2svn), `http://cvs2svn.tigris.org`
-* parsecvs, `http://cgit.freedesktop.org/~keithp/parsecvs`
+* cvs2git (part of cvs2svn), `http://subversion.apache.org/`
 
 GIT
 ---
