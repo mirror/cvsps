@@ -1924,6 +1924,7 @@ static void print_fast_export(PatchSet * ps)
 
 static void fast_export_finalize(void)
 {
+#if 0
     struct hash_entry * he_sym;
     char sanitized[BUFSIZ];
 
@@ -1945,6 +1946,7 @@ static void fast_export_finalize(void)
 		       name, branch->ps->mark);
 	}
     }
+#endif
 
     fputs("done\n", stdout);
     if (dubious_branches > 1)

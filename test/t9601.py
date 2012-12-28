@@ -35,35 +35,35 @@
 #       Like imported-twice.txt, but with a vendor branch whose branch
 #       tag has been removed.
 
-import os, cvstest
+import os, cvspstest
 
-repo = cvstest.CVSRepository("t9601.testrepo")
+repo = cvspstest.CVSRepository("t9601.testrepo")
 co = repo.checkout("module", "t9601.checkout")
 repo.convert("module", "t9601.git")
 
 # Check a file that was imported once
-cvstest.expect_same("t9601.checkout/imported-once.txt",
+cvspstest.expect_same("t9601.checkout/imported-once.txt",
                     "t9601.git/imported-once.txt")
 
 # Check a file that was imported twice
 # This is the test that fails 
-cvstest.expect_different("t9601.checkout/imported-twice.txt",
+cvspstest.expect_different("t9601.checkout/imported-twice.txt",
                     "t9601.git/imported-twice.txt")
 
 # Check a file that was imported then modified on HEAD
-cvstest.expect_same("t9601.checkout/imported-modified.txt",
+cvspstest.expect_same("t9601.checkout/imported-modified.txt",
                     "t9601.git/imported-modified.txt")
 
 # Check a file that was imported, modified, then imported
-cvstest.expect_same("t9601.checkout/imported-modified-imported.txt",
+cvspstest.expect_same("t9601.checkout/imported-modified-imported.txt",
                     "t9601.git/imported-modified-imported.txt")
 
 # Check a file that was added to HEAD then imported
-cvstest.expect_same("t9601.checkout/added-imported.txt",
+cvspstest.expect_same("t9601.checkout/added-imported.txt",
                     "t9601.git/added-imported.txt")
 
 # A vendor branch whose tag has been removed
-cvstest.expect_same("t9601.checkout/added-imported.txt",
+cvspstest.expect_same("t9601.checkout/added-imported.txt",
                     "t9601.git/added-imported.txt")
 
 os.system("rm -fr t9601.git t9601.checkout")

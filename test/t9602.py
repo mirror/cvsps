@@ -70,9 +70,9 @@ correctly along tags and branches.  Here is its history:
       sub3/default.
 '''
 
-import os, cvstest
+import os, cvspstest
 
-cc = cvstest.ConvertComparison("t9602", "module")
+cc = cvspstest.ConvertComparison("t9602", "module")
 cc.cmp_branch_tree("test of branch", "master", True)
 cc.cmp_branch_tree("test of branch", "vendorbranch", True)
 cc.cmp_branch_tree("test of branch", "B_FROM_INITIALS", False)

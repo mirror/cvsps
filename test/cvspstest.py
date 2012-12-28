@@ -17,19 +17,34 @@ def do_or_die(dcmd, legend=""):
     if legend:
         legend = " "  + legend
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("Executing '%s'%s\n" % (dcmd, legend))
+        sys.stdout.write("cvspstest: executing '%s'%s\n" % (dcmd, legend))
     try:
         retcode = subprocess.call(dcmd, shell=True)
         if retcode < 0:
-            sys.stderr.write("Child was terminated by signal %d.\n" % -retcode)
+            sys.stderr.write("cvspstest: child was terminated by signal %d.\n" % -retcode)
             sys.exit(1)
         elif retcode != 0:
-            sys.stderr.write("Child returned %d.\n" % retcode)
+            sys.stderr.write("cvspstest: child returned %d.\n" % retcode)
             sys.exit(1)
     except (OSError, IOError) as e:
-        sys.stderr.write("Execution of %s%s failed: %s\n" % (dcmd, legend, e))
+        sys.stderr.write("cvspstest: xecution of %s%s failed: %s\n" % (dcmd, legend, e))
         sys.exit(1)
 
+def capture_or_die(dcmd, legend=""):
+    "Either execute a command and capture its output or die."
+    if legend:
+        legend = " "  + legend
+    if verbose >= DEBUG_COMMANDS:
+        sys.stdout.write("cvspstest: executing '%s'%s\n" % (dcmd, legend))
+    try:
+        return subprocess.check_output(dcmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        if e.returncode < 0:
+            sys.stderr.write("cvspstest: child was terminated by signal %d." % -e.returncode)
+        elif e.returncode != 0:
+            sys.stderr.write("cvspstest: child returned %d." % e.returncode)
+        sys.exit(1)
+    
 class directory_context:
     def __init__(self, target):
         self.target = target
@@ -170,6 +185,9 @@ class ConvertComparison:
         self.repo = CVSRepository(stem + ".testrepo")
         self.checkout = self.repo.checkout(module, stem + ".checkout")
         self.repo.convert("module", stem + ".git")
+        with directory_context(stem + ".git"):
+            self.branches = [name for name in capture_or_die("git branch -l").split()]
+            self.tags = [name for name in capture_or_die("git tag -l").split()]
     def cmp_branch_tree(self, legend, tag, success_expected):
         "Test to see if a tag checkout has the expected content."
         def recursive_file_gen(mydir, ignore):
@@ -178,6 +196,11 @@ class ConvertComparison:
                     path = os.path.join(root, file)
                     if ignore not in path.split(os.sep):
                         yield path
+        preamble = "%s %s %s: " % (self.stem, legend, tag)
+        if tag not in self.tags and tag not in self.branches:
+            if success_expected:
+                sys.stderr.write(preamble + "tag or branch %s unexpectedly missing\n" % tag)
+            return False
         self.checkout.update(tag)
         with directory_context(self.stem + ".git"):
             do_or_die("git checkout --quiet %s" % tag)
@@ -189,8 +212,7 @@ class ConvertComparison:
         gitfiles.sort()
         if cvsfiles != gitfiles:
             if success_expected:
-                sys.stderr.write("%s %s %s: file manifests don't match\n" \
-                                 % (self.stem, legend, tag))
+                sys.stderr.write(preamble + "file manifests don't match\n")
                 print >>sys.stderr, cvsfiles, gitfiles
             return False
         else:
@@ -201,15 +223,14 @@ class ConvertComparison:
                     if success_expected:
                         sys.stderr.write("%s %s %s: %s and %s are different.\n" % (self.stem, legend, tag, a, b))
                         #do_or_die("diff -u %s %s" % (a, b))
-        preamble = "%s %s %s: trees " % (self.stem, legend, tag)
         if success:
             if not success_expected:
-                sys.stderr.write(preamble + "unexpectedly match\n")
+                sys.stderr.write(preamble + "trees unexpectedly match\n")
             elif verbose >= DEBUG_STEPS:
-                sys.stderr.write(preamble + "matched as expected\n")
+                sys.stderr.write(preamble + "trees matched as expected\n")
         elif not success:
             if not success_expected and verbose >= DEBUG_STEPS:
-                sys.stderr.write(preamble + "diverged as expected\n")
+                sys.stderr.write(preamble + "trees diverged as expected\n")
         return success
     def cleanup(self):
         os.system("rm -fr {0}.git {0}.checkout".format(self.stem))
