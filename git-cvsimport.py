@@ -43,7 +43,7 @@ if __name__ == '__main__':
         sys.stderr.write("git-cvsimport: requires Python 2.6 or later.")
         sys.exit(1)
     (options, arguments) = getopt.getopt(sys.argv[1:], "vd:C:r:o:ikus:p:z:P:S:aL:A:Rh")
-    cvsps_opts = ""
+    backend_opts = ""
     verbose = 0
     root = None
     outdir = os.getcwd()
@@ -51,7 +51,6 @@ if __name__ == '__main__':
     import_only = False
     underscore_to_dot = False
     slashsubst = None
-    pathselect = None
     authormap = None
     revisionmap = False
     for (opt, val) in options:
@@ -62,7 +61,7 @@ if __name__ == '__main__':
                 if not val.startswith(os.sep):
                     val = os.path.abspath(val)
                 val = ":local:" + val
-            cvsps_opts += " --root '%s'" % val
+            backend_opts += " --root '%s'" % val
         elif opt == '-C':
             outdir = val
         elif opt == '-r':
@@ -79,9 +78,9 @@ if __name__ == '__main__':
         elif opt == '-s':
             slashsubst = val
         elif opt == '-p':
-            cvsps_opts += val.replace(",", " ")
+            backend_opts += val.replace(",", " ")
         elif opt == '-z':
-            cvsps_opts += " -Z %s" % val
+            backend_opts += " -Z %s" % val
         elif opt == '-P':
             sys.stderr.write("git-cvsimport: -P is no longer supported.\n")
             sys.exit(1)
@@ -89,7 +88,7 @@ if __name__ == '__main__':
             sys.stderr.write("git-cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
             sys.exit(1)
         elif opt == '-S':
-            pathselect = " -n -f '%s'" % val
+            backend_opts += " -n -f '%s'" % val
         elif opt == '-a':
             sys.stderr.write("git-cvsimport: -a is no longer supported.\n")
             sys.exit(1)
@@ -97,7 +96,7 @@ if __name__ == '__main__':
             sys.stderr.write("git-cvsimport: -L is no longer supported.\n")
             sys.exit(1)
         elif opt == '-A':
-            cvsps_opts += " -A '%s'" % val
+            backend_opts += " -A '%s'" % val
         elif opt == '-R':
             revisionmap = True	# FIXME: Not implemented
         else:
@@ -107,7 +106,7 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
      [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
 """         
-    cvsps_opts += " " + arguments[0]
+    backend_opts += " " + arguments[0]
     try:
         if outdir:
             try:
@@ -120,7 +119,7 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
                 if not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
         do_or_die("cvsps --fast-export %s | (cd %s >/dev/null; git fast-import --quiet)" \
-                  % (cvsps_opts, outdir))
+                  % (backend_opts, outdir))
         os.chdir(outdir)
         tagnames = capture_or_die("git tag -l")
         for tag in tags.split():
