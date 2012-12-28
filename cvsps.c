@@ -1135,13 +1135,13 @@ static void init_paths()
     {
 	if ((fp = fopen("CVS/Repository", "r")) == NULL)
 	{
-	    debug(DEBUG_SYSERROR, "Can't open CVS/Repository");
+	    debug(DEBUG_SYSERROR, "repository path is missing or unreadable");
 	    exit(1);
 	}
 	
 	if (fgets(repository_path, PATH_MAX, fp) == NULL)
 	{
-	    debug(DEBUG_APPERROR, "Error reading repository path");
+	    debug(DEBUG_APPERROR, "error reading repository path");
 	    exit(1);
 	}
 	
