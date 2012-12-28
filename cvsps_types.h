@@ -120,7 +120,6 @@ struct _PatchSet
     char *commitid;
     struct list_head tags;
     char *branch;
-    char *ancestor_branch;
     struct list_head members;
     /*
      * A 'branch add' patch set is a bogus patch set created automatically

@@ -1646,8 +1646,6 @@ static void print_patch_set(PatchSet * ps)
 	   tm->tm_hour, tm->tm_min, tm->tm_sec);
     printf("Author: %s\n", ps->author);
     printf("Branch: %s\n", ps->branch);
-    if (ps->ancestor_branch)
-	printf("Ancestor branch: %s\n", ps->ancestor_branch);
     printf("Tags:");
     for (tagl = ps->tags.next; tagl != &ps->tags; tagl = tagl->next)
     {
@@ -2449,7 +2447,6 @@ static PatchSet * create_patch_set()
 	ps->branch_add = false;
 	ps->commitid = "";
 	ps->funk_factor = 0;
-	ps->ancestor_branch = NULL;
 	CLEAR_LIST_NODE(&ps->collision_link);
     }
 
