@@ -188,17 +188,12 @@ editing tools such as 'git-filter-branch' and 'reposurgeon'.
 [[issues]]
 ISSUES
 ------
-Recent versions of CVS create a 'commitid' field to tie together
-changesets, which prevents various problems arising from timestamp
-skew.  If the 'cvsps' program used by 'git-cvsimport' finds a portion
-of your history that does not have commitids (which is normal if you
-have commits from before 2004), it will warn you of this; see the
-cvsps manual page for details on what this implies.
-
-Not all sequences of CVS operation can be translated into an import stream.
+Not all sequences of CVS operations can be translated into an import stream.
 'cvsps' tries to warn you about repository histories it can't handle.
+See the cvsps manual page to learn about the warnings you may receive.
 
-Here are some other known bugs:
+Here are some other known bugs about which 'cvsps' does not yet issue
+warnings:
 
  * All files from the branching point are added to a branch even if
    never added in CVS.
