@@ -21,11 +21,11 @@ DESCRIPTION
 Imports a CVS repository into git. It will either create a new
 repository, or incrementally import into an existing one.
 
-Splitting the CVS log into patch sets is done by 'cvsps'.
-At least version 3.2 is required.
-
-*WARNING:* for certain situations the import leads to incorrect results.
-Please see the section <<issues,ISSUES>> for further reference.
+*WARNING:* CVS lends itself to all manner of perversities; not all
+sequences of CVS operations can be translated into an import stream,
+and importing is not guaranteed to produce a perfectly accurate
+representation of CVS history. Please see the section
+<<issues,ISSUES>> for further reference.
 
 You should *never* do any work of your own on the branches that are
 created by 'git cvsimport'.  By default initial import will create and
@@ -59,6 +59,12 @@ OPTIONS
 	If not given, 'git cvsimport' tries to read it from
 	`CVS/Repository`.
 
+-e <engine>::
+	Splitting the CVS log into patch sets is done by an engine program,
+	which must emit a git fast-import stream to standard output.
+	This option changes the engine used; when given, it must be the
+	first option on the command line.
+
 -C <target-dir>::
         The git repository to import to.  If the directory doesn't
         exist, it will be created.  Default is the current directory.
@@ -84,15 +90,13 @@ OPTIONS
 -s <subst>::
 	Substitute the character "/" in branch names with <subst>
 
--p <options-for-cvsps>::
-	Additional options for cvsps.
-	The options '-u' and '-A' are implicit and should not be used here.
-+
-If you need to pass multiple options, separate them with a comma.
+-p <options-for-engine>::
+	Additional options for the engine. If you need to pass
+	multiple options, separate them with a comma.
 
 -z <fuzz>::
-	Pass the timestamp fuzz factor to cvsps, in seconds. If unset,
-	cvsps defaults to 300s.
+	Pass the timestamp fuzz factor, in seconds. If unset, this has 
+	an engine-dependent default - usually 300s.
 
 -m::
 	Attempt to detect merges based on the commit message. This option
@@ -188,9 +192,10 @@ editing tools such as 'git-filter-branch' and 'reposurgeon'.
 [[issues]]
 ISSUES
 ------
-Not all sequences of CVS operations can be translated into an import stream.
-'cvsps' tries to warn you about repository histories it can't handle.
-See the cvsps manual page to learn about the warnings you may receive.
+Presently the only supported engine is 'cvsps'; at least version 3.2
+is required.  'cvsps' tries to warn you about repository histories it can't
+handle; see the cvsps manual page to learn how to interpret the warnings
+you may receive.
 
 Here are some other known bugs about which 'cvsps' does not yet issue
 warnings:

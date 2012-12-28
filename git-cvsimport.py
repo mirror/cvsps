@@ -38,12 +38,38 @@ def do_or_die(dcmd, legend=""):
     except (OSError, IOError) as e:
         raise Fatal("git-cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
 
+class cvsps:
+    "Method class for cvsps back end."
+    def __init__(self):
+        self.opts = ""
+    def set_repo(self, val):
+        "Set the repository root option."
+        if not val.startswith(":"):
+            if not val.startswith(os.sep):
+                val = os.path.abspath(val)
+            val = ":local:" + val
+        backend_opts += " --root '%s'" % val
+    def set_fuzz(self, val):
+        "Set the commit-similarity window."
+        self.opts += " -z %s" % val
+    def add_opts(self, val):
+        "Add options to the engine command line."
+        self.opts += " " + val
+    def set_exclusion(self, val):
+        "Set a file exclusion regexp."
+        self.opts += " -n -f '%s'" % val
+    def set_module(self.val):
+        "Set the module to query"
+        self.opts += " " + module
+    def command(self):
+        "Emit the command implied by all previous options."
+        return "cvsps --fast-export " + self.opts
+
 if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
         sys.stderr.write("git-cvsimport: requires Python 2.6 or later.")
         sys.exit(1)
-    (options, arguments) = getopt.getopt(sys.argv[1:], "vd:C:r:o:ikus:p:z:P:S:aL:A:Rh")
-    backend_opts = ""
+    (options, arguments) = getopt.getopt(sys.argv[1:], "ve:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
     verbose = 0
     root = None
     outdir = os.getcwd()
@@ -53,15 +79,14 @@ if __name__ == '__main__':
     slashsubst = None
     authormap = None
     revisionmap = False
+    backend = cvsps()
     for (opt, val) in options:
         if opt == '-v':
             verbose += 1
+        elif opt == '-e':
+            sys.stderr.write("git-cvsimport: cvsps is the only engine currently supported.\n")
         elif opt == '-d':
-            if not val.startswith(":"):
-                if not val.startswith(os.sep):
-                    val = os.path.abspath(val)
-                val = ":local:" + val
-            backend_opts += " --root '%s'" % val
+            backend.repo_set(val)
         elif opt == '-C':
             outdir = val
         elif opt == '-r':
@@ -78,9 +103,9 @@ if __name__ == '__main__':
         elif opt == '-s':
             slashsubst = val
         elif opt == '-p':
-            backend_opts += val.replace(",", " ")
+            backend.add_opts(val.replace(",", " "))
         elif opt == '-z':
-            backend_opts += " -Z %s" % val
+            backend.set_fuzz(val)
         elif opt == '-P':
             sys.stderr.write("git-cvsimport: -P is no longer supported.\n")
             sys.exit(1)
@@ -88,7 +113,7 @@ if __name__ == '__main__':
             sys.stderr.write("git-cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
             sys.exit(1)
         elif opt == '-S':
-            backend_opts += " -n -f '%s'" % val
+            backend.set_exclusion(val)
         elif opt == '-a':
             sys.stderr.write("git-cvsimport: -a is no longer supported.\n")
             sys.exit(1)
@@ -101,12 +126,12 @@ if __name__ == '__main__':
             revisionmap = True	# FIXME: Not implemented
         else:
             print """\
-git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
+git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
      [-A <author-conv-file>] [-p <options-for-cvsps>]
      [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
 """         
-    backend_opts += " " + arguments[0]
+    backend.set_module(arguments[0])
     try:
         if outdir:
             try:
@@ -118,8 +143,8 @@ git-cvsimport -o <branch-for-HEAD>] [-h] [-v] [-d <CVSROOT>]
                 # Otherwise, assume user wants incremental import.
                 if not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
-        do_or_die("cvsps --fast-export %s | (cd %s >/dev/null; git fast-import --quiet)" \
-                  % (backend_opts, outdir))
+        do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet)" \
+                  % (backend.command(), outdir))
         os.chdir(outdir)
         tagnames = capture_or_die("git tag -l")
         for tag in tags.split():
