@@ -1899,7 +1899,7 @@ static void print_fast_export(PatchSet * ps)
 	}
 
 	if (psm->post_rev->dead)
-	    printf("D 100644 %s\n", psm->file->filename);
+	    printf("D %s\n", psm->file->filename);
 	else if (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
 	    printf("M 100755 :%d %s\n", ++basemark, psm->file->filename);
 	else
