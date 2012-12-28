@@ -106,6 +106,7 @@ static time_t regression_time;
 static bool selection_sense = true;
 static FILE *revfp;
 static int verbose = 0;
+static bool keyword_suppression = false;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -607,7 +608,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [-T] [-V] [<repository>]");
+    debug(DEBUG_APPERROR, "             [-k] [-T] [-V] [<repository>]");
     debug(DEBUG_APPERROR, "");
     debug(DEBUG_APPERROR, "Where:");
     debug(DEBUG_APPERROR, "  -h display this informative message");
@@ -634,6 +635,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_APPERROR, "  -k suppress CVS keyword expansion");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
     debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
     debug(DEBUG_APPERROR, "  -V emit version and exit");
@@ -763,6 +765,13 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-h") == 0)
 	    return usage(NULL, NULL);
 
+	if (strcmp(argv[i], "-k") == 0)
+	{
+	    keyword_suppression = true;
+	    i++;
+	    continue;
+	}
+	
 	if (strcmp(argv[i], "-l") == 0)
 	{
 	    int err;
@@ -1801,10 +1810,12 @@ static void print_fast_export(PatchSet * ps)
 		  psm->post_rev->rev,
 		  psm->file->filename, 
 		  mark+1);
-	    cvs_rupdate(cvsclient_ctx,
-			repository_path,
-			psm->file->filename,
-			psm->post_rev->rev, ofp);
+	    cvs_update(cvsclient_ctx,
+		       repository_path,
+		       psm->file->filename,
+		       psm->post_rev->rev, 
+		       keyword_suppression,
+		       ofp);
 
 	    /* coverity[toctou] */
 	    if (stat(tf, &st) != 0)
@@ -2289,8 +2300,8 @@ static void do_cvs_diff(PatchSet * ps)
 		exit(1);
 	    }
 
-	    cvs_rupdate(cvsclient_ctx, 
-			repository_path, psm->file->filename, rev, fp);
+	    cvs_update(cvsclient_ctx, 
+		       repository_path, psm->file->filename, rev, keyword_suppression, fp);
 	    pclose(fp);
 	}
 	else

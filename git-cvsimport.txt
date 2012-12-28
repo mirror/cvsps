@@ -73,6 +73,11 @@ OPTIONS
 	ensures the working directory and index remain untouched and will
 	not create them if they do not exist.
 
+-k::
+	Kill keywords: will extract files with '-kk' from the CVS archive
+	to avoid noisy changesets. Highly recommended, but off by default
+	to preserve compatibility with early imported trees.
+
 -u::
 	Convert underscores in tag and branch names to dots.
 
@@ -172,8 +177,8 @@ translations of branchy repos could be mangled.  While the
 required an emergency rewrite of git-cvsimport.  Some compatibility
 with older versions was unavoidably lost
 
-The -a, -k, -o, -L and -P options in older versions of this tool have been
-removed; -kk (keyword expansion suppression) is always on.  
+The -a, -o, -L and -P options in older versions of this tool have been
+removed.
 
 The -m, -M, and -R options are not presently implemented. It is
 planned that -R will be restored in future versions of this program;

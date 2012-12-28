@@ -756,9 +756,10 @@ void cvs_rdiff(CvsServerCtx * ctx,
     ctx_to_fp(ctx, stdout);
 }
 
-void cvs_rupdate(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, FILE *fp)
+void cvs_update(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, bool kk, FILE *fp)
 {
-    send_string(ctx, "Argument -kk\n");
+    if (kk)
+	send_string(ctx, "Argument -kk\n");
     send_string(ctx, "Argument -p\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev);
