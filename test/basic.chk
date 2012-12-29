@@ -91,7 +91,7 @@ data 21
 Testing file removal
 
 from :12
-D 100644 doomed
+D doomed
 
 blob
 mark :14
@@ -107,41 +107,55 @@ Only README should be visible here.
 from :13
 M 100644 :14 README
 
-reset refs/tags/samplebranch_root
-from :15
-
-reset refs/tags/random
-from :15
-
 blob
 mark :16
+data 63
+This is a superflous file, a sanity check for branch creation.
+
+commit refs/heads/master
+mark :17
+committer foo <foo> 1355867672 -0500
+data 52
+Should not generate an extra fileop after branching
+
+from :15
+M 100644 :16 superfluous
+
+reset refs/tags/samplebranch_root
+from :17
+
+reset refs/tags/random
+from :17
+
+blob
+mark :18
 data 38
 This is alternate content for README.
 
 commit refs/heads/samplebranch
-mark :17
-committer foo <foo> 1355867672 -0500
+mark :19
+committer foo <foo> 1355868272 -0500
 data 34
 Do we get branch detection right?
 
 from :15
-M 100644 :16 README
+M 100644 :18 README
 
 blob
-mark :18
+mark :20
 data 30
 I'm back in the saddle again.
 
 commit refs/heads/master
-mark :19
-committer foo <foo> 1355868272 -0500
+mark :21
+committer foo <foo> 1355868872 -0500
 data 44
 This commit should alter the master branch.
 
-from :15
-M 100644 :18 README
+from :17
+M 100644 :20 README
 
 reset refs/tags/illegal
-from :19
+from :21
 
 done

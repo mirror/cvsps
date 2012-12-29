@@ -42,6 +42,11 @@ co.write("README",
          "The file 'doomed' should not be visible at this revision.\n")
 co.commit("Only README should be visible here.")
 
+co.write("superfluous",
+         "This is a superflous file, a sanity check for branch creation.\n")
+co.add("superfluous")
+co.commit("Should not generate an extra fileop after branching")
+
 co.branch("samplebranch")
 
 # This will point at the same commit as the generated samplebranch_root
