@@ -682,7 +682,7 @@ static int parse_args(int argc, char *argv[])
 
 	    fp = fopen(argv[i++], "r");
 	    if (fp == NULL) {
-		fprintf(stderr, "cvsps: couldn't open specified author map.\n");
+		debug(DEBUG_APPERROR, "cvsps: couldn't open specified author map.\n");
 		exit(1);
 	    }
 	    while (fgets(authorline, sizeof(authorline), fp) != NULL)
@@ -882,8 +882,8 @@ static int parse_args(int argc, char *argv[])
 	/* leave this in place so git-cvsimport will cause graceful death */
 	if (strcmp(argv[i], "-u") == 0)
 	{
-	    fprintf(stderr, "cvsps: -u is no longer supported.\n");
-	    fprintf(stderr, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
+	    debug(DEBUG_APPERROR, "cvsps: -u is no longer supported.\n");
+	    debug(DEBUG_APPERROR, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
 	    exit(1);
 	}
 
@@ -991,13 +991,13 @@ static int parse_args(int argc, char *argv[])
 
     if (fast_export && test_log_file)
     {
-	fprintf(stderr, "cvsps: --fast-export and --test-log are not compatible.\n");
+	debug(DEBUG_APPERROR, "cvsps: --fast-export and --test-log are not compatible.\n");
 	exit(1);
     }
 
     if (do_diff && test_log_file)
     {
-	fprintf(stderr, "cvsps: -g and --test-log are not compatible.\n");
+	debug(DEBUG_APPERROR, "cvsps: -g and --test-log are not compatible.\n");
 	exit(1);
     }
 
@@ -1485,7 +1485,7 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
     }
 
     /* 
-     * is this canditate for 'pre' on the same branch as our 'post'? 
+     * is this candidate for 'pre' on the same branch as our 'post'? 
      * this is the normal case
      */
     if (!get_branch(pre, rev->rev))
@@ -1711,7 +1711,7 @@ static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
 	if (!isgraph(*sp) || strchr(BADCHARS, *sp) == NULL) {
 	    *tp++ = *sp;
 	    if (SUFFIX(sanitized,"@{")||SUFFIX(sanitized,"..")) {
-		fprintf(stderr, 
+		debug(DEBUG_APPERROR, 
 			"Tag or branch name %s is ill-formed.\n", 
 			name);
 		exit(1);
@@ -1719,7 +1719,7 @@ static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
 	}
     }
     if (strlen(sanitized) == 0) {
-	fprintf(stderr, 
+	debug(DEBUG_APPERROR, 
 		"Tag or branch name %s was empty after sanitization.\n", 
 		name);
 	exit(1);
@@ -1801,7 +1801,7 @@ static void print_fast_export(PatchSet * ps)
 
 	    if (ofp == NULL)
 	    {
-		fprintf(stderr, "CVS direct retrieval of %s failed.\n",
+		debug(DEBUG_APPERROR, "CVS direct retrieval of %s failed.\n",
 			psm->file->filename);
 		exit(1);
 	    }
@@ -1820,7 +1820,7 @@ static void print_fast_export(PatchSet * ps)
 	    /* coverity[toctou] */
 	    if (stat(tf, &st) != 0)
 	    {
-		fprintf(stderr, "stat(2) of %s:%s copy failed.\n",
+		debug(DEBUG_APPERROR, "stat(2) of %s:%s copy failed.\n",
 			psm->file->filename, psm->post_rev->rev);
 		exit(1);
 	    }
@@ -1828,8 +1828,8 @@ static void print_fast_export(PatchSet * ps)
 	    printf("blob\nmark :%d\ndata %zd\n", ++mark, st.st_size);
 	    if ((cfp = fopen(tf, "r")) == NULL)
 	    {
-		fprintf(stderr, "blobfile open of  %s:%s failed.\n",
-			psm->file->filename, psm->post_rev->rev);
+		debug(DEBUG_APPERROR, "blobfile open of  %s:%s failed.\n",
+		      psm->file->filename, psm->post_rev->rev);
 		exit(1);
 	    }
 	    while ((c = fgetc(cfp)) != EOF)
