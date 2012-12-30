@@ -391,7 +391,7 @@ static void load_from_cvs()
 		chop(new_rev);
 
 		/* 
-		 * rev may already exist (think cvsps -u), in which
+		 * rev may already exist, in which
 		 * case parse_revision is a hash lookup
 		 */
 		rev = parse_revision(file, new_rev);
@@ -406,8 +406,9 @@ static void load_from_cvs()
 		assign_pre_revision(psm, rev);
 
 		/*
-		 * if this is a new revision, it will have no post_psm associated.
-		 * otherwise we are (probably?) hitting the overlap in cvsps -u 
+		 * if this is a new revision, it will have no post_psm
+		 * associated.  otherwise we are (probably?) hitting
+		 * the overlap in cvsps -u
 		 */
 		if (!rev->post_psm)
 		{
