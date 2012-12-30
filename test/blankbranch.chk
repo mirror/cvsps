@@ -1,0 +1,45 @@
+blob
+mark :1
+data 46
+The quick brown fox jumped over the lazy dog.
+
+commit refs/heads/master
+mark :2
+committer foo <foo> 1355862872 -0500
+data 24
+This is a sample commit
+
+M 100644 :1 README
+
+blob
+mark :3
+data 63
+This is a superflous file, a sanity check for branch creation.
+
+commit refs/heads/master
+mark :4
+committer foo <foo> 1355863472 -0500
+data 52
+Should not generate an extra fileop after branching
+
+from :2
+M 100644 :3 superfluous
+
+reset refs/tags/samplebranch_root
+from :4
+
+blob
+mark :5
+data 51
+I date myself with a Jefferson Airplane reference.
+
+commit refs/heads/master
+mark :6
+committer foo <foo> 1355864072 -0500
+data 51
+This file should not appear on the daughter branch
+
+from :4
+M 100644 :5 feedyourhead
+
+done
