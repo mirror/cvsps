@@ -1,6 +1,7 @@
 *.o
 *.d
 *.html
+docbook-xsl.css
 *.1
 cobite
 .debug
