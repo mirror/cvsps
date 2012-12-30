@@ -197,11 +197,9 @@ is required.  'cvsps' tries to warn you about repository histories it can't
 handle; see the cvsps manual page to learn how to interpret the warnings
 you may receive.
 
-Here are some other known bugs about which 'cvsps' does not yet issue
-warnings:
+Here is another known bug about which 'cvsps' does not yet issue a
+warning:
 
- * All files from the branching point are added to a branch even if
-   never added in CVS.
  * This applies to files added to the source branch *after* a daughter
    branch was created: if previously no commit was made on the daughter
    branch they will erroneously be added to the daughter branch in git.
