@@ -1433,6 +1433,13 @@ PatchSet * get_patch_set(const char * dte, const char * log, const char * author
     return retval;
 }
 
+/*
+ * Test whether the argument passed in rev contains a dot.  If it
+ * does not, treat it as a branch name and return it in buff.  If
+ * it does, return the branch part in buff and extract the leaf part
+ * as an integer.
+ */
+
 static bool get_branch_ext(char * buff, const char * rev, int * leaf)
 {
     char * p;
@@ -1454,7 +1461,6 @@ static bool get_branch_ext(char * buff, const char * rev, int * leaf)
 }
 
 static int get_branch(char * buff, const char * rev)
-/* return true if rev is a non-trunk branch */
 {
     return get_branch_ext(buff, rev, NULL);
 }
