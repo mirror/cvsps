@@ -52,6 +52,9 @@ class cvsps:
     def set_fuzz(self, val):
         "Set the commit-similarity window."
         self.opts += " -z %s" % val
+    def set_nokeywords(self, val):
+        "Suppress CVS keyword expansion."
+        self.opts += " -k" % val
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
@@ -77,6 +80,9 @@ class cvs2git:
         "Set the commit-similarity window."
         sys.stderr.write("git-cvsimport: fuzz setting is not supported with cvs2git.\n")
         sys.exit(1)
+    def set_nokeywords(self, val):
+        "Suppress CVS keyword expansion."
+        self.opts += " --keywords-off" % val
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
@@ -128,7 +134,7 @@ if __name__ == '__main__':
         elif opt == '-i':
             import_only = True
         elif opt == '-k':
-            sys.stderr.write("git-cvsimport: -k is permanently on.\n")
+            backend.set_nokeywords()
         elif opt == '-u':
             underscore_to_dot = True
         elif opt == '-s':
@@ -159,7 +165,7 @@ if __name__ == '__main__':
             print """\
 git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
      [-A <author-conv-file>] [-p <options-for-cvsps>]
-     [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
+     [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
 """         
     backend.set_module(arguments[0])

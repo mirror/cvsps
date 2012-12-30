@@ -11,7 +11,7 @@ SYNOPSIS
 [verse]
 'git cvsimport' [-h] [-v] [-d <CVSROOT>]
 	      [-A <author-conv-file>] [-p <options-for-engine>]
-	      [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
+	      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
 	      [-m] [-M <regex>] [-S <regex>]
 	      [-r <remote>] [-R] [<CVS_module>]
 
