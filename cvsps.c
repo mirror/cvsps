@@ -407,8 +407,7 @@ static void load_from_cvs()
 
 		/*
 		 * if this is a new revision, it will have no post_psm
-		 * associated.  otherwise we are (probably?) hitting
-		 * the overlap in cvsps -u
+		 * associated.
 		 */
 		if (!rev->post_psm)
 		{
@@ -419,9 +418,10 @@ static void load_from_cvs()
 		}
 		else
 		{
-		    /* we hit this in cvsps -u mode, we are now up-to-date
-		     * w.r.t this particular file. skip all of the rest 
-		     * of the info (revs and logs) until we hit the next file
+		    /* if we get here, we are now up-to-date w.r.t
+		     * this particular file. skip all of the rest of
+		     * the info (revs and logs) until we hit the next
+		     * file
 		     */
 		    psm = NULL;
 		    state = NEED_EOM;
