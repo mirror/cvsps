@@ -44,7 +44,7 @@ tags: *.c *.h *.c *.h
 	ctags *.c *.h *.c *.h
 
 clean:
-	rm -f cvsps *.o *.o core tags cvsps.1 cvsps.html
+	rm -f cvsps *.o *.o core tags cvsps.1 cvsps.html docbook-xsl.css
 
 SOURCES = Makefile *.[ch] *.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.asc TODO
