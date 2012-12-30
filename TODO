@@ -1,4 +1,4 @@
-Fix the broken double-import case in the t9601 test.
+Test with cvs2git.
 
 Fully incorporate the t9602 and t9603 tests from the git tree.
 

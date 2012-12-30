@@ -13,7 +13,7 @@ if sys.hexversion < 0x02060000:
     sys.stderr.write("git-cvsimport: requires Python 2.6 or later.\n")
     sys.exit(1)
 
-import os, getopt, subprocess
+import os, getopt, subprocess, tempfile
 
 DEBUG_COMMANDS = 1
 
@@ -59,15 +59,40 @@ class cvsps:
         "Set a file exclusion regexp."
         self.opts += " -n -f '%s'" % val
     def set_module(self.val):
-        "Set the module to query"
+        "Set the module to query."
         self.opts += " " + module
     def command(self):
         "Emit the command implied by all previous options."
         return "cvsps --fast-export " + self.opts
 
+class cvs2git:
+    "Method class for cvs2git back end."
+    def __init__(self):
+        self.opts = ""
+    def set_repo(self, val):
+        "Set the repository root option."
+        sys.stderr.write("git-cvsimport: cvs2git must run within a repository checkout directory.\n")
+        sys.exit(1)
+    def set_fuzz(self, val):
+        "Set the commit-similarity window."
+        sys.stderr.write("git-cvsimport: fuzz setting is not supported with cvs2git.\n")
+        sys.exit(1)
+    def add_opts(self, val):
+        "Add options to the engine command line."
+        self.opts += " " + val
+    def set_exclusion(self, val):
+        "Set a file exclusion regexp."
+        self.opts += " --exclude='%s'" % val
+    def set_module(self.val):
+        "Set the module to query."
+        self.opts += " " + module
+    def command(self):
+        "Emit the command implied by all previous options."
+        return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp(), tempfile.mkstemp(), self.opts)
+
 if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
-        sys.stderr.write("git-cvsimport: requires Python 2.6 or later.")
+        sys.stderr.write("git-cvsimport: requires Python 2.6 or later.\n")
         sys.exit(1)
     (options, arguments) = getopt.getopt(sys.argv[1:], "ve:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
     verbose = 0
@@ -84,7 +109,13 @@ if __name__ == '__main__':
         if opt == '-v':
             verbose += 1
         elif opt == '-e':
-            sys.stderr.write("git-cvsimport: cvsps is the only engine currently supported.\n")
+            for cls in (cvsps, cvs2git):
+                if cls.name == val:
+                    backend = cls()
+                    break
+            else:
+                sys.stderr.write("git-cvsimport: unknown engine %s.\n" % val)
+                sys.exit(1)
         elif opt == '-d':
             backend.repo_set(val)
         elif opt == '-C':

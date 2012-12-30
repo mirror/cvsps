@@ -10,7 +10,7 @@ SYNOPSIS
 --------
 [verse]
 'git cvsimport' [-h] [-v] [-d <CVSROOT>]
-	      [-A <author-conv-file>] [-p <options-for-cvsps>]
+	      [-A <author-conv-file>] [-p <options-for-engine>]
 	      [-C <git_repository>] [-z <fuzz>] [-i] [-u] [-s <subst>]
 	      [-m] [-M <regex>] [-S <regex>]
 	      [-r <remote>] [-R] [<CVS_module>]
@@ -192,15 +192,17 @@ editing tools such as 'git-filter-branch' and 'reposurgeon'.
 [[issues]]
 ISSUES
 ------
-Presently the only supported engine is 'cvsps'; at least version 3.3
+The default conversion engine is 'cvsps'; at least version 3.3
 is required.  'cvsps' tries to warn you about repository histories it can't
 handle; see the cvsps manual page to learn how to interpret the warnings
 you may receive.
 
 If the warnings you receive suggest that the repository translation is
-invalid,  consider using cvs2git:
+invalid, consider switching engines to 'cvs2git'.  It is much slower,
+but handles a wider range of pathological cases.
 
-* cvs2git (part of cvs2svn), `http://subversion.apache.org/`
+* cvsps: `http://www.catb.org/~esr/cvsps`
+* cvs2git: `http://cvs2svn.tigris.org`
 
 GIT
 ---
