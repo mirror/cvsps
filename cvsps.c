@@ -1491,7 +1491,7 @@ static void assign_pre_revision(PatchSetMember * psm, CvsFileRevision * rev)
 	    get_branch(pre, post))
 	{
 	    psm->pre_rev = file_get_revision(psm->file, pre);
-	    list_add(&psm->post_rev->link, &psm->pre_rev->branch_children);
+	    list_add(&psm->post_rev->link, &psm->post_rev->branch_children);
 	}
 	else
 	{

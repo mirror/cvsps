@@ -138,7 +138,6 @@ committer foo <foo> 1355868272 -0500
 data 34
 Do we get branch detection right?
 
-from :15
 M 100644 :18 README
 
 blob
