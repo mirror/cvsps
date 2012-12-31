@@ -93,7 +93,7 @@ class CVSRepository:
         "Convert a specified module.  Leave the stream dump in a log file."
         vopt = "-v " * (verbose - DEBUG_CVSPS + 1)
         do_or_die("rm -fr {0} && mkdir {0} && git init --quiet {0}".format(gitdir))
-        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | tee {2}.log | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt))
+        do_or_die('cvsps {3} --root ":local:{0}" --fast-export {1} | {4} | (cd {2} >/dev/null; git fast-import --quiet --done && git checkout)'.format(self.directory, module, gitdir, vopt, "tee %s.log" % module if vopt else "cat"))
     def cleanup(self):
         "Clean up the repository checkout directories."
         if not self.retain:
