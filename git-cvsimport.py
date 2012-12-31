@@ -38,6 +38,21 @@ def do_or_die(dcmd, legend=""):
     except (OSError, IOError) as e:
         raise Fatal("git-cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
 
+def capture_or_die(dcmd, legend=""):
+    "Either execute a command and capture its output or die."
+    if legend:
+        legend = " "  + legend
+    if verbose >= DEBUG_COMMANDS:
+        sys.stdout.write("git-cvsimport: executing '%s'%s\n" % (dcmd, legend))
+    try:
+        return subprocess.check_output(dcmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        if e.returncode < 0:
+            sys.stderr.write("git-cvsimport: child was terminated by signal %d." % -e.returncode)
+        elif e.returncode != 0:
+            sys.stderr.write("git-cvsimport: child returned %d." % e.returncode)
+        sys.exit(1)
+    
 class cvsps:
     "Method class for cvsps back end."
     def __init__(self):
@@ -61,6 +76,9 @@ class cvsps:
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         self.opts += " -n -f '%s'" % val
+    def set_after(self, val):
+        "Set a date threshold for incremental import."
+        self.opts += " -d '%s'" % val
     def set_module(self.val):
         "Set the module to query."
         self.opts += " " + module
@@ -89,6 +107,10 @@ class cvs2git:
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         self.opts += " --exclude='%s'" % val
+    def set_after(self, val):
+        "Set a date threshold for incremental import."
+        sys.stderr.write("git-cvsimport: incremental import is not supported with cvs2git.\n")
+        sys.exit(1)
     def set_module(self.val):
         "Set the module to query."
         self.opts += " " + module
@@ -168,7 +190,6 @@ git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
 """         
-    backend.set_module(arguments[0])
     try:
         if outdir:
             try:
@@ -180,6 +201,9 @@ git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                 # Otherwise, assume user wants incremental import.
                 if not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
+                threshold = capture_or_die("git log -1 --format=%ct")
+                backend.set_after(threshold)
+        backend.set_module(arguments[0])
         do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet)" \
                   % (backend.command(), outdir))
         os.chdir(outdir)
