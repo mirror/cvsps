@@ -134,7 +134,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	read_line(ctx, buff, BUFSIZ);
 	if (strncmp(buff, "Valid-requests", 14) != 0)
 	{
-	    debug(DEBUG_APPERROR, "cvsclient: bad response to valid-requests command");
+	    debug(DEBUG_APPERROR, "cvsclient: bad response '%s' to valid-requests command", buff);
 	    close_cvs_server(ctx);
 	    return NULL;
 	}
