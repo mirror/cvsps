@@ -64,13 +64,16 @@ class cvsps:
             if not val.startswith(os.sep):
                 val = os.path.abspath(val)
             val = ":local:" + val
-        backend_opts += " --root '%s'" % val
+        self.opts += " --root '%s'" % val
+    def set_authormap(self, val):
+        "Set the author-map file."
+        self.opts += " -A '%s'" % val
     def set_fuzz(self, val):
         "Set the commit-similarity window."
         self.opts += " -z %s" % val
-    def set_nokeywords(self, val):
+    def set_nokeywords(self):
         "Suppress CVS keyword expansion."
-        self.opts += " -k" % val
+        self.opts += " -k"
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
@@ -86,7 +89,7 @@ class cvsps:
         self.opts += " -R '%s'" % self.revmap
     def set_module(self, val):
         "Set the module to query."
-        self.opts += " " + module
+        self.opts += " " + val
     def command(self):
         "Emit the command implied by all previous options."
         return "cvsps --fast-export " + self.opts
@@ -95,33 +98,37 @@ class cvs2git:
     "Method class for cvs2git back end."
     def __init__(self):
         self.opts = ""
-    def set_repo(self, val):
+    def set_authormap(self, _val):
+        "Set the author-map file."
+        sys.stderr.write("git cvsimport: author maping is not supported with cvs2git.\n")
+        sys.exit(1)
+    def set_repo(self, _val):
         "Set the repository root option."
         sys.stderr.write("git cvsimport: cvs2git must run within a repository checkout directory.\n")
         sys.exit(1)
-    def set_fuzz(self, val):
+    def set_fuzz(self, _val):
         "Set the commit-similarity window."
         sys.stderr.write("git cvsimport: fuzz setting is not supported with cvs2git.\n")
         sys.exit(1)
-    def set_nokeywords(self, val):
+    def set_nokeywords(self):
         "Suppress CVS keyword expansion."
-        self.opts += " --keywords-off" % val
+        self.opts += " --keywords-off"
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         self.opts += " --exclude='%s'" % val
-    def set_after(self, val):
+    def set_after(self, _val):
         "Set a date threshold for incremental import."
         sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
-    def set_revmap(self, val):
+    def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
     def set_module(self, val):
         "Set the module to query."
-        self.opts += " " + module
+        self.opts += " " + val
     def command(self):
         "Emit the command implied by all previous options."
         return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts)
@@ -130,19 +137,23 @@ class filesource:
     "Method class for file-source back end."
     def __init__(self, filename):
         self.filename = filename
-    def __complain(self):
+    def __complain(self, legend):
         sys.stderr.write("git cvsimport: %s with file source.\n" % legend)
         sys.exit(1)
-    def set_repo(self, legend):
+    def set_repo(self, _val):
         "Set the repository root option."
         self.__complain("repository can't be set")
+    def set_authormap(self, _val):
+        "Set the author-map file."
+        sys.stderr.write("git cvsimport: author maping is not supported with filesource.\n")
+        sys.exit(1)
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
         self.__complain("fuzz can't be set")
     def set_nokeywords(self, _val):
         "Suppress CVS keyword expansion."
         self.__complain("keyword suppression can't be set")
-    def add_opts(self, val):
+    def add_opts(self, _val):
         "Add options to the engine command line."
         self.__complain("other options can't be set")
     def set_exclusion(self, _val):
@@ -151,7 +162,7 @@ class filesource:
     def set_after(self, _val):
         "Set a date threshold for incremental import."
         pass
-    def set_revmap(self, val):
+    def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
@@ -185,14 +196,14 @@ if __name__ == '__main__':
             bare = True
         elif opt == '-e':
             for cls in (cvsps, cvs2git):
-                if cls.name == val:
+                if cls.__name__ == val:
                     backend = cls()
                     break
             else:
                 sys.stderr.write("git cvsimport: unknown engine %s.\n" % val)
                 sys.exit(1)
         elif opt == '-d':
-            backend.repo_set(val)
+            backend.set_repo(val)
         elif opt == '-C':
             outdir = val
         elif opt == '-r':
@@ -227,7 +238,7 @@ if __name__ == '__main__':
             sys.stderr.write("git cvsimport: -L is no longer supported.\n")
             sys.exit(1)
         elif opt == '-A':
-            backend_opts += " -A '%s'" % val
+            backend.set_authormap(val)
         elif opt == '-R':
             revisionmap = True
         else:
@@ -244,7 +255,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 # and initialize it as a git repository.
                 os.mkdir(outdir)
                 do_or_die("git init " + outdir)
-            except:
+            except OSError:
                 # Otherwise, assume user wants incremental import.
                 if not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
@@ -265,7 +276,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         os.chdir(outdir)
         if underscore_to_dot or slashsubst:
             tagnames = capture_or_die("git tag -l")
-            for tag in tags.split():
+            for tag in tagnames.split():
                 if tag:
                     changed = tag
                     if underscore_to_dot:
@@ -273,7 +284,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                     if slashsubst:
                         changed = changed.replace(os.sep, slashsubst)
                     if changed != tag:
-                        do_or_die("git tag -f %s %s >/dev/null" % (tag,changed))
+                        do_or_die("git tag -f %s %s >/dev/null" % (tag, changed))
         if underscore_to_dot or slashsubst or remotize:
             branchnames = capture_or_die("git branch -l")
             for branch in branchnames.split():
@@ -288,7 +299,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                     if remotize:
                         changed = os.path.join("remotes", remotize, branch)
                     if changed != branch:
-                        do_or_die("branch --m %s %s >/dev/null" % (branch,changed))
+                        do_or_die("branch --m %s %s >/dev/null" % (branch, changed))
         if revisionmap:
             refd = {}
             for line in open(backend.revmap):
