@@ -12,7 +12,7 @@ SYNOPSIS
 'git cvsimport' [-h] [-v] [-d <CVSROOT>]
 	      [-A <author-conv-file>] [-p <options-for-engine>]
 	      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
-	      [-m] [-M <regex>] [-S <regex>]
+	      [-P <cvsps-output-file>] [-m] [-M <regex>] [-S <regex>]
 	      [-r <remote>] [-R] [<CVS_module>]
 
 
@@ -98,6 +98,11 @@ OPTIONS
 	Pass the timestamp fuzz factor, in seconds. If unset, this has 
 	an engine-dependent default - usually 300s.
 
+-P <cvsps-output-file>::
+	Instead of calling a conversion engine, read the provided
+	import-stream file. Useful for debugging or when the first
+	stage of conversion is being handled outside cvsimport.
+
 -m::
 	Attempt to detect merges based on the commit message. This option
 	will enable default regexes that try to capture the source
@@ -182,11 +187,12 @@ cvsps solved the problem, it required an emergency rewrite of
 git-cvsimport.  Some compatibility with older versions was unavoidably
 lost
 
-The -a, -o, -L and -P options in older versions of this tool have been
-removed.  Certain older versions could take a named timezone (like
-"America/Chicago") in an author-map file rather than just a [+-]hhmm
-offset; this version doesn't do that, but the capability may be
-restored in a future release.
+The -a, -o, and -L options in older versions of this tool have been
+removed (in effect, -a is always on; you can negate it with a suitably
+crafted -d argument).  Certain older versions could take a named
+timezone (like "America/Chicago") in an author-map file rather than
+just a [+-]hhmm offset; this version doesn't do that, but the
+capability may be restored in a future release.
 
 The -m, -M, and -R options are not presently implemented. It is
 planned that -R will be restored in future versions of this program;

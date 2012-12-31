@@ -118,6 +118,38 @@ class cvs2git:
         "Emit the command implied by all previous options."
         return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp(), tempfile.mkstemp(), self.opts)
 
+class filesource:
+    "Method class for file-source back end."
+    def __init__(self):
+        self.opts = ""
+    def __complain(self):
+        sys.stderr.write("git-cvsimport: %s with file source.\n" % legend)
+        sys.exit(1)
+    def set_repo(self, legend):
+        "Set the repository root option."
+        self.__complain("repository can't be set")
+    def set_fuzz(self, _val):
+        "Set the commit-similarity window."
+        self.__complain("fuzz can't be set")
+    def set_nokeywords(self, _val):
+        "Suppress CVS keyword expansion."
+        self.__complain("keyword suppression can't be set")
+    def add_opts(self, val):
+        "Add options to the engine command line."
+        self.__complain("other options can't be set")
+    def set_exclusion(self, _val):
+        "Set a file exclusion regexp."
+        self.__complain("exclusions can't be set")
+    def set_after(self, _val):
+        "Set a date threshold for incremental import."
+        pass
+    def set_module(self._val):
+        "Set the module to query."
+        self.__complain("module can't be set")
+    def command(self):
+        "Emit the command implied by all previous options."
+        return "cat " + self.filename
+
 if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
         sys.stderr.write("git-cvsimport: requires Python 2.6 or later.\n")
@@ -166,7 +198,7 @@ if __name__ == '__main__':
         elif opt == '-z':
             backend.set_fuzz(val)
         elif opt == '-P':
-            sys.stderr.write("git-cvsimport: -P is no longer supported.\n")
+            backend = filesource(val)
             sys.exit(1)
         elif opt in ('-m', '-M'):
             sys.stderr.write("git-cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
@@ -186,7 +218,7 @@ if __name__ == '__main__':
         else:
             print """\
 git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
-     [-A <author-conv-file>] [-p <options-for-cvsps>]
+     [-A <author-conv-file>] [-p <options-for-cvsps>] [-P <source-file>
      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
 """         
