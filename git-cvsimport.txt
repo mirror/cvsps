@@ -9,12 +9,10 @@ git-cvsimport - Salvage your data out of another SCM people love to hate
 SYNOPSIS
 --------
 [verse]
-'git cvsimport' [-h] [-v] [-d <CVSROOT>]
-	      [-A <author-conv-file>] [-p <options-for-engine>]
-	      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
-	      [-P <cvsps-output-file>] [-m] [-M <regex>] [-S <regex>]
-	      [-r <remote>] [-R] [<CVS_module>]
-
+'git cvsimport' [-A <author-conv-file>] [-C <git_repository>] [-d <CVSROOT>]
+              [-h] [-i] [-k] [-m] [-M <regex>] [-p <options-for-engine>]
+	      [-P <cvsps-output-file>] [-r <remote>] [-R] [-s <subst>]
+	      [-S <regex>] [-u] [-v] [-z <fuzz>] [<CVS_module>]
 
 DESCRIPTION
 -----------
@@ -44,85 +42,6 @@ See linkgit:gitcvs-migration[7].
 
 OPTIONS
 -------
--v::
-	Verbosity: let 'cvsimport' report what it is doing.
-
--d <CVSROOT>::
-	The root of the CVS archive. May be local (a simple path) or remote;
-	currently, only the :local:, :ext: and :pserver: access methods
-	are supported. If not given, 'git cvsimport' will try to read it
-	from `CVS/Root`. If no such file exists, it checks for the
-	`CVSROOT` environment variable.
-
-<CVS_module>::
-	The CVS module you want to import. Relative to <CVSROOT>.
-	If not given, 'git cvsimport' tries to read it from
-	`CVS/Repository`.
-
--e <engine>::
-	Splitting the CVS log into patch sets is done by an engine program,
-	which must emit a git fast-import stream to standard output.
-	This option changes the engine used; when given, it must be the
-	first option on the command line.
-
--C <target-dir>::
-        The git repository to import to.  If the directory doesn't
-        exist, it will be created.  Default is the current directory.
-
--r <remote>::
-	The git remote to import this CVS repository into.
-	Moves all CVS branches into remotes/<remote>/<branch>
-	akin to the way 'git clone' uses 'origin' by default.
-
--i::
-	Import-only: don't perform a checkout after importing.  This option
-	ensures the working directory and index remain untouched and will
-	not create them if they do not exist.
-
--k::
-	Kill keywords: will extract files with '-kk' from the CVS archive
-	to avoid noisy changesets. Highly recommended, but off by default
-	to preserve compatibility with early imported trees.
-
--u::
-	Convert underscores in tag and branch names to dots.
-
--s <subst>::
-	Substitute the character "/" in branch names with <subst>
-
--p <options-for-engine>::
-	Additional options for the engine. If you need to pass
-	multiple options, separate them with a comma.
-
--z <fuzz>::
-	Pass the timestamp fuzz factor, in seconds. If unset, this has 
-	an engine-dependent default - usually 300s.
-
--P <cvsps-output-file>::
-	Instead of calling a conversion engine, read the provided
-	import-stream file. Useful for debugging or when the first
-	stage of conversion is being handled outside cvsimport.
-
--m::
-	Attempt to detect merges based on the commit message. This option
-	will enable default regexes that try to capture the source
-	branch name from the commit message.
-	Not presently implemented; see <<COMPATIBILITY>>.
-
--M <regex>::
-	Attempt to detect merges based on the commit message with a custom
-	regex. It can be used with '-m' to enable the default regexes
-	as well. You must escape forward slashes.
-+
-The regex must capture the source branch name in $1.
-+
-This option can be used several times to provide several detection regexes.
-+
-Not presently implemented; see <<COMPATIBILITY>>.
-
--S <regex>::
-	Skip paths matching the regex.
-
 -A <author-conv-file>::
 	CVS by default uses the Unix username when writing its
 	commit logs. Using this option and an author-conv-file
@@ -148,6 +67,67 @@ It is not recommended to use this feature if you intend to
 export changes back to CVS again later with
 'git cvsexportcommit'.
 
+-C <target-dir>::
+        The git repository to import to.  If the directory doesn't
+        exist, it will be created.  Default is the current directory.
+
+-d <CVSROOT>::
+	The root of the CVS archive. May be local (a simple path) or remote;
+	currently, only the :local:, :ext: and :pserver: access methods
+	are supported. If not given, 'git cvsimport' will try to read it
+	from `CVS/Root`. If no such file exists, it checks for the
+	`CVSROOT` environment variable.
+
+-e <engine>::
+	Splitting the CVS log into patch sets is done by an engine program,
+	which must emit a git fast-import stream to standard output.
+	This option changes the engine used; when given, it must be the
+	first option on the command line.
+
+-h::
+	Print a short usage message and exit.
+
+-i::
+	Import-only: don't perform a checkout after importing.  This option
+	ensures the working directory and index remain untouched and will
+	not create them if they do not exist.
+
+-k::
+	Kill keywords: will extract files with '-kk' from the CVS archive
+	to avoid noisy changesets. Highly recommended, but off by default
+	to preserve compatibility with early imported trees.
+
+-m::
+	Attempt to detect merges based on the commit message. This option
+	will enable default regexes that try to capture the source
+	branch name from the commit message.
+	Not presently implemented; see <<COMPATIBILITY>>.
+
+-M <regex>::
+	Attempt to detect merges based on the commit message with a custom
+	regex. It can be used with '-m' to enable the default regexes
+	as well. You must escape forward slashes.
++
+The regex must capture the source branch name in $1.
++
+This option can be used several times to provide several detection regexes.
++
+Not presently implemented; see <<COMPATIBILITY>>.
+
+-P <cvsps-output-file>::
+	Instead of calling a conversion engine, read the provided
+	import-stream file. Useful for debugging or when the first
+	stage of conversion is being handled outside cvsimport.
+
+-r <remote>::
+	The git remote to import this CVS repository into.
+	Moves all CVS branches into remotes/<remote>/<branch>
+	akin to the way 'git clone' uses 'origin' by default.
+
+-p <options-for-engine>::
+	Additional options for the engine. If you need to pass
+	multiple options, separate them with a comma.
+
 -R::
 	Generate a `$GIT_DIR/cvs-revisions` file containing a mapping from CVS
 	revision numbers to newly-created Git commit IDs.  The generated file
@@ -164,15 +144,30 @@ doing incremental imports.
 This option may be useful if you have CVS revision numbers stored in commit
 messages, bug-tracking systems, email archives, and the like.
 +
-Not presently implemented; see <<COMPATIBILITY>>.
+-s <subst>::
+	Substitute the character "/" in branch names with <subst>
 
+-S <regex>::
+	Skip paths matching the regex.
 
--h::
-	Print a short usage message and exit.
+-u::
+	Convert underscores in tag and branch names to dots.
+
+-v::
+	Verbosity: let 'cvsimport' report what it is doing.
+
+-z <fuzz>::
+	Pass the timestamp fuzz factor, in seconds. If unset, this has 
+	an engine-dependent default - usually 300s.
+
+<CVS_module>::
+	The CVS module you want to import. Relative to <CVSROOT>.
+	If not given, 'git cvsimport' tries to read it from
+	`CVS/Repository`.
 
 OUTPUT
 ------
-If '-v' is specified, the script reports what it is doing.
+If '-v' is specified, the program reports what it is doing.
 
 Otherwise, success is indicated the Unix way, i.e. by simply exiting with
 a zero exit status.
