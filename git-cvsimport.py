@@ -98,6 +98,7 @@ class cvs2git:
     "Method class for cvs2git back end."
     def __init__(self):
         self.opts = ""
+        self.modulepath = "."
     def set_authormap(self, _val):
         "Set the author-map file."
         sys.stderr.write("git cvsimport: author maping is not supported with cvs2git.\n")
@@ -122,16 +123,17 @@ class cvs2git:
     def set_after(self, _val):
         "Set a date threshold for incremental import."
         sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
+        sys.exit(1)
     def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
     def set_module(self, val):
         "Set the module to query."
-        self.opts += " " + val
+        self.modulepath = " " + val
     def command(self):
         "Emit the command implied by all previous options."
-        return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts)
+        return "(cvs2git --username=git-cvsimport --quiet --quiet --blobfile={0} --dumpfile={1} {2} {3} && cat {0} {1} && rm {0} {1})".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts, self.modulepath)
 
 class filesource:
     "Method class for file-source back end."

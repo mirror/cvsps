@@ -1,5 +1,3 @@
-Test with cvs2git.
-
 Simulate CVS's default ignore patterns in a generated .gitignore?
 
 Mine the cvs2svn design notes for ideas:

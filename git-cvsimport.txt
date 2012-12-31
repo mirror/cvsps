@@ -197,8 +197,9 @@ handle; see the cvsps manual page to learn how to interpret the warnings
 you may receive.
 
 If the warnings you receive suggest that the repository translation is
-invalid, consider switching engines to 'cvs2git'.  It is much slower,
-and needs to be run from within a checkout directory, but it handles a
+invalid, consider switching engines to 'cvs2git'. 'cvs2git' takes a
+path option pointing to a to a repository module subdirectory,
+defaulting to ".".  It is much slower than cvsps, but handles a
 wider range of pathological cases.
 
 * cvsps: `http://www.catb.org/~esr/cvsps`
