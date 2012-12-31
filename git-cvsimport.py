@@ -254,7 +254,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 # If the output directory does not exist, create it
                 # and initialize it as a git repository.
                 os.mkdir(outdir)
-                do_or_die("git init " + outdir)
+                do_or_die("git init --quiet " + outdir)
             except OSError:
                 # Otherwise, assume user wants incremental import.
                 if not os.path.exists(os.path.join(outdir, ".git")):
