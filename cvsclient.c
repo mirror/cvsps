@@ -212,6 +212,11 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
 	p++;
 	memcpy(port, p, tok - p);
 	port[tok - p] = '\0';
+	if (port[0] == '\0')
+	{
+	    debug(DEBUG_APPERROR, "parse error: empty port number, probably from extraneous ':'.");
+	    goto out_free_err;
+	}
     }
     else
     {
