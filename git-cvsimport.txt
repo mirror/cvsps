@@ -9,10 +9,11 @@ git-cvsimport - Salvage your data out of another SCM people love to hate
 SYNOPSIS
 --------
 [verse]
-'git cvsimport' [-A <author-conv-file>] [-C <git_repository>] [-d <CVSROOT>]
-              [-h] [-i] [-k] [-m] [-M <regex>] [-p <options-for-engine>]
-	      [-P <cvsps-output-file>] [-r <remote>] [-R] [-s <subst>]
-	      [-S <regex>] [-u] [-v] [-z <fuzz>] [<CVS_module>]
+'git cvsimport' [-A <author-conv-file>] [-b] [-C <git_repository>] 
+              [-d <CVSROOT>] [-h] [-i] [-k] [-m] [-M <regex>] 
+	      [-p <options-for-engine>] [-P <cvsps-output-file>] 
+	      [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u] 
+	      [-v] [-z <fuzz>] [<CVS_module>]
 
 DESCRIPTION
 -----------
@@ -66,6 +67,9 @@ file each time 'git cvsimport' is run.
 It is not recommended to use this feature if you intend to
 export changes back to CVS again later with
 'git cvsexportcommit'.
+
+-b::
+	Create a bare repo.
 
 -C <target-dir>::
         The git repository to import to.  If the directory doesn't

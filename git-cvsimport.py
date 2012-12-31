@@ -166,8 +166,9 @@ if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
         sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
         sys.exit(1)
-    (options, arguments) = getopt.getopt(sys.argv[1:], "ve:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
+    (options, arguments) = getopt.getopt(sys.argv[1:], "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
     verbose = 0
+    bare = False
     root = None
     outdir = os.getcwd()
     remotize = False
@@ -180,6 +181,8 @@ if __name__ == '__main__':
     for (opt, val) in options:
         if opt == '-v':
             verbose += 1
+        elif opt == '-b':
+            bare = True
         elif opt == '-e':
             for cls in (cvsps, cvs2git):
                 if cls.name == val:
@@ -229,10 +232,10 @@ if __name__ == '__main__':
             revisionmap = True
         else:
             print """\
-git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
-     [-A <author-conv-file>] [-p <options-for-cvsps>] [-P <source-file>
-     [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
-     [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
+git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
+     [-e engine] [-h] [-i] [-k] [-m] [-M <regex>] [-p <options-for-cvsps>]
+     [-P <source-file>] [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u]
+     [-v] [-z <fuzz>] [<CVS_module>]
 """         
     try:
         if outdir:
@@ -253,8 +256,10 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
         if arguments:
             backend.set_module(arguments[0])
         gitopts = ""
+        if bare:
+            gitopts += " --bare"
         if revisionmap:
-            gitopts = " --export-marks='%s'" % markmap
+            gitopts += " --export-marks='%s'" % markmap
         do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
                   % (backend.command(), outdir, gitopts))
         os.chdir(outdir)
@@ -297,7 +302,10 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                     continue
                 (mark, hashd) = line.split()
                 markd[mark] = hashd
-            with open(".git/cvs-revisions", "w") as wfp:
+            cvs_revisions = "cvs-revisions"
+            if not bare:
+                cvs_revisions = os.path.join(".git", cvs_revisions) 
+            with open(cvs_revisions, "w") as wfp:
                 for ((fn, rev), val) in refd.items():
                     if val in markd:
                         wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
