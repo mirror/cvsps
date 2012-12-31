@@ -20,11 +20,11 @@ DESCRIPTION
 Imports a CVS repository into git. This tool will either create a new
 repository, or incrementally import into an existing one.
 
-*WARNING:* CVS lends itself to all manner of perversities; not all
-sequences of CVS operations can be translated into an import stream,
-and importing is not guaranteed to produce a perfectly accurate
-representation of CVS history. Please see the section on
-<<issues,engine-specific issues>> for further reference.
+*WARNING:* The CVS model of version control lends itself to all manner
+of perversities; not all sequences of CVS operations can be translated
+into an import stream, and importing is not guaranteed to produce a
+perfectly accurate representation of CVS history. Please see the
+section on <<issues,engine-specific issues>> for further reference.
 
 OPTIONS
 -------
@@ -178,7 +178,7 @@ just a [+-]hhmm offset; this version doesn't do that, but the
 capability may be restored in a future release.
 
 The -m, and -M options are not presently implemented. In future
-versions of this program; -m and -M may be either restored or retired
+versions of this program -m and -M may be either restored or retired
 in favor of more flexible editing tools such as 'git-filter-branch'
 and 'reposurgeon'.
 
