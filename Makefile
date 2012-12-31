@@ -17,7 +17,7 @@ OBJS= debug.o \
 all: cvsps 
 
 deps:
-	makedepend -Y -I. *.c *.c
+	makedepend -Y -I. *.c
 
 cvsps: $(OBJS)
 	$(CC) -o cvsps $(OBJS) -lz
@@ -40,13 +40,13 @@ install: cvsps.1
 	install cvsps $(prefix)/bin
 	install -m 644 cvsps.1 $(prefix)/share/man/man1
 
-tags: *.c *.h *.c *.h
-	ctags *.c *.h *.c *.h
+tags: *.c *.h
+	ctags *.c *.h
 
 clean:
-	rm -f cvsps *.o *.o core tags cvsps.1 cvsps.html docbook-xsl.css
+	rm -f cvsps *.o core tags cvsps.1 cvsps.html docbook-xsl.css
 
-SOURCES = Makefile *.[ch] *.[ch] merge_utils.sh
+SOURCES = Makefile *.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.asc TODO
 ALL =  $(SOURCES) $(DOCS) control
 cvsps-$(VERSION).tar.gz: $(ALL)
