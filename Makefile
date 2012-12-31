@@ -28,6 +28,11 @@ check:
 cppcheck:
 	cppcheck --template gcc --enable=all --suppress=unusedStructMember *.[ch]
 
+COMMON_PYLINT = --rcfile=/dev/null --reports=n --include-ids=y
+PYLINTOPTS1 = $(COMMON_PYLINT) --disable="C0103,C0111,C0301,W0621,R0201,E1103"
+pylint:
+	@pylint --output-format=parseable $(PYLINTOPTS1) git-cvsimport.py
+
 # Requires asciidoc
 cvsps.1: cvsps.asc
 	a2x --doctype manpage --format manpage cvsps.asc

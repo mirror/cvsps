@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
     if (parse_rc() < 0)
 	exit(1);
 
+    /* coverity[tainted_data] */
     if (parse_args(argc, argv) < 0)
 	exit(1);
 
@@ -682,6 +683,7 @@ static int parse_args(int argc, char *argv[])
 		debug(DEBUG_APPERROR, "cvsps: couldn't open specified author map.\n");
 		exit(1);
 	    }
+	    /* coverity[tainted_data] */
 	    while (fgets(authorline, sizeof(authorline), fp) != NULL)
 	    {
 		char *shortname, *longname, *timezone, *eq, *cp;
@@ -1818,6 +1820,7 @@ static void print_fast_export(PatchSet * ps)
 		       psm->post_rev->rev, 
 		       keyword_suppression,
 		       ofp);
+	    fclose(ofp);
 
 	    /* coverity[toctou] */
 	    if (stat(tf, &st) != 0)
