@@ -13,7 +13,7 @@ if sys.hexversion < 0x02060000:
     sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
     sys.exit(1)
 
-import os, getopt, subprocess, tempfile
+import os, getopt, subprocess, tempfile, shutil
 
 DEBUG_COMMANDS = 1
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
             sys.stderr.write("git cvsimport: -L is no longer supported.\n")
             sys.exit(1)
         elif opt == '-A':
-            backend.set_authormap(val)
+            authormap = val
         elif opt == '-R':
             revisionmap = True
         else:
@@ -248,6 +248,12 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
      [-P <source-file>] [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u]
      [-v] [-z <fuzz>] [<CVS_module>]
 """         
+
+    def metadata(fn):
+        if bare:
+            return fn
+        else:
+            return os.path.join(".git", fn) 
     try:
         if outdir:
             try:
@@ -257,7 +263,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 do_or_die("git init --quiet " + outdir)
             except OSError:
                 # Otherwise, assume user wants incremental import.
-                if not os.path.exists(os.path.join(outdir, ".git")):
+                if not bare and not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
                 threshold = capture_or_die("git log -1 --format=%ct").strip()
                 backend.set_after(threshold)
@@ -271,6 +277,10 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
             gitopts += " --bare"
         if revisionmap:
             gitopts += " --export-marks='%s'" % markmap
+        if authormap:
+            shutil.filecopy(authormap, metadata("cvs_authors"))
+        if os.path.exists(metadata("cvs-authors")):
+            backend.set_authormap(metadata("cvs-authors"))
         do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
                   % (backend.command(), outdir, gitopts))
         os.chdir(outdir)
@@ -313,10 +323,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                     continue
                 (mark, hashd) = line.split()
                 markd[mark] = hashd
-            cvs_revisions = "cvs-revisions"
-            if not bare:
-                cvs_revisions = os.path.join(".git", cvs_revisions) 
-            with open(cvs_revisions, "w") as wfp:
+            with open(metadata("cvs-revisions"), "w") as wfp:
                 for ((fn, rev), val) in refd.items():
                     if val in markd:
                         wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
