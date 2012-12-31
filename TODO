@@ -1,7 +1,5 @@
 Test with cvs2git.
 
-Fully incorporate the t9602 and t9603 tests from the git tree.
-
 Simulate CVS's default ignore patterns in a generated .gitignore?
 
 Mine the cvs2svn design notes for ideas:
