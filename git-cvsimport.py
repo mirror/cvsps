@@ -322,7 +322,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                         wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
             os.remove(markmap)
             os.remove(backend.revmap)
-        if not import_only:
+        if not import_only and not bare:
             do_or_die("git checkout -q")
     except Fatal, err:
         sys.stderr.write("git_cvsimport: " + err.msg + "\n")
