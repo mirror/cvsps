@@ -233,7 +233,6 @@ git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                         changed = os.path.join("remotes", remotize, branch)
                     if changed != branch:
                         do_or_die("branch --m %s %s >/dev/null" % (branch,changed))
-        # Implementation of postprocessing options go here
         if not import_only:
             do_or_die("git checkout -q")
     except Fatal, err:
