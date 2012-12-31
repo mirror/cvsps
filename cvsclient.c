@@ -187,7 +187,8 @@ static CvsServerCtx * open_ctx_pserver(CvsServerCtx * ctx, const char * p_root)
     /* parse initial "user@server" portion of p. */
     tok = strsep(&p, "@");
     tok2 = p;
-    p += strcspn(p, ":/"); /* server part ends at first ':' or '/'. */
+    if (p)
+	p += strcspn(p, ":/"); /* server part ends at first ':' or '/'. */
     if (!tok || !tok2 || !strlen(tok) || 0 >= (p - tok2))
     {
 	debug(DEBUG_APPERROR, "parse error on user@server in pserver");
