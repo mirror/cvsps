@@ -17,7 +17,7 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Imports a CVS repository into git. It will either create a new
+Imports a CVS repository into git. This tool will either create a new
 repository, or incrementally import into an existing one.
 
 *WARNING:* CVS lends itself to all manner of perversities; not all
@@ -25,11 +25,6 @@ sequences of CVS operations can be translated into an import stream,
 and importing is not guaranteed to produce a perfectly accurate
 representation of CVS history. Please see the section on
 <<issues,engine-specific issues>> for further reference.
-
-If you intend to set up a shared public repository that all developers can
-read/write, or if you want to use linkgit:git-cvsserver[1], then you
-probably want to make a bare clone of the imported repository using
-the -b option. See linkgit:gitcvs-migration[7].
 
 OPTIONS
 -------
@@ -46,8 +41,7 @@ OPTIONS
 +
 'git cvsimport' will make it appear as those authors had
 their GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL set properly
-all along.  If a timezone is specified, GIT_AUTHOR_DATE will
-have the corresponding offset appended to it.
+all along.
 +
 For convenience, this data is saved to `$GIT_DIR/cvs-authors`
 each time the '-A' option is provided and read from that same
@@ -58,7 +52,11 @@ export changes back to CVS again later with
 'git cvsexportcommit'.
 
 -b::
-	Create a bare repo.
+        Create a bare repo. If you intend to set up a shared public
+	repository that all developers can read/write, or if you want
+	to use linkgit:git-cvsserver[1], then you probably want to
+	make a bare clone of the imported repository using this
+	option. See linkgit:gitcvs-migration[7].
 
 -C <target-dir>::
         The git repository to import to.  If the directory doesn't
