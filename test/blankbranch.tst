@@ -7,7 +7,7 @@
 #   branch was created: if previously no commit was made on the daughter
 #   branch they will erroneously be added to the daughter branch in git.
 
-import cvstest
+import cvspstest
 
 repo = cvstest.CVSRepository("blankbranch.repo")
 repo.init()

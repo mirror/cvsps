@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ## A branchy repo with deletions and only valid tags
 
-import cvstest
+import cvspstest
 
 repo = cvstest.CVSRepository("basic.repo")
 repo.init()
