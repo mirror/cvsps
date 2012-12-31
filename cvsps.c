@@ -254,7 +254,6 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
-#ifdef HEIKO
 void detect_and_repair_time_skew(const char *last_date, char *date, int n,
                                  PatchSetMember *psm)
 {
@@ -262,6 +261,7 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
     time_t smaller;
     time_t bigger;
     char *rev_end;
+    long int conv;
 
     /* if last_date does not exist do nothing */
     if (last_date[0] == '\0')
@@ -271,8 +271,8 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
     /* check whether rev is of the form /1.[0-9]+/ */
     if (psm->post_rev->rev[0] != '1' || psm->post_rev->rev[1] != '.')
         return;
-    strtol(psm->post_rev->rev+2, &rev_end, 10);
-    if (*rev_end != '\0')
+    conv = strtol(psm->post_rev->rev+2, &rev_end, 10);
+    if (conv == LONG_MIN || conv ==  LONG_MAX || *rev_end != '\0')
         return;
 
     /* important: because rlog is showing revisions backwards last_date should
@@ -293,7 +293,6 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
         strftime(date, n, "%Y-%m-%d %H:%M:%S", ts);
     }
 }
-#endif
 
 static void load_from_cvs()
 {
@@ -303,9 +302,7 @@ static void load_from_cvs()
     CvsFile * file = NULL;
     PatchSetMember * psm = NULL;
     char datebuff[26];
-#ifdef HEIKO
     char last_datebuff[20];
-#endif
     char authbuff[AUTH_STR_MAX];
     char cidbuff[CID_STR_MAX];
     int logbufflen = LOG_STR_MAX + 1;
@@ -324,10 +321,8 @@ static void load_from_cvs()
 	exit(1);
     }
 
-#ifdef HEIKO
     /* initialize the last_datebuff with value indicating invalid date */
     last_datebuff[0]='\0';
-#endif
     for (;;)
     {
 	char * tst;
@@ -483,11 +478,9 @@ static void load_from_cvs()
 		if (psm)
 		{
 		    PatchSet *ps;
-#ifdef HEIKO
 		    detect_and_repair_time_skew(last_datebuff, 
 						datebuff, sizeof(datebuff), 
 						psm);
-#endif
 		    ps = get_patch_set(datebuff,
 				       logbuff,
 				       authbuff, 
@@ -495,12 +488,10 @@ static void load_from_cvs()
 				       cidbuff,
 				       psm);
 		    patch_set_add_member(ps, psm);
-#ifdef HEIKO
 		    /* remember last revision */
 		    strncpy(last_datebuff, datebuff, 20);
 		    /* just to be sure */
 		    last_datebuff[19] = '\0';
-#endif
 		}
 
 		logbuff[0] = 0;
@@ -513,11 +504,9 @@ static void load_from_cvs()
 		if (psm)
 		{
 		    PatchSet *ps;
-#ifdef HEIKO
 		    detect_and_repair_time_skew(last_datebuff, 
 						datebuff, sizeof(datebuff),
 						psm);
-#endif
 		    ps = get_patch_set(datebuff, 
 				       logbuff, 
 				       authbuff, 
@@ -526,11 +515,9 @@ static void load_from_cvs()
 				       psm);
 		    patch_set_add_member(ps, psm);
 
-#ifdef HEIKO
 		    /* just finished the last revision of this file,
 		     * set last_datebuff to invalid */
 		    last_datebuff[0]='\0';
-#endif
 
 		    assign_pre_revision(psm, NULL);
 		}

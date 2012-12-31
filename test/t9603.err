@@ -1,1 +1,2 @@
-t9603 test of branch master: t9603.checkout/a and t9603.git/a are different.
+cvsps: broken revision date: 2009-02-21 18:11:43 +0000 -> 2009-02-21 18:11:14 file: a, repairing.
+
