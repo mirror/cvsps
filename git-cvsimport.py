@@ -84,7 +84,7 @@ class cvsps:
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
         self.opts += " -R '%s'" % self.revmap
-    def set_module(self.val):
+    def set_module(self, val):
         "Set the module to query."
         self.opts += " " + module
     def command(self):
@@ -119,12 +119,12 @@ class cvs2git:
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
-    def set_module(self.val):
+    def set_module(self, val):
         "Set the module to query."
         self.opts += " " + module
     def command(self):
         "Emit the command implied by all previous options."
-        return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp(), tempfile.mkstemp(), self.opts)
+        return "cvs2git --blobfile={0} --dumpfile={1} {2} | cat {0} {1} && rm {0} {1}".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts)
 
 class filesource:
     "Method class for file-source back end."
@@ -155,7 +155,7 @@ class filesource:
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
-    def set_module(self._val):
+    def set_module(self, _val):
         "Set the module to query."
         self.__complain("module can't be set")
     def command(self):
@@ -245,12 +245,13 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                 # Otherwise, assume user wants incremental import.
                 if not os.path.exists(os.path.join(outdir, ".git")):
                     raise Fatal("output directory is not a git repository")
-                threshold = capture_or_die("git log -1 --format=%ct")
+                threshold = capture_or_die("git log -1 --format=%ct").strip()
                 backend.set_after(threshold)
         if revisionmap:
-            backend.set_revmap(tempfile.mkstemp())
-            markmap = tempfile.mkstemp()
-        backend.set_module(arguments[0])
+            backend.set_revmap(tempfile.mkstemp()[1])
+            markmap = tempfile.mkstemp()[1]
+        if arguments:
+            backend.set_module(arguments[0])
         gitopts = ""
         if revisionmap:
             gitopts = " --export-marks='%s'" % markmap
@@ -297,11 +298,11 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                 (mark, hashd) = line.split()
                 markd[mark] = hashd
             with open(".git/cvs-revisions", "w") as wfp:
-                for ((fn, rev), val) in refd.items:
+                for ((fn, rev), val) in refd.items():
                     if val in markd:
                         wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
             os.remove(markmap)
-            os.remove(backend.filename)
+            os.remove(backend.revmap)
         if not import_only:
             do_or_die("git checkout -q")
     except Fatal, err:
