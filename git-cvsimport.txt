@@ -91,7 +91,7 @@ export changes back to CVS again later with
 	Attempt to detect merges based on the commit message. This option
 	will enable default regexes that try to capture the source
 	branch name from the commit message.
-	Not presently implemented; see <<COMPATIBILITY>>.
+	Not presently implemented; see <<compatibility>>.
 
 -M <regex>::
 	Attempt to detect merges based on the commit message with a
@@ -99,7 +99,7 @@ export changes back to CVS again later with
 	regexes as well. You must escape forward slashes. The regex
 	must capture the source branch name in $1. This option can be
 	used several times to provide several detection regexes.  +
-	Not presently implemented; see <<COMPATIBILITY>>.
+	Not presently implemented; see <<compatibility>>.
 
 -P <cvsps-output-file>::
 	Instead of calling a conversion engine, read the provided
@@ -160,6 +160,7 @@ If '-v' is specified, the program reports what it is doing.
 Otherwise, success is indicated the Unix way, i.e. by simply exiting with
 a zero exit status.
 
+[[compatibility]]
 COMPATIBILITY
 -------------
 In 2012 two serious bugs dating back to 2006 in cvsps were exposed.  The

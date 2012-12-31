@@ -33,11 +33,17 @@ PYLINTOPTS1 = $(COMMON_PYLINT) --disable="C0103,C0111,C0301,W0621,R0201,E1103"
 pylint:
 	@pylint --output-format=parseable $(PYLINTOPTS1) git-cvsimport.py
 
+.SUFFIXES: .html .asc .txt .1
+
 # Requires asciidoc
-cvsps.1: cvsps.asc
-	a2x --doctype manpage --format manpage cvsps.asc
-cvsps.html: cvsps.asc
-	a2x --doctype manpage --format xhtml cvsps.asc
+.asc.1:
+	a2x --doctype manpage --format manpage $*.asc
+.asc.html:
+	a2x --doctype manpage --format xhtml $*.asc
+.txt.1:
+	a2x --doctype manpage --format manpage $*.txt
+.txt.html:
+	a2x --doctype manpage --format xhtml $*.txt
 
 install: cvsps.1
 	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
