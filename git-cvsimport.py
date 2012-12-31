@@ -10,7 +10,7 @@
 import sys
 
 if sys.hexversion < 0x02060000:
-    sys.stderr.write("git-cvsimport: requires Python 2.6 or later.\n")
+    sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
     sys.exit(1)
 
 import os, getopt, subprocess, tempfile
@@ -28,29 +28,29 @@ def do_or_die(dcmd, legend=""):
     if legend:
         legend = " "  + legend
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git-cvsimport: executing '%s'%s\n" % (dcmd, legend))
+        sys.stdout.write("git cvsimport: executing '%s'%s\n" % (dcmd, legend))
     try:
         retcode = subprocess.call(dcmd, shell=True)
         if retcode < 0:
-            raise Fatal("git-cvsimport: child was terminated by signal %d." % -retcode)
+            raise Fatal("git cvsimport: child was terminated by signal %d." % -retcode)
         elif retcode != 0:
-            raise Fatal("git-cvsimport: child returned %d." % retcode)
+            raise Fatal("git cvsimport: child returned %d." % retcode)
     except (OSError, IOError) as e:
-        raise Fatal("git-cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
+        raise Fatal("git cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
 
 def capture_or_die(dcmd, legend=""):
     "Either execute a command and capture its output or die."
     if legend:
         legend = " "  + legend
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git-cvsimport: executing '%s'%s\n" % (dcmd, legend))
+        sys.stdout.write("git cvsimport: executing '%s'%s\n" % (dcmd, legend))
     try:
         return subprocess.check_output(dcmd, shell=True)
     except subprocess.CalledProcessError as e:
         if e.returncode < 0:
-            sys.stderr.write("git-cvsimport: child was terminated by signal %d." % -e.returncode)
+            sys.stderr.write("git cvsimport: child was terminated by signal %d." % -e.returncode)
         elif e.returncode != 0:
-            sys.stderr.write("git-cvsimport: child returned %d." % e.returncode)
+            sys.stderr.write("git cvsimport: child returned %d." % e.returncode)
         sys.exit(1)
     
 class cvsps:
@@ -92,11 +92,11 @@ class cvs2git:
         self.opts = ""
     def set_repo(self, val):
         "Set the repository root option."
-        sys.stderr.write("git-cvsimport: cvs2git must run within a repository checkout directory.\n")
+        sys.stderr.write("git cvsimport: cvs2git must run within a repository checkout directory.\n")
         sys.exit(1)
     def set_fuzz(self, val):
         "Set the commit-similarity window."
-        sys.stderr.write("git-cvsimport: fuzz setting is not supported with cvs2git.\n")
+        sys.stderr.write("git cvsimport: fuzz setting is not supported with cvs2git.\n")
         sys.exit(1)
     def set_nokeywords(self, val):
         "Suppress CVS keyword expansion."
@@ -109,7 +109,7 @@ class cvs2git:
         self.opts += " --exclude='%s'" % val
     def set_after(self, val):
         "Set a date threshold for incremental import."
-        sys.stderr.write("git-cvsimport: incremental import is not supported with cvs2git.\n")
+        sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
         sys.exit(1)
     def set_module(self.val):
         "Set the module to query."
@@ -123,7 +123,7 @@ class filesource:
     def __init__(self):
         self.opts = ""
     def __complain(self):
-        sys.stderr.write("git-cvsimport: %s with file source.\n" % legend)
+        sys.stderr.write("git cvsimport: %s with file source.\n" % legend)
         sys.exit(1)
     def set_repo(self, legend):
         "Set the repository root option."
@@ -152,7 +152,7 @@ class filesource:
 
 if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
-        sys.stderr.write("git-cvsimport: requires Python 2.6 or later.\n")
+        sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
         sys.exit(1)
     (options, arguments) = getopt.getopt(sys.argv[1:], "ve:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
     verbose = 0
@@ -174,7 +174,7 @@ if __name__ == '__main__':
                     backend = cls()
                     break
             else:
-                sys.stderr.write("git-cvsimport: unknown engine %s.\n" % val)
+                sys.stderr.write("git cvsimport: unknown engine %s.\n" % val)
                 sys.exit(1)
         elif opt == '-d':
             backend.repo_set(val)
@@ -183,7 +183,7 @@ if __name__ == '__main__':
         elif opt == '-r':
             remotize = True
         elif opt == '-o':
-            sys.stderr.write("git-cvsimport: -o is no longer supported.\n")
+            sys.stderr.write("git cvsimport: -o is no longer supported.\n")
             sys.exit(1)
         elif opt == '-i':
             import_only = True
@@ -201,15 +201,15 @@ if __name__ == '__main__':
             backend = filesource(val)
             sys.exit(1)
         elif opt in ('-m', '-M'):
-            sys.stderr.write("git-cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
+            sys.stderr.write("git cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
             sys.exit(1)
         elif opt == '-S':
             backend.set_exclusion(val)
         elif opt == '-a':
-            sys.stderr.write("git-cvsimport: -a is no longer supported.\n")
+            sys.stderr.write("git cvsimport: -a is no longer supported.\n")
             sys.exit(1)
         elif opt == '-L':
-            sys.stderr.write("git-cvsimport: -L is no longer supported.\n")
+            sys.stderr.write("git cvsimport: -L is no longer supported.\n")
             sys.exit(1)
         elif opt == '-A':
             backend_opts += " -A '%s'" % val
@@ -217,7 +217,7 @@ if __name__ == '__main__':
             revisionmap = True	# FIXME: Not implemented
         else:
             print """\
-git-cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
+git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
      [-A <author-conv-file>] [-p <options-for-cvsps>] [-P <source-file>
      [-C <git_repository>] [-z <fuzz>] [-i] [-k] [-u] [-s <subst>]
      [-m] [-M <regex>] [-S <regex>] [-r <remote>] [-R] [<CVS_module>]
