@@ -240,7 +240,7 @@ if __name__ == '__main__':
             sys.stderr.write("git cvsimport: -L is no longer supported.\n")
             sys.exit(1)
         elif opt == '-A':
-            authormap = val
+            authormap = os.path.abspath(val)
         elif opt == '-R':
             revisionmap = True
         else:
@@ -280,7 +280,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         if revisionmap:
             gitopts += " --export-marks='%s'" % markmap
         if authormap:
-            shutil.filecopy(authormap, metadata("cvs_authors"))
+            shutil.copyfile(authormap, metadata("cvs_authors"))
         if os.path.exists(metadata("cvs-authors")):
             backend.set_authormap(metadata("cvs-authors"))
         do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
