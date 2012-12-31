@@ -23,23 +23,13 @@ repository, or incrementally import into an existing one.
 *WARNING:* CVS lends itself to all manner of perversities; not all
 sequences of CVS operations can be translated into an import stream,
 and importing is not guaranteed to produce a perfectly accurate
-representation of CVS history. Please see the section
-<<issues,ISSUES>> for further reference.
-
-You should *never* do any work of your own on the branches that are
-created by 'git cvsimport'.  By default initial import will create and
-populate a "master" branch from the CVS repository's main branch which
-you're free to work with; after that, you need to 'git merge'
-incremental imports, or any CVS branches, yourself.  It is advisable
-to specify a named remote via -r to separate and protect the incoming
-branches.
+representation of CVS history. Please see the section on
+<<issues,engine-specific issues>> for further reference.
 
 If you intend to set up a shared public repository that all developers can
 read/write, or if you want to use linkgit:git-cvsserver[1], then you
-probably want to make a bare clone of the imported repository,
-and use the clone as the shared repository.
-See linkgit:gitcvs-migration[7].
-
+probably want to make a bare clone of the imported repository using
+the -b option. See linkgit:gitcvs-migration[7].
 
 OPTIONS
 -------
@@ -52,7 +42,6 @@ OPTIONS
 ---------
 	exon=Andreas Ericsson <ae@op5.se> +0200
 	spawn=Simon Pawn <spawn@frog-pond.org> -0500
-
 ---------
 +
 'git cvsimport' will make it appear as those authors had
@@ -76,11 +65,10 @@ export changes back to CVS again later with
         exist, it will be created.  Default is the current directory.
 
 -d <CVSROOT>::
-	The root of the CVS archive. May be local (a simple path) or remote;
-	currently, only the :local:, :ext: and :pserver: access methods
-	are supported. If not given, 'git cvsimport' will try to read it
-	from `CVS/Root`. If no such file exists, it checks for the
-	`CVSROOT` environment variable.
+	The root of the CVS archive. It is only necessary to specify
+	this option if you are running from somewhere other than a 
+	CVS checkout directory; the value is passed to the conversion
+	engine to be interpreted.
 
 -e <engine>::
 	Splitting the CVS log into patch sets is done by an engine program,
@@ -108,15 +96,12 @@ export changes back to CVS again later with
 	Not presently implemented; see <<COMPATIBILITY>>.
 
 -M <regex>::
-	Attempt to detect merges based on the commit message with a custom
-	regex. It can be used with '-m' to enable the default regexes
-	as well. You must escape forward slashes.
-+
-The regex must capture the source branch name in $1.
-+
-This option can be used several times to provide several detection regexes.
-+
-Not presently implemented; see <<COMPATIBILITY>>.
+	Attempt to detect merges based on the commit message with a
+	custom regex. It can be used with '-m' to enable the default
+	regexes as well. You must escape forward slashes. The regex
+	must capture the source branch name in $1. This option can be
+	used several times to provide several detection regexes.  +
+	Not presently implemented; see <<COMPATIBILITY>>.
 
 -P <cvsps-output-file>::
 	Instead of calling a conversion engine, read the provided
@@ -165,9 +150,10 @@ messages, bug-tracking systems, email archives, and the like.
 	an engine-dependent default - usually 300s.
 
 <CVS_module>::
-	The CVS module you want to import. Relative to <CVSROOT>.
-	If not given, 'git cvsimport' tries to read it from
-	`CVS/Repository`.
+	The CVS module you want to import. Relative to <CVSROOT>.  It
+	is only necessary to specify this option if you are running
+	from somewhere other than a CVS checkout directory; the value
+	is passed to the conversion engine to be interpreted.
 
 OUTPUT
 ------
@@ -199,16 +185,23 @@ in favor of more flexible editing tools such as 'git-filter-branch'
 and 'reposurgeon'.
 
 [[issues]]
-ISSUES
-------
-The default conversion engine is 'cvsps'; at least version 3.3
-is required.  'cvsps' tries to warn you about repository histories it can't
+ENGINE-SPECIFIC ISSUES
+----------------------
+The default conversion engine is 'cvsps'; at least version 3.3 is
+required.  As well as working from within a CVS checkout directory,
+'cvsps' will also adapt without requiring a root or module
+specification when run from within a module subdirectory within a CVS
+repository directory.  When run from within the top level of a CVS
+repository, 'cvsps' requires only a module argument.
+
+'cvsps' tries to warn you about repository histories it can't
 handle; see the cvsps manual page to learn how to interpret the warnings
 you may receive.
 
 If the warnings you receive suggest that the repository translation is
 invalid, consider switching engines to 'cvs2git'.  It is much slower,
-but handles a wider range of pathological cases.
+and needs to be run from within a checkout directory, but it handles a
+wider range of pathological cases.
 
 * cvsps: `http://www.catb.org/~esr/cvsps`
 * cvs2git: `http://cvs2svn.tigris.org`
