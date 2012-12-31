@@ -174,15 +174,19 @@ a zero exit status.
 
 COMPATIBILITY
 -------------
-In 2012 a serious bug dating back to 2006 in cvsps was exposed.  The
-ancestry-branch tracking formerly enabled by -A did not work;
-translations of branchy repos could be mangled.  While the
---fast-export mode in 3.x releases of cvsps solved the problem, it
-required an emergency rewrite of git-cvsimport.  Some compatibility
-with older versions was unavoidably lost
+In 2012 two serious bugs dating back to 2006 in cvsps were exposed.  The
+ancestry-branch tracking formerly enabled by -A did not work, and
+branch detection was generally buggy; translations of branchy repos
+could be mangled.  While the --fast-export mode in 3.x releases of
+cvsps solved the problem, it required an emergency rewrite of
+git-cvsimport.  Some compatibility with older versions was unavoidably
+lost
 
 The -a, -o, -L and -P options in older versions of this tool have been
-removed.
+removed.  Certain older versions could take a named timezone (like
+"America/Chicago") in an author-map file rather than just a [+-]hhmm
+offset; this version doesn't do that, but the capability may be
+restored in a future release.
 
 The -m, -M, and -R options are not presently implemented. It is
 planned that -R will be restored in future versions of this program;
