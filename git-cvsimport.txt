@@ -177,7 +177,7 @@ timezone (like "America/Chicago") in an author-map file rather than
 just a [+-]hhmm offset; this version doesn't do that, but the
 capability may be restored in a future release.
 
-The -m, and -M options are not presently implemented. In future
+The -m and -M options are also not presently implemented. In future
 versions of this program -m and -M may be either restored or retired
 in favor of more flexible editing tools such as 'git-filter-branch'
 and 'reposurgeon'.
@@ -185,25 +185,47 @@ and 'reposurgeon'.
 [[issues]]
 ENGINE-SPECIFIC ISSUES
 ----------------------
+The conversion engines try to warn you about repository histories they
+can't handle; see their individual manual pages to learn how to
+interpret the warnings you may receive.
+
+The default conversion engine is 'cvsps'.  If warnings you receive
+suggest that the repository translation is invalid, consider switching
+engines to 'cvs2git'.
+
+cvsps
+~~~~~
 The default conversion engine is 'cvsps'; at least version 3.3 is
-required.  As well as working from within a CVS checkout directory,
+required.  The cvsps project page is at `http://www.catb.org/~esr/cvsps`.
+Things to know about this engine:
+
+* As well as working from within a CVS checkout directory,
 'cvsps' will also adapt without requiring a root or module
 specification when run from within a module subdirectory within a CVS
 repository directory.  When run from within the top level of a CVS
 repository, 'cvsps' requires only a module argument.
 
-'cvsps' tries to warn you about repository histories it can't
-handle; see the cvsps manual page to learn how to interpret the warnings
-you may receive.
+* The -S option will interpret exclusion regular expressions using the
+  POSIX syntax of regex(7).
 
-If the warnings you receive suggest that the repository translation is
-invalid, consider switching engines to 'cvs2git'. 'cvs2git' takes a
-path option pointing to a to a repository module subdirectory,
-defaulting to ".".  It is much slower than cvsps, but handles a
-wider range of pathological cases.
+* 'cvsps' automatically removes characters in CVS tag and branch names
+  that would be illegal in git.
 
-* cvsps: `http://www.catb.org/~esr/cvsps`
-* cvs2git: `http://cvs2svn.tigris.org`
+cvs2git
+~~~~~~~
+The cvs2git project page is at `http://cvs2svn.tigris.org`.  It is
+much slower than cvsps, and does not implement some git-cvsimport
+options (such as -d and -A), but it handles a wider range of
+pathological CVS cases.
+
+* 'cvs2git' takes a path option pointing to a repository module
+  subdirectory, defaulting to ".".
+
+* The -S option will interpret exclusion regular expressions using
+  Python syntax.
+
+* Illegal characters in branch and tag names will cause cvs2git to
+  abort with an error message.
 
 GIT
 ---
