@@ -194,10 +194,10 @@ timezone (like "America/Chicago") in an author-map file rather than
 just a [+-]hhmm offset; this version doesn't do that, but the
 capability may be restored in a future release.
 
-The -m, -M, and -R options are not presently implemented. It is
-planned that -R will be restored in future versions of this program;
--m and -M may be either restored or retired in favor of more flexible
-editing tools such as 'git-filter-branch' and 'reposurgeon'.
+The -m, and -M options are not presently implemented. In future
+versions of this program; -m and -M may be either restored or retired
+in favor of more flexible editing tools such as 'git-filter-branch'
+and 'reposurgeon'.
 
 [[issues]]
 ISSUES

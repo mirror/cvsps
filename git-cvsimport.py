@@ -57,6 +57,7 @@ class cvsps:
     "Method class for cvsps back end."
     def __init__(self):
         self.opts = ""
+        self.revmap = None
     def set_repo(self, val):
         "Set the repository root option."
         if not val.startswith(":"):
@@ -79,6 +80,10 @@ class cvsps:
     def set_after(self, val):
         "Set a date threshold for incremental import."
         self.opts += " -d '%s'" % val
+    def set_revmap(self, val):
+        "Set the file to which the engine should dump a reference map."
+        self.revmap = val
+        self.opts += " -R '%s'" % self.revmap
     def set_module(self.val):
         "Set the module to query."
         self.opts += " " + module
@@ -110,6 +115,9 @@ class cvs2git:
     def set_after(self, val):
         "Set a date threshold for incremental import."
         sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
+    def set_revmap(self, val):
+        "Set the file to which the engine should dump a reference map."
+        sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
     def set_module(self.val):
         "Set the module to query."
@@ -120,8 +128,8 @@ class cvs2git:
 
 class filesource:
     "Method class for file-source back end."
-    def __init__(self):
-        self.opts = ""
+    def __init__(self, filename):
+        self.filename = filename
     def __complain(self):
         sys.stderr.write("git cvsimport: %s with file source.\n" % legend)
         sys.exit(1)
@@ -143,6 +151,10 @@ class filesource:
     def set_after(self, _val):
         "Set a date threshold for incremental import."
         pass
+    def set_revmap(self, val):
+        "Set the file to which the engine should dump a reference map."
+        sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
+        sys.exit(1)
     def set_module(self._val):
         "Set the module to query."
         self.__complain("module can't be set")
@@ -214,7 +226,7 @@ if __name__ == '__main__':
         elif opt == '-A':
             backend_opts += " -A '%s'" % val
         elif opt == '-R':
-            revisionmap = True	# FIXME: Not implemented
+            revisionmap = True
         else:
             print """\
 git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
@@ -235,9 +247,15 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                     raise Fatal("output directory is not a git repository")
                 threshold = capture_or_die("git log -1 --format=%ct")
                 backend.set_after(threshold)
+        if revisionmap:
+            backend.set_revmap(tempfile.mkstemp())
+            markmap = tempfile.mkstemp()
         backend.set_module(arguments[0])
-        do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet)" \
-                  % (backend.command(), outdir))
+        gitopts = ""
+        if revisionmap:
+            gitopts = " --export-marks='%s'" % markmap
+        do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
+                  % (backend.command(), outdir, gitopts))
         os.chdir(outdir)
         if underscore_to_dot or slashsubst:
             tagnames = capture_or_die("git tag -l")
@@ -265,6 +283,25 @@ git cvsimport -o <branch-for-HEAD>] [-e engine] [-h] [-v] [-d <CVSROOT>]
                         changed = os.path.join("remotes", remotize, branch)
                     if changed != branch:
                         do_or_die("branch --m %s %s >/dev/null" % (branch,changed))
+        if revisionmap:
+            refd = {}
+            for line in open(backend.revmap):
+                if line.startswith("#"):
+                    continue
+                (fn, rev, mark) = line.split()
+                refd[(fn, rev)] = mark
+            markd = {}
+            for line in open(markmap):
+                if line.startswith("#"):
+                    continue
+                (mark, hashd) = line.split()
+                markd[mark] = hashd
+            with open(".git/cvs-revisions", "w") as wfp:
+                for ((fn, rev), val) in refd.items:
+                    if val in markd:
+                        wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
+            os.remove(markmap)
+            os.remove(backend.filename)
         if not import_only:
             do_or_die("git checkout -q")
     except Fatal, err:
