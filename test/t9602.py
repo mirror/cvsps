@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Test cvsps handling of branches and tags
+## Test handling of pathological tags
 #
 # This test was swiped from the git 1.8.1 tree, then modified to exercise
 # cvsps directly rather than through git-cvsimport.
@@ -80,6 +80,7 @@ cc.cmp_branch_tree("test of branch", "B_FROM_INITIALS_BUT_ONE", False)
 cc.cmp_branch_tree("test of branch", "B_MIXED", False)
 cc.cmp_branch_tree("test of branch", "B_SPLIT", True)
 cc.cmp_branch_tree("test of tag", "vendortag", False)
+# This is the only test new cvsps fails that old git-cvsimport passed.
 cc.cmp_branch_tree("test of tag", "T_ALL_INITIAL_FILES", True)
 cc.cmp_branch_tree("test of tag", "T_ALL_INITIAL_FILES_BUT_ONE", False)
 cc.cmp_branch_tree("test of tag", "T_MIXED", False)

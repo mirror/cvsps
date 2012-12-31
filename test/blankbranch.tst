@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-## Test for the daughter-branch bug from the old git-cvsimport manual page.
+## Test for the daughter-branch bug
 
 # This was the description:
 #
@@ -9,7 +9,7 @@
 
 import cvspstest
 
-repo = cvstest.CVSRepository("blankbranch.repo")
+repo = cvspstest.CVSRepository("blankbranch.repo")
 repo.init()
 repo.module("blankbranch")
 co = repo.checkout("blankbranch", "blankbranch.checkout")

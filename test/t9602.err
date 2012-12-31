@@ -1,0 +1,3 @@
+cvsps: branch symbol B_FROM_INITIALS not translated
+cvsps: branch symbol B_FROM_INITIALS_BUT_ONE not translated
+t9602 test of tag T_ALL_INITIAL_FILES: file manifests don't match.

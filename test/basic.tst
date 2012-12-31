@@ -3,7 +3,7 @@
 
 import cvspstest
 
-repo = cvstest.CVSRepository("basic.repo")
+repo = cvspstest.CVSRepository("basic.repo")
 repo.init()
 repo.module("basic")
 co = repo.checkout("basic", "basic.checkout")

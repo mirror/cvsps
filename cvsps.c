@@ -2407,7 +2407,7 @@ CvsFileRevision * cvs_file_add_revision(CvsFile * file, const char * rev_str)
 		cvs_file_add_branch(rev->file, rev->rev, rev->branch,
 				    is_vendor_branch(rev->rev));
 		/*
-		 * This triggers a warning about a the broken case
+		 * This triggers a warning about the broken case
 		 * in the t9601 test. I haven't figured it out yet,
 		 * but we can at least warn when it might happen.
 		 */

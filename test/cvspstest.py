@@ -212,8 +212,7 @@ class ConvertComparison:
         gitfiles.sort()
         if cvsfiles != gitfiles:
             if success_expected:
-                sys.stderr.write(preamble + "file manifests don't match\n")
-                print >>sys.stderr, cvsfiles, gitfiles
+                sys.stderr.write(preamble + "file manifests don't match.\n")
             return False
         else:
             success = True
