@@ -163,8 +163,8 @@ git-cvsimport.  Some compatibility with older versions was unavoidably
 lost
 
 The -a, -o, -m, -M, and -L options in older versions of this tool have
-been removed (in effect, -a is always on; you can negate it with a
-suitably crafted -d argument).  Certain older versions could take a
+been removed (in effect, -a is always on; you can negate it with
+suitably crafted -d arguments).  Certain older versions could take a
 named timezone (like "America/Chicago") in an author-map file rather
 than just a [+-]hhmm offset; this version doesn't do that, but the
 capability may be restored in a future release.
