@@ -72,7 +72,6 @@ static struct hash_table * global_symbols;
 static char strip_path[PATH_MAX];
 static int strip_path_len;
 static bool statistics;
-static const char * test_log_file;
 static struct hash_table * branch_heads;
 static struct list_head all_patch_sets;
 static struct list_head collisions;
@@ -189,8 +188,7 @@ int main(int argc, char *argv[])
      */
     init_paths();
 
-    if (!test_log_file)
-	cvsclient_ctx = open_cvs_server(root_path, compress);
+    cvsclient_ctx = open_cvs_server(root_path, compress);
 
     load_from_cvs();
 
@@ -311,9 +309,7 @@ static void load_from_cvs()
     int loglen = 0;
     bool have_log = false;
 
-    if (test_log_file)
-	cvsfp = fopen(test_log_file, "r");
-    else if (cvsclient_ctx)
+    if (cvsclient_ctx)
 	cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path);
 
     if (!cvsfp)
@@ -584,11 +580,7 @@ static void load_from_cvs()
 	exit(1);
     }
     
-    if (test_log_file)
-    {
-	fclose(cvsfp);
-    }
-    else if (cvsclient_ctx)
+    if (cvsclient_ctx)
     {
 	cvs_rlog_close(cvsclient_ctx);
     }
@@ -603,7 +595,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_APPERROR, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
-    debug(DEBUG_APPERROR, "             [--test-log <captured cvs log file>]");
     debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
     debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
     debug(DEBUG_APPERROR, "             [-k] [-T] [-V] [<repository>]");
@@ -628,7 +619,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -v show very verbose parsing messages");
     debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
     debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
-    debug(DEBUG_APPERROR, "  --test-log <captured cvs log> supply a captured cvs log for testing");
     debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
@@ -973,31 +963,10 @@ static int parse_args(int argc, char *argv[])
 	    continue;
 	}
 
-	if (strcmp(argv[i], "--test-log") == 0)
-	{
-	    if (++i >= argc)
-		return usage("argument to --test-log missing", "");
-
-	    test_log_file = argv[i++];
-	    continue;
-	}
-
 	if (argv[i][0] == '-')
 	    return usage("invalid argument", argv[i]);
 	
 	strcpy(repository_path, argv[i++]);
-    }
-
-    if (fast_export && test_log_file)
-    {
-	debug(DEBUG_APPERROR, "cvsps: --fast-export and --test-log are not compatible.\n");
-	exit(1);
-    }
-
-    if (do_diff && test_log_file)
-    {
-	debug(DEBUG_APPERROR, "cvsps: -g and --test-log are not compatible.\n");
-	exit(1);
     }
 
     if (debuglvl == 0)
