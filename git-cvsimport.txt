@@ -26,6 +26,12 @@ into an import stream, and importing is not guaranteed to produce a
 perfectly accurate representation of CVS history. Please see the
 section on <<issues,engine-specific issues>> for further reference.
 
+git cvsimport will do well at translating CVS repositories with a
+linear or close-to-linear revision history, no merges, and
+well-disciplined tagging practices.  More complex cases will require
+human judgment amplified by a repository-editing tool such as
+http://www.catb.org/~esr/reposurgeon[reposurgeon].
+
 OPTIONS
 -------
 -A <author-conv-file>::
@@ -201,10 +207,10 @@ required.  The cvsps project page is at `http://www.catb.org/~esr/cvsps`.
 Things to know about this engine:
 
 * As well as working from within a CVS checkout directory,
-'cvsps' will also adapt without requiring a root or module
-specification when run from within a module subdirectory within a CVS
-repository directory.  When run from within the top level of a CVS
-repository, 'cvsps' requires only a module argument.
+  'cvsps' will also adapt without requiring a root or module
+  specification when run from within a module subdirectory within a CVS
+  repository directory.  When run from within the top level of a CVS
+  repository, 'cvsps' requires only a module argument.
 
 * The -S option will interpret exclusion regular expressions using the
   POSIX syntax of regex(7).
