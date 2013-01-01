@@ -246,9 +246,9 @@ if __name__ == '__main__':
         else:
             print """\
 git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
-     [-e engine] [-h] [-i] [-k] [-m] [-M <regex>] [-p <options-for-cvsps>]
-     [-P <source-file>] [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u]
-     [-v] [-z <fuzz>] [<CVS_module>]
+     [-e engine] [-h] [-i] [-k] [-p <options-for-cvsps>] [-P <source-file>]
+     [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u] [-v] [-z <fuzz>]
+     [<CVS_module>]
 """         
 
     def metadata(fn):

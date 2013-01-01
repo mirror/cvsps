@@ -10,10 +10,9 @@ SYNOPSIS
 --------
 [verse]
 'git cvsimport' [-A <author-conv-file>] [-b] [-C <git_repository>] 
-              [-d <CVSROOT>] [-h] [-i] [-k] [-m] [-M <regex>] 
-	      [-p <options-for-engine>] [-P <cvsps-output-file>] 
-	      [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u] 
-	      [-v] [-z <fuzz>] [<CVS_module>]
+              [-d <CVSROOT>] [-h] [-i] [-k] [-p <options-for-engine>] 
+	      [-P <cvsps-output-file>] [-r <remote>] [-R] [-s <subst>] 
+	      [-S <regex>] [-u] [-v] [-z <fuzz>] [<CVS_module>]
 
 DESCRIPTION
 -----------
@@ -93,20 +92,6 @@ export changes back to CVS again later with
 	to avoid noisy changesets. Highly recommended, but off by default
 	to preserve compatibility with early imported trees.
 
--m::
-	Attempt to detect merges based on the commit message. This option
-	will enable default regexes that try to capture the source
-	branch name from the commit message.
-	Not presently implemented; see <<compatibility>>.
-
--M <regex>::
-	Attempt to detect merges based on the commit message with a
-	custom regex. It can be used with '-m' to enable the default
-	regexes as well. You must escape forward slashes. The regex
-	must capture the source branch name in $1. This option can be
-	used several times to provide several detection regexes.  +
-	Not presently implemented; see <<compatibility>>.
-
 -P <cvsps-output-file>::
 	Instead of calling a conversion engine, read the provided
 	import-stream file. Useful for debugging or when the first
@@ -177,17 +162,12 @@ cvsps solved the problem, it required an emergency rewrite of
 git-cvsimport.  Some compatibility with older versions was unavoidably
 lost
 
-The -a, -o, and -L options in older versions of this tool have been
-removed (in effect, -a is always on; you can negate it with a suitably
-crafted -d argument).  Certain older versions could take a named
-timezone (like "America/Chicago") in an author-map file rather than
-just a [+-]hhmm offset; this version doesn't do that, but the
+The -a, -o, -m, -M, and -L options in older versions of this tool have
+been removed (in effect, -a is always on; you can negate it with a
+suitably crafted -d argument).  Certain older versions could take a
+named timezone (like "America/Chicago") in an author-map file rather
+than just a [+-]hhmm offset; this version doesn't do that, but the
 capability may be restored in a future release.
-
-The -m and -M options are also not presently implemented. In future
-versions of this program -m and -M may be either restored or retired
-in favor of more flexible editing tools such as 'git-filter-branch'
-and 'reposurgeon'.
 
 [[issues]]
 ENGINE-SPECIFIC ISSUES
