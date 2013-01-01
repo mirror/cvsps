@@ -325,7 +325,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                     continue
                 (mark, hashd) = line.split()
                 markd[mark] = hashd
-            with open(metadata("cvs-revisions"), "w") as wfp:
+            with open(metadata("cvs-revisions"), "a") as wfp:
                 for ((fn, rev), val) in refd.items():
                     if val in markd:
                         wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
