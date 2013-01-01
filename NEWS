@@ -1,7 +1,9 @@
 			CVSps project news
 
-3.4 @
-  Incorpoate Heiko Voight's patch solving some time-skew cases.
+3.4 @ 2013-01-01
+  Incorporate Heiko Voight's patch solving some time-skew cases.
+  The git-tree tests for cvsps are now completely merged into the test suite. 
+  Code passes Coverity auditing.
 
 3.3 @ 2012-12-30
   There's a new -A option that does author-name mapping in the expected way.
