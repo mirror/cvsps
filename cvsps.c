@@ -1958,7 +1958,7 @@ static void fast_export_finalize(void)
 	    if (branch->ps == NULL)
 		debug(DEBUG_APPWARN, "branch symbol %s not translated",
 		      name);
-	    else
+	    else if (branch->ps->mark)
 		printf("reset refs/tags/%s\nfrom :%d\n\n", 
 		       name, branch->ps->mark);
 	}
