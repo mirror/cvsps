@@ -2,6 +2,7 @@
 
 3.5 @
   Remove the --test-log option now that cvsps has its own test suite.
+  New --reposurgeon option for passing reference-lifting hints to reposurgeon.
 
 3.4 @ 2013-01-01
   Incorporate Heiko Voight's patch solving some time-skew cases.

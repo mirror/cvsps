@@ -106,6 +106,7 @@ static bool selection_sense = true;
 static FILE *revfp;
 static int verbose = 0;
 static bool keyword_suppression = false;
+static bool reposurgeon = false;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -626,6 +627,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_APPERROR, "  -k suppress CVS keyword expansion");
     debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
     debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
+    debug(DEBUG_APPERROR, "  --reposurgeon emit reference-lifting hints for reposurgeon.\n"); 
     debug(DEBUG_APPERROR, "  -V emit version and exit");
     debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository. Overrides working directory");
     debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
@@ -959,6 +961,13 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--summary-first") == 0)
 	{
 	    summary_first = 1;
+	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "--reposurgeon") == 0)
+	{
+	    reposurgeon = true;
 	    i++;
 	    continue;
 	}
@@ -1850,10 +1859,46 @@ static void print_fast_export(PatchSet * ps)
 	printf("committer %s <%s>", ps->author, ps->author);
     printf(" %zd %s\n", mktime(tm) - tm->tm_gmtoff, tz);
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
+    if (reposurgeon)
+    {
+	FILE *ofp = fopen(tf, "w");
+	FILE *cfp;
+
+	if (ofp == NULL)
+	{
+	    debug(DEBUG_APPERROR, "tempfile write of CVS revisions failed.\n");
+	    exit(1);
+	}
+	for all_patchset_members(next, ps)
+	{
+	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+
+	    if (!psm->post_rev->dead)
+		fprintf(ofp,
+			"%s:%s\n", psm->file->filename, psm->post_rev->rev);
+	}
+	fclose(ofp);
+
+	/* coverity[toctou] */
+	if (stat(tf, &st) != 0)
+	{
+	    debug(DEBUG_APPERROR, "stat(2) of CVS revisuions failed.\n");
+	    exit(1);
+	}
+	printf("property cvs-revisions %ld ", st.st_size);
+	if ((cfp = fopen(tf, "r")) == NULL)
+	{
+	    debug(DEBUG_APPERROR, "tempfile read of CVS revisions failed.\n");
+	    exit(1);
+	}
+	while ((c = fgetc(cfp)) != EOF)
+	    putchar(c);
+	(void)fclose(cfp);
+	putchar('\n');
+    }
     if (ancestor_mark)
 	printf("from :%d\n", ancestor_mark);
     ps->mark = tip->mark = mark;
-
 
     for all_patchset_members(next, ps)
     {
