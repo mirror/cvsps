@@ -60,8 +60,8 @@ export changes back to CVS again later with
         Create a bare repo. If you intend to set up a shared public
 	repository that all developers can read/write, or if you want
 	to use linkgit:git-cvsserver[1], then you probably want to
-	make a bare clone of the imported repository using this
-	option. See linkgit:gitcvs-migration[7].
+	make a bare repository using this option. See
+	linkgit:gitcvs-migration[7].
 
 -C <target-dir>::
         The git repository to import to.  If the directory doesn't
@@ -212,7 +212,8 @@ pathological CVS cases.
   Python syntax.
 
 * Illegal characters in branch and tag names will cause cvs2git to
-  abort with an error message.
+  abort with an error message.  A suitably-crafted --symbol-transform
+  option, passed via -p, may prevent this.
 
 GIT
 ---
