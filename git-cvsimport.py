@@ -249,13 +249,25 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
      [-e engine] [-h] [-i] [-k] [-p <options-for-cvsps>] [-P <source-file>]
      [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u] [-v] [-z <fuzz>]
      [<CVS_module>]
-"""         
-
+"""
     def metadata(fn):
         if bare:
             return fn
         else:
             return os.path.join(".git", fn) 
+    # Ugly fallback code for people with only cvsps-2.x
+    # Added January 2013 - should be removed after a decent interval.
+    if backend.__class__.__name__ == "cvsps":
+        try:
+            subprocess.check_output("cvsps -V", shell=True)
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 1:
+                sys.stderr.write("cvsimport: falling back to old version...\n")
+                sys.exit(os.system("git-cvsimport-fallback" + " ".join(sys.argv[1:])))
+            else:
+                sys.stderr.write("cvsimport: cannot execute cvsps.\n")
+                sys.exit(1)
+    # Real mainline code begins here
     try:
         if outdir:
             try:
