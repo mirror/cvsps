@@ -150,7 +150,7 @@ static Branch * lookup_branch(const char * name);
 static void find_branch_points(PatchSet * ps);
 
 static int debug_levels[] = {
-    DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN,
+    DEBUG_APPERROR|DEBUG_SYSERROR|DEBUG_APPWARN|DEBUG_USAGE,
     DEBUG_RETRIEVAL,
     DEBUG_STATUS,
     DEBUG_TCP,
@@ -593,47 +593,47 @@ static void load_from_cvs()
 static int usage(const char * str1, const char * str2)
 {
     if (str1)
-	debug(DEBUG_APPERROR, "\nbad usage: %s %s\n", str1, str2);
+	debug(DEBUG_USAGE, "\nbad usage: %s %s\n", str1, str2);
 
-    debug(DEBUG_APPERROR, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
-    debug(DEBUG_APPERROR, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
-    debug(DEBUG_APPERROR, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
-    debug(DEBUG_APPERROR, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
-    debug(DEBUG_APPERROR, "             [--diff-opts <option string>]");
-    debug(DEBUG_APPERROR, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_APPERROR, "             [-k] [-T] [-V] [<repository>]");
-    debug(DEBUG_APPERROR, "");
-    debug(DEBUG_APPERROR, "Where:");
-    debug(DEBUG_APPERROR, "  -h display this informative message");
-    debug(DEBUG_APPERROR, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
-    debug(DEBUG_APPERROR, "  -g generate diffs of the selected patch sets");
-    debug(DEBUG_APPERROR, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
-    debug(DEBUG_APPERROR, "  -a <author> restrict output to patch sets created by author");
-    debug(DEBUG_APPERROR, "  -f <file> restrict output to patch sets involving file");
-    debug(DEBUG_APPERROR, "  -d <date1> -d <date2> if just one date specified, show");
-    debug(DEBUG_APPERROR, "     revisions newer than date1.  If two dates specified,");
-    debug(DEBUG_APPERROR, "     show revisions between two dates.");
-    debug(DEBUG_APPERROR, "  -b <branch> restrict output to patch sets affecting history of branch");
-    debug(DEBUG_APPERROR, "  -l <regex> restrict output to patch sets matching <regex> in log message");
-    debug(DEBUG_APPERROR, "  -n negate filter sense, print all patchsetss *not* matching.");
-    debug(DEBUG_APPERROR, "  -r <tag1> -r <tag2> if just one tag specified, show");
-    debug(DEBUG_APPERROR, "     revisions since tag1. If two tags specified, show");
-    debug(DEBUG_APPERROR, "     revisions between the two tags.");
-    debug(DEBUG_APPERROR, "  -p <directory> output patch sets to individual files in <directory>");
-    debug(DEBUG_APPERROR, "  -v show very verbose parsing messages");
-    debug(DEBUG_APPERROR, "  -t show some brief memory usage statistics");
-    debug(DEBUG_APPERROR, "  --summary-first when multiple patch sets are shown, put all summaries first");
-    debug(DEBUG_APPERROR, "  --diff-opts <option string> supply special set of options to diff");
-    debug(DEBUG_APPERROR, "  --debuglvl <bitmask> enable various debug channels.");
-    debug(DEBUG_APPERROR, "  -Z <compression> A value 1-9 which specifies amount of compression");
-    debug(DEBUG_APPERROR, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
-    debug(DEBUG_APPERROR, "  -k suppress CVS keyword expansion");
-    debug(DEBUG_APPERROR, "  -T <date> set base date for regression testing");
-    debug(DEBUG_APPERROR, "  --fast-export emit a git-style fast-import stream");
-    debug(DEBUG_APPERROR, "  --reposurgeon emit reference-lifting hints for reposurgeon.\n"); 
-    debug(DEBUG_APPERROR, "  -V emit version and exit");
-    debug(DEBUG_APPERROR, "  <repository> apply cvsps to repository. Overrides working directory");
-    debug(DEBUG_APPERROR, "\ncvsps version %s\n", VERSION);
+    debug(DEBUG_USAGE, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
+    debug(DEBUG_USAGE, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
+    debug(DEBUG_USAGE, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
+    debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
+    debug(DEBUG_USAGE, "             [--diff-opts <option string>]");
+    debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
+    debug(DEBUG_USAGE, "             [-k] [-T] [-V] [<repository>]");
+    debug(DEBUG_USAGE, "");
+    debug(DEBUG_USAGE, "Where:");
+    debug(DEBUG_USAGE, "  -h display this informative message");
+    debug(DEBUG_USAGE, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
+    debug(DEBUG_USAGE, "  -g generate diffs of the selected patch sets");
+    debug(DEBUG_USAGE, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
+    debug(DEBUG_USAGE, "  -a <author> restrict output to patch sets created by author");
+    debug(DEBUG_USAGE, "  -f <file> restrict output to patch sets involving file");
+    debug(DEBUG_USAGE, "  -d <date1> -d <date2> if just one date specified, show");
+    debug(DEBUG_USAGE, "     revisions newer than date1.  If two dates specified,");
+    debug(DEBUG_USAGE, "     show revisions between two dates.");
+    debug(DEBUG_USAGE, "  -b <branch> restrict output to patch sets affecting history of branch");
+    debug(DEBUG_USAGE, "  -l <regex> restrict output to patch sets matching <regex> in log message");
+    debug(DEBUG_USAGE, "  -n negate filter sense, print all patchsetss *not* matching.");
+    debug(DEBUG_USAGE, "  -r <tag1> -r <tag2> if just one tag specified, show");
+    debug(DEBUG_USAGE, "     revisions since tag1. If two tags specified, show");
+    debug(DEBUG_USAGE, "     revisions between the two tags.");
+    debug(DEBUG_USAGE, "  -p <directory> output patch sets to individual files in <directory>");
+    debug(DEBUG_USAGE, "  -v show very verbose parsing messages");
+    debug(DEBUG_USAGE, "  -t show some brief memory usage statistics");
+    debug(DEBUG_USAGE, "  --summary-first when multiple patch sets are shown, put all summaries first");
+    debug(DEBUG_USAGE, "  --diff-opts <option string> supply special set of options to diff");
+    debug(DEBUG_USAGE, "  --debuglvl <bitmask> enable various debug channels.");
+    debug(DEBUG_USAGE, "  -Z <compression> A value 1-9 which specifies amount of compression");
+    debug(DEBUG_USAGE, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_USAGE, "  -k suppress CVS keyword expansion");
+    debug(DEBUG_USAGE, "  -T <date> set base date for regression testing");
+    debug(DEBUG_USAGE, "  --fast-export emit a git-style fast-import stream");
+    debug(DEBUG_USAGE, "  --reposurgeon emit reference-lifting hints for reposurgeon.\n"); 
+    debug(DEBUG_USAGE, "  -V emit version and exit");
+    debug(DEBUG_USAGE, "  <repository> apply cvsps to repository. Overrides working directory");
+    debug(DEBUG_USAGE, "\ncvsps version %s\n", VERSION);
 
     return -1;
 }

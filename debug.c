@@ -65,8 +65,10 @@ void vdebug(int dtype, const char *fmt, va_list ap)
 
 	  fprintf(channel, BUGPREFIX "%s: %s\n", msgbuff, errmsg);
       }
-      else
+      else if (dtype != DEBUG_USAGE)
 	  fprintf(channel, BUGPREFIX "%s\n", msgbuff);
+      else
+	  fprintf(channel, "%s\n", msgbuff);
       
       fflush(channel);
 #ifdef _WIN32
