@@ -19,7 +19,7 @@
 #define DEBUG_ERROR     0x0001
 #define DEBUG_APPERROR  0x0002
 #define DEBUG_APPWARN   0x0004
-#define DEBUG_USAGE     0x0080
+#define DEBUG_USAGE     0x0008
 #define DEBUG_RETRIEVAL	0x0010
 #define DEBUG_STATUS    0x0020
 #define DEBUG_TCP       0x0040
