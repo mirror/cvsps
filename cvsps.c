@@ -925,10 +925,17 @@ static int parse_args(int argc, char *argv[])
 	
 	if (strcmp(argv[i], "--debuglvl") == 0)
 	{
+	    char *end;
+	    long lvl;
+
 	    if (++i >= argc)
 		return usage("argument to --debuglvl missing", "");
 
-	    debuglvl = atoi(argv[i++]);
+	    lvl = strtol(argv[i], &end, 0);
+	    if (*end != '\0')
+		return usage("invalid value passed to --debuglvl", argv[i]);
+	    debuglvl = lvl;
+	    i++;
 	    continue;
 	}
 
