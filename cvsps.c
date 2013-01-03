@@ -641,6 +641,7 @@ static int usage(const char * str1, const char * str2)
 static int parse_args(int argc, char *argv[])
 {
     int i = 1;
+    debuglvl = debug_levels[0];
     while (i < argc)
     {
 	if (strcmp(argv[i], "-a") == 0)
@@ -884,6 +885,8 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "-v") == 0)
 	{
 	    verbose++;
+	    if (verbose < sizeof(debug_levels)/sizeof(debug_levels[0]))
+		debuglvl |= debug_levels[verbose];
 	    i++;
 	    continue;
 	}
@@ -981,9 +984,6 @@ static int parse_args(int argc, char *argv[])
 	strcpy(repository_path, argv[i++]);
     }
 
-    if (debuglvl == 0)
-	for (i = 0; i <= verbose && i < sizeof(debug_levels)/sizeof(debug_levels[0]); i++)
-	    debuglvl |= debug_levels[i];
     return 0;
 }
 
