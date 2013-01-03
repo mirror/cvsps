@@ -3,7 +3,10 @@ VERSION=3.5
 CC?=gcc
 CFLAGS?=-g -O2 -Wall 
 CPPFLAGS+=-I. -DVERSION=\"$(VERSION)\"
+LDLIBS+=-lz # += to allow solaris and friends add their libs like -lsocket
 prefix?=/usr/local
+target=$(DESTDIR)$(prefix)
+
 OBJS= debug.o \
 	hash.o \
 	sio.o \
@@ -20,7 +23,7 @@ deps:
 	makedepend -Y -I. *.c
 
 cvsps: $(OBJS)
-	$(CC) -o cvsps $(OBJS) -lz
+	$(CC) -o cvsps $(OBJS) $(LDFLAGS) $(LDLIBS)
 
 check:
 	@(cd test >/dev/null; make --quiet)
@@ -46,10 +49,10 @@ pylint:
 	a2x --doctype manpage --format xhtml $*.txt
 
 install: cvsps.1
-	[ -d $(prefix)/bin ] || mkdir -p $(prefix)/bin
-	[ -d $(prefix)/share/man/man1 ] || mkdir -p $(prefix)/share/man/man1
-	install cvsps $(prefix)/bin
-	install -m 644 cvsps.1 $(prefix)/share/man/man1
+	[ -d "$(target)/bin" ] || mkdir -p "$(target)/bin"
+	[ -d "$(target)/share/man/man1" ] || mkdir -p "$(target)/share/man/man1"
+	install cvsps "$(target)/bin"
+	install -m 644 cvsps.1 "$(target)/share/man/man1"
 
 tags: *.c *.h
 	ctags *.c *.h
