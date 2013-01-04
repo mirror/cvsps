@@ -1691,6 +1691,30 @@ static void print_patch_set(PatchSet * ps)
     printf("\n");
 }
 
+static struct tm *tztime(const time_t *timep, const char *tz)
+{
+    struct tm *tm;
+    char buf[BUFSIZ];
+    char *oldtz = getenv("TZ");
+
+    // make a copy in case original is clobbered
+    if (oldtz != NULL)
+	strncpy(buf, oldtz, sizeof(buf));
+
+    setenv("TZ", tz, 1);
+    tzset();  // just in case ...
+
+    tm = localtime(timep);
+
+    if (oldtz != NULL)
+	setenv("TZ", buf, 1);
+    else
+	unsetenv("TZ");
+    tzset();
+
+    return tm;
+}
+
 #define SUFFIX(a, s)	(strcmp(a + strlen(a) - strlen(s), s) == 0) 
 
 static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
@@ -1732,6 +1756,7 @@ static void print_fast_export(PatchSet * ps)
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
     char *match, *tz, *outbranch;
+    char buf[1024];
     Branch *branch;
  
     struct branch_head {
@@ -1771,15 +1796,6 @@ static void print_fast_export(PatchSet * ps)
 		}
 	    }
 	}
-    }
-
-    /* we need to be able to fake dates for regression testing */
-    if (regression_time == 0)
-	tm = localtime(&ps->date);
-    else
-    {
-	time_t clock_tick = regression_time + ps->psid * timestamp_fuzz_factor * 2;
-	tm = localtime(&clock_tick);
     }
 
     for all_patchset_members(next, ps)
@@ -1839,7 +1855,7 @@ static void print_fast_export(PatchSet * ps)
     }
 
     match = NULL;
-    tz = "+0000";
+    tz = "UTC";
     for (mapl = authormap.next; mapl != &authormap; mapl = mapl->next)
     {
 	MapEntry* mapentry = list_entry (mapl, MapEntry, link);
@@ -1849,6 +1865,15 @@ static void print_fast_export(PatchSet * ps)
 	    if (mapentry->timezone[0])
 		tz = mapentry->timezone;
 	}
+    }
+
+    /* we need to be able to fake dates for regression testing */
+    if (regression_time == 0)
+	tm = tztime(&ps->date, tz);
+    else
+    {
+	time_t clock_tick = regression_time + ps->psid * timestamp_fuzz_factor * 2;
+	tm = tztime(&clock_tick, tz);
     }
 
     /* map HEAD branch to master, leave others unchanged */
@@ -1867,7 +1892,8 @@ static void print_fast_export(PatchSet * ps)
 	printf("committer %s", match);
     else
 	printf("committer %s <%s>", ps->author, ps->author);
-    printf(" %zd %s\n", mktime(tm) - tm->tm_gmtoff, tz);
+    strftime(buf, sizeof(buf), "%s %z", tm);
+    printf(" %s\n", buf);
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
     if (reposurgeon)
     {

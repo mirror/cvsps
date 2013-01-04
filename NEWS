@@ -1,5 +1,8 @@
 			CVSps project news
 
+3.6 @
+  The third field in an author entry is now interpreted as if it were TZ.
+
 3.5 @ 2013-01-02
   Remove the --test-log option now that cvsps has its own test suite.
   New --reposurgeon option for passing reference-lifting hints to reposurgeon.
