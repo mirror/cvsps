@@ -147,7 +147,7 @@ class filesource:
         self.__complain("repository can't be set")
     def set_authormap(self, _val):
         "Set the author-map file."
-        sys.stderr.write("git cvsimport: author maping is not supported with filesource.\n")
+        sys.stderr.write("git cvsimport: author mapping is not supported with filesource.\n")
         sys.exit(1)
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
