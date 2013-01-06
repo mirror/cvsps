@@ -26,14 +26,13 @@ s_rebuild: neutralize.map
 	@-for file in $(TESTLOADS); do \
 	    echo "Remaking $${file}.chk"; \
 	    make --quiet $${file}.repo; \
-	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A neutralize.map $${file} >$${file}.chk 2>&1; \
+	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T -A neutralize.map $${file} >$${file}.chk 2>&1; \
 	done;
-	@rm /tmp/cvsps
 s_regress: neutralize.map
 	@-for file in $(TESTLOADS); do \
 	    echo -n "  $${file} "; grep '##' $${file}.tst  || echo ' ## (no description)'; \
 	    make --quiet $${file}.repo; \
-	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A neutralize.map $${file} 2>&1 | diff -u $${file}.chk -; \
+	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T -A neutralize.map $${file} 2>&1 | diff -u $${file}.chk -; \
 	done
 
 PYTESTS=t9601 t9602 t9603

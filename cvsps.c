@@ -104,7 +104,7 @@ static int restrict_tag_ps_end = INT_MAX;
 static const char * diff_opts;
 static int compress;
 static char compress_arg[8];
-static time_t regression_time;
+static bool regression_time;
 static bool selection_sense = true;
 static FILE *revfp;
 static int verbose = 0;
@@ -867,10 +867,8 @@ static int parse_args(int argc, char *argv[])
 
 	if (strcmp(argv[i], "-T") == 0)
 	{
-	    if (++i >= argc)
-		return usage("argument to -T missing", "");
-
-	    convert_date(&regression_time, argv[i++]);
+	    regression_time = true;
+	    i++;
 	    continue;
 	}
 
@@ -1544,6 +1542,7 @@ static bool visible(PatchSet * ps)
 	return false;
 
  ok:
+    //fprintf(stderr, "Foo! %d %d %d\n", restrict_date_start, restrict_date_end, ps->date);
     if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
 	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
@@ -1867,14 +1866,7 @@ static void print_fast_export(PatchSet * ps)
 	}
     }
 
-    /* we need to be able to fake dates for regression testing */
-    if (regression_time == 0)
-	tm = tztime(&ps->date, tz);
-    else
-    {
-	time_t clock_tick = regression_time + ps->psid * timestamp_fuzz_factor * 2;
-	tm = tztime(&clock_tick, tz);
-    }
+    tm = tztime(&ps->date, tz);
 
     /* map HEAD branch to master, leave others unchanged */
     outbranch = strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master";
@@ -2017,6 +2009,10 @@ static void assign_patchset_id(PatchSet * ps)
     {
 	ps_counter++;
 	ps->psid = ps_counter;
+
+	/* we need to be able to fake dates for regression testing */
+	if (regression_time)
+	    ps->date = ps->psid * timestamp_fuzz_factor * 2;
 
 	find_branch_points(ps);
     }
