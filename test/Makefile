@@ -18,23 +18,23 @@ rebuild: s_rebuild t_rebuild
 testlist:
 	@grep '^##' *.tst *.py
 
+neutralize.map:
+	@echo "$${USER} = foo <foo> -0500" >neutralize.map
+
 TESTLOADS := $(shell ls -1 *.tst | sed '/.tst/s///')
-s_rebuild:
-	@echo "$${USER} = foo <foo> -0500" >/tmp/cvsps;
+s_rebuild: neutralize.map
 	@-for file in $(TESTLOADS); do \
 	    echo "Remaking $${file}.chk"; \
 	    make --quiet $${file}.repo; \
-	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A /tmp/cvsps $${file} >$${file}.chk 2>&1; \
+	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A neutralize.map $${file} >$${file}.chk 2>&1; \
 	done;
 	@rm /tmp/cvsps
-s_regress:
-	@echo "$${USER} = foo <foo> -0500" >/tmp/cvsps;
+s_regress: neutralize.map
 	@-for file in $(TESTLOADS); do \
 	    echo -n "  $${file} "; grep '##' $${file}.tst  || echo ' ## (no description)'; \
 	    make --quiet $${file}.repo; \
-	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A /tmp/cvsps $${file} 2>&1 | diff -u $${file}.chk -; \
+	    cvsps --root :local:$${PWD}/$${file}.repo --fast-export -T "2012-12-18T15:24:32" -A neutralize.map $${file} 2>&1 | diff -u $${file}.chk -; \
 	done
-	@rm -f /tmp/regress /tmp/cvsps
 
 PYTESTS=t9601 t9602 t9603
 t_test:
@@ -49,4 +49,4 @@ t_rebuild:
 	done
 
 clean:
-	rm -fr *.checkout *.repo *.pyc *.log
+	rm -fr neutralize.map *.checkout *.repo *.pyc *.log
