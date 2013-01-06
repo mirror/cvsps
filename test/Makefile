@@ -13,6 +13,8 @@ PATH := ${PATH}:..
 test: s_regress t_test
 	@echo "No diff output is good news."
 
+check: test
+
 rebuild: s_rebuild t_rebuild
 
 testlist:
