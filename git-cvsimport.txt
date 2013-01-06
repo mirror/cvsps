@@ -9,9 +9,9 @@ git-cvsimport - Salvage your data out of another SCM people love to hate
 SYNOPSIS
 --------
 [verse]
-'git cvsimport' [-A <author-conv-file>] [-b] [-C <git_repository>] 
-              [-d <CVSROOT>] [-h] [-i] [-k] [-p <options-for-engine>] 
-	      [-P <cvsps-output-file>] [-r <remote>] [-R] [-s <subst>] 
+'git cvsimport' [-A <author-conv-file>] [-b] [-C <git_repository>]
+              [-d <CVSROOT>] [-h] [-i] [-k] [-p <options-for-engine>]
+	      [-P <cvsps-output-file>] [-r <remote>] [-R] [-s <subst>]
 	      [-S <regex>] [-u] [-v] [-z <fuzz>] [<CVS_module>]
 
 DESCRIPTION
@@ -69,7 +69,7 @@ export changes back to CVS again later with
 
 -d <CVSROOT>::
 	The root of the CVS archive. It is only necessary to specify
-	this option if you are running from somewhere other than a 
+	this option if you are running from somewhere other than a
 	CVS checkout directory; the value is passed to the conversion
 	engine to be interpreted.
 
@@ -135,7 +135,7 @@ messages, bug-tracking systems, email archives, and the like.
 	Verbosity: let 'cvsimport' report what it is doing.
 
 -z <fuzz>::
-	Pass the timestamp fuzz factor, in seconds. If unset, this has 
+	Pass the timestamp fuzz factor, in seconds. If unset, this has
 	an engine-dependent default - usually 300s.
 
 <CVS_module>::
