@@ -692,11 +692,9 @@ static int parse_args(int argc, char *argv[])
 		    ++shortname;
 		if (*shortname == '#')
 		    continue;
-		for (cp = eq; cp >= shortname; --cp)
-		    if (*cp == '=')
-			continue;
-		    else if (isspace(*cp))
-			*cp = '\0';
+		*eq = '\0';
+		for (cp = eq-1; cp >= shortname && isspace(*cp); --cp)
+		    *cp = '\0';
 		for (longname = eq + 1; isspace(*longname); ++longname)
 		    continue;
 		timezone = strchr(longname, '>');
@@ -1542,7 +1540,7 @@ static bool visible(PatchSet * ps)
 	return false;
 
  ok:
-    //fprintf(stderr, "Foo! %d %d %d\n", restrict_date_start, restrict_date_end, ps->date);
+    //fprintf(stderr, "Time check: %zd %zd %zd\n", restrict_date_start, restrict_date_end, ps->date);
     if (restrict_date_start > 0 &&
 	(ps->date < restrict_date_start ||
 	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
