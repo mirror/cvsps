@@ -259,7 +259,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
     # Added January 2013 - should be removed after a decent interval.
     if backend.__class__.__name__ == "cvsps":
         try:
-            subprocess.check_output("cvsps -V", shell=True)
+            subprocess.check_output("cvsps -V 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as e:
             if e.returncode == 1:
                 sys.stderr.write("cvsimport: falling back to old version...\n")
