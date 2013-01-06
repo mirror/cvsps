@@ -263,7 +263,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         except subprocess.CalledProcessError as e:
             if e.returncode == 1:
                 sys.stderr.write("cvsimport: falling back to old version...\n")
-                sys.exit(os.system("git-cvsimport-fallback" + " ".join(sys.argv[1:])))
+                sys.exit(os.system("git-cvsimport-fallback " + " ".join(sys.argv[1:])))
             else:
                 sys.stderr.write("cvsimport: cannot execute cvsps.\n")
                 sys.exit(1)
