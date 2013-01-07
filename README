@@ -17,10 +17,11 @@ with fast-export dumping are maintained by Eric S. Raymond.
 
 If you have not used an older version of CVSps, you can skip this section.
 
-The 3.x versions have changed significantly.  In 2012, CVS use is declining 
-swiftly (GNU CVS hasn't been updated since 2004) and the original use case
-for this tool - browsing change sets in a live CVS repository - is obsolete.
-The 3.x versions are more focused on the --fast-export mode.
+The 3.x versions have changed significantly.  In 2012, CVS use is
+declining swiftly (GNU CVS hasn't been updated since 2004) and the
+original use case for this tool - browsing change sets in a live CVS
+repository - is obsolete.  The 3.x versions are more focused on the
+--fast-export mode.
 
 Accordingly, a large amount of old code and options have been
 discarded in order to reduce CVSps's complexity and improve its
@@ -31,6 +32,12 @@ and different log/rlog versions is gone and the tool is much faster.
 Also, it is no longer required that CVSps be run in a CVS checkout
 directory; it can run from a repository directory, or actually 
 from anywhere at all providing CVSROOT is set or --root is used.
+
+The old -A option enabling ancestry-branch tracking didn't work 
+and has been dropped (equivalent topological analysis is done in
+fast-export mode). The new -A option accepts an author-mapping file
+in the same format traditionally accepted by git-cvsimport, cvs2git,
+git-svn, reposurgeon, and other similar tools.
 
 The old-style non-fast-export reporting mode is still supported, but
 deprecated.  In the future, it is possible that it may be dropped
