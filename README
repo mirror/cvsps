@@ -41,6 +41,10 @@ entirely.
 Do 'make' and 'make install'.  This is very plain-vanilla ANSI C
 and should run on any Unixoid OS.
 
+== Dependencies ==
+
+The -g diff-generation option of cvsps depends on diff and sed at runtime.
+
 == Testing ==
 
 'make check' runs a regression-test suite.
