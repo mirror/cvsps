@@ -12,6 +12,7 @@
 #include <zlib.h>
 #include <sys/socket.h>
 
+#include "compiler.h"
 #include "debug.h"
 #include "tcpsocket.h"
 #include "sio.h"
@@ -42,7 +43,7 @@ struct _CvsServerCtx
 };
 
 static void get_cvspass(char *, const char *, int len);
-static void send_string(CvsServerCtx *, const char *, ...);
+static void send_string(CvsServerCtx *, const char *, ...) GCCISM(__attribute__ ((format (printf, 2, 3))));
 static int read_response(CvsServerCtx *, const char *);
 static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp);
 static int read_line(CvsServerCtx * ctx, char * p, int len);
@@ -126,7 +127,7 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 	send_string(ctx, "Root %s\n", ctx->root);
 
 	/* this is taken from 1.11.1p1 trace - but with Mbinary removed. we can't handle it (yet!) */
-	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M E F\n", ctx->root);
+	send_string(ctx, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M E F\n");
 
 	send_string(ctx, "valid-requests\n");
 
@@ -873,7 +874,7 @@ void cvs_diff(CvsServerCtx * ctx,
     }
     else
     {
-	send_string(ctx, "Directory %s\n", rep, file_buff);
+	send_string(ctx, "Directory %s\n", rep);
 	send_string(ctx, "%s/%s\n", ctx->root, rep);
     }
 
