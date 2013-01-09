@@ -250,11 +250,11 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
      [-r <remote>] [-R] [-s <subst>] [-S <regex>] [-u] [-v] [-z <fuzz>]
      [<CVS_module>]
 """
-    def metadata(fn):
+    def metadata(fn, outdir='.'):
         if bare:
-            return fn
+            return os.path.join(outdir, fn)
         else:
-            return os.path.join(".git", fn) 
+            return os.path.join(outdir, ".git", fn) 
     # Ugly fallback code for people with only cvsps-2.x
     # Added January 2013 - should be removed after a decent interval.
     if backend.__class__.__name__ == "cvsps":
@@ -292,9 +292,9 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         if revisionmap:
             gitopts += " --export-marks='%s'" % markmap
         if authormap:
-            shutil.copyfile(authormap, metadata("cvs_authors"))
-        if os.path.exists(metadata("cvs-authors")):
-            backend.set_authormap(metadata("cvs-authors"))
+            shutil.copyfile(authormap, metadata("cvs-authors", outdir))
+        if os.path.exists(metadata("cvs-authors", outdir)):
+            backend.set_authormap(metadata("cvs-authors", outdir))
         do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
                   % (backend.command(), outdir, gitopts))
         os.chdir(outdir)
