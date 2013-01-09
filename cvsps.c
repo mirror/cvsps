@@ -602,7 +602,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "             [--diff-opts <option string>]");
     debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
     debug(DEBUG_USAGE, "             [-k] [-T] [-V] [<repository>]");
-    debug(DEBUG_USAGE, "");
+    debug(DEBUG_USAGE, " c");
     debug(DEBUG_USAGE, "Where:");
     debug(DEBUG_USAGE, "  -h display this informative message");
     debug(DEBUG_USAGE, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
@@ -1805,6 +1805,7 @@ static void print_fast_export(PatchSet * ps)
 	{
 	    FILE *ofp = fopen(tf, "w");
 	    FILE *cfp;
+	    char buf[BUFSIZ];
 
 	    if (ofp == NULL)
 	    {
