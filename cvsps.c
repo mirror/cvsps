@@ -676,7 +676,7 @@ static int parse_args(int argc, char *argv[])
 
 	    fp = fopen(argv[i++], "r");
 	    if (fp == NULL) {
-		debug(DEBUG_APPERROR, "cvsps: couldn't open specified author map.\n");
+		debug(DEBUG_APPERROR, "couldn't open specified author map.\n");
 		exit(1);
 	    }
 	    /* coverity[tainted_data] */
@@ -873,8 +873,8 @@ static int parse_args(int argc, char *argv[])
 	/* leave this in place so git-cvsimport will cause graceful death */
 	if (strcmp(argv[i], "-u") == 0)
 	{
-	    debug(DEBUG_APPERROR, "cvsps: -u is no longer supported.\n");
-	    debug(DEBUG_APPERROR, "cvsps: your calling program needs to be upgraded to work with cvsps 3.x.\n");
+	    debug(DEBUG_APPERROR, "-u is no longer supported.\n");
+	    debug(DEBUG_APPERROR, "your calling program needs to be upgraded to work with cvsps 3.x.\n");
 	    exit(1);
 	}
 
