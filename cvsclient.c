@@ -877,6 +877,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     char lbuff[BUFSIZ];
     int len;
 
+  reread:
     len = read_line(ctx, lbuff, BUFSIZ);
     debug(DEBUG_TCP, "cvsclient: rlog: read %s", lbuff);
 
@@ -889,6 +890,7 @@ char * cvs_rlog_fgets(char * buff, int buflen, CvsServerCtx * ctx)
     else if (memcmp(lbuff, "E ", 2) == 0)
     {
 	debug(DEBUG_TCP, "%s", lbuff + 2);
+	goto reread;
     }
     else if (strcmp(lbuff, "ok") == 0 || strncmp(lbuff, "error", 5) == 0)
     {
