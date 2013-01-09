@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
@@ -46,6 +47,14 @@ tcp_create_socket(int reuse_addr)
   {
     setsockopt( retval, SOL_SOCKET, SO_REUSEADDR, (char *)&yes, sizeof(int));
   }
+
+  yes = 1;
+  setsockopt (retval,         /* socket affected */
+              IPPROTO_TCP,    /* set option at TCP level */
+              TCP_NODELAY,    /* name of option */
+              (char *) &yes,  /* the cast is historical
+                                 cruft */
+              sizeof(int));    /* length of option value */
 
   debug(DEBUG_TCP, "tcp: socket created");
 #ifdef WIN32
