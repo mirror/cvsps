@@ -1798,6 +1798,7 @@ static void print_fast_export(PatchSet * ps)
     for all_patchset_members(next, ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	size_t res;
 
 	if (!psm->post_rev->dead) 
 	{
@@ -1838,8 +1839,8 @@ static void print_fast_export(PatchSet * ps)
 		      psm->file->filename, psm->post_rev->rev);
 		exit(1);
 	    }
-	    while ((c = fgetc(cfp)) != EOF)
-		putchar(c);
+	    while ((res = fread (buf, 1, sizeof (buf), cfp)) != 0)
+		fwrite (buf, 1, res, stdout);
 	    (void)fclose(cfp);
 	    putchar('\n');
 
