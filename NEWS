@@ -1,5 +1,9 @@
 			CVSps project news
 
+3.7 @ 2013-01-08
+  Bug fix in timezone handling (thanks to Chris Rorvick).
+  Major performance gain in the CVS client code (thanks to Sergei Trofimovich).
+
 3.6 @ 2013-01-06
   The third field in an author entry is now interpreted as if it were TZ.
 
