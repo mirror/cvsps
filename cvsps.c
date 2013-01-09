@@ -234,11 +234,11 @@ int main(int argc, char *argv[])
 	{
 	    if (fast_export)
 		debug(DEBUG_APPERROR,
-		      "commitid reliable only after commit :%d%s",
+		      "commitid reliable only after commit :%d",
 		      ps->mark);
 	    else
 		debug(DEBUG_APPERROR,
-		      "commitid reliable only after patch set %d%s",
+		      "commitid reliable only after patch set %d",
 		      ps->psid);
 	}
     }
@@ -2951,8 +2951,8 @@ static int check_rev_funk(PatchSet * ps, CvsFileRevision * rev)
 	    if (next_ps->date > ps->date)
 		break;
 
-	    debug(DEBUG_STATUS, "ps->date %d next_ps->date %d rev->rev %s rev->branch %s", 
-		  ps->date, next_ps->date, rev->rev, rev->branch);
+	    debug(DEBUG_STATUS, "ps->date %lld next_ps->date %lld rev->rev %s rev->branch %s", 
+		  (long long)ps->date, (long long)next_ps->date, rev->rev, rev->branch);
 
 	    /*
 	     * If the tagname is one of the two possible '-r' tags
