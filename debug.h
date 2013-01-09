@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #endif
 
+#include "compiler.h"
 #include "inline.h"
 
 #define DEBUG_NUM_FACILITIES  32 /* should be 64 on 64bit CPU... */
@@ -32,13 +33,14 @@ extern "C"
 
 extern unsigned int debuglvl;
 
-void hexdump( const char *ptr, int size, const char *fmt, ... );
+void hexdump( const char *ptr, int size, const char *fmt, ... ) GCCISM(__attribute__ ((format (printf, 3, 4))));
 void vdebug(int dtype, const char *fmt, va_list);
 void vmdebug(int dtype, const char *fmt, va_list);
 void to_hex( char* dest, const char* src, size_t n );
 void debug_set_error_file(FILE *);
 void debug_set_error_facility(int mask, FILE *);
 
+static INLINE void debug(unsigned int dtype, const char *fmt, ...) GCCISM(__attribute__ ((format (printf, 2, 3))));
 static INLINE void debug(unsigned int dtype, const char *fmt, ...)
 {
     va_list ap;
@@ -51,6 +53,7 @@ static INLINE void debug(unsigned int dtype, const char *fmt, ...)
     va_end(ap);
 }
 
+static INLINE void mdebug(unsigned int dtype, const char *fmt, ...) GCCISM(__attribute__ ((format (printf, 2, 3))));
 static INLINE void mdebug(unsigned int dtype, const char *fmt, ...)
 {
     va_list ap;
