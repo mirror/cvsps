@@ -721,24 +721,58 @@ static int read_response(CvsServerCtx * ctx, const char * str)
 static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 {
     char line[BUFSIZ];
+    long int conv;
+    char * sz_e;
 
     while (1)
     {
 	read_line(ctx, line, BUFSIZ);
 	debug(DEBUG_TCP, "ctx_to_fp: %s", line);
-	if (memcmp(line, "M ", 2) == 0)
+
+	if (strncmp (line, "error ", 6) == 0)
 	{
-	    if (fp)
-		fprintf(fp, "%s\n", line + 2);
+	    debug(DEBUG_APPERROR, "ctx_to_fp: error: %s", line);
+	    exit(1);
 	}
-	else if (memcmp(line, "E ", 2) == 0)
-	{
-	    debug(DEBUG_TCP, "%s", line + 2);
-	}
-	else if (strncmp(line, "ok", 2) == 0 || strncmp(line, "error", 5) == 0)
-	{
+
+	/* EOF. likely delete file */
+	if (strcmp (line, "ok") == 0)
 	    break;
+
+	/* wait for raw data size */
+	conv = strtol(line, &sz_e, 10);
+	if (conv == LONG_MIN || conv ==  LONG_MAX || *sz_e != '\0')
+	    continue;
+
+	debug(DEBUG_TCP, "ctx_to_fp: file size: %ld", conv);
+
+	while (conv)
+	{
+	    long bs = ctx->tail - ctx->head;
+	    if (bs > conv) bs = conv;
+
+	    fwrite (ctx->head, 1, bs, fp);
+	    ctx->head += bs;
+	    conv -= bs;
+
+	    if (conv)
+	    {
+		if (refill_buffer(ctx) <= 0)
+		{
+		    debug(DEBUG_APPERROR, "ctx_to_fp: refill_buffer error");
+		    exit(1);
+		}
+	    }
 	}
+
+	read_line(ctx, line, BUFSIZ);
+	if (strcmp (line, "ok") != 0)
+	{
+	    debug(DEBUG_APPERROR, "ctx_to_fp: error: expected 'ok' at EOF but got: %s", line);
+	    exit(1);
+	}
+
+	break;
     }
 
     if (fp)
@@ -766,7 +800,6 @@ void cvs_update(CvsServerCtx * ctx, const char * rep, const char * file, const c
 {
     if (kk)
 	send_string(ctx, "Argument -kk\n");
-    send_string(ctx, "Argument -p\n");
     send_string(ctx, "Argument -r\n");
     send_string(ctx, "Argument %s\n", rev);
     send_string(ctx, "Argument %s/%s\n", rep, file);
