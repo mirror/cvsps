@@ -224,7 +224,7 @@ convert_address(long *dest, const char *addr_str)
 	break;
       }
       
-      debug(DEBUG_ERROR, "gethostbyname failed for %s: ", addr_str, errstr);
+      debug(DEBUG_ERROR, "gethostbyname failed for %s: %s", addr_str, errstr);
 
       retval = -1;
     }
