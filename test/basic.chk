@@ -5,7 +5,7 @@ The quick brown fox jumped over the lazy dog.
 
 commit refs/heads/master
 mark :2
-committer foo <foo> 600 +0000
+committer foo <foo> 18600 +0000
 data 24
 This is a sample commit
 
@@ -18,7 +18,7 @@ Now is the time for all good men to come to the aid of their country.
 
 commit refs/heads/master
 mark :4
-committer foo <foo> 1200 +0000
+committer foo <foo> 19200 +0000
 data 30
 This is another sample commit
 
@@ -32,7 +32,7 @@ This is a doomed file.  Its destiny is to be deleted.
 
 commit refs/heads/master
 mark :6
-committer foo <foo> 1800 +0000
+committer foo <foo> 19800 +0000
 data 21
 Create a doomed file
 
@@ -46,7 +46,7 @@ The world will little note, nor long remember what we say here
 
 commit refs/heads/master
 mark :8
-committer foo <foo> 2400 +0000
+committer foo <foo> 20400 +0000
 data 20
 Add a spacer commit
 
@@ -63,7 +63,7 @@ data 6
 
 commit refs/heads/master
 mark :10
-committer foo <foo> 3000 +0000
+committer foo <foo> 21000 +0000
 data 60
 Check that .cvsignore -> .gitignore name translation works.
 
@@ -77,7 +77,7 @@ And now for something completely different.
 
 commit refs/heads/master
 mark :12
-committer foo <foo> 3600 +0000
+committer foo <foo> 21600 +0000
 data 38
 The obligatory Monty Python reference
 
@@ -86,7 +86,7 @@ M 100644 :11 README
 
 commit refs/heads/master
 mark :13
-committer foo <foo> 4200 +0000
+committer foo <foo> 22200 +0000
 data 21
 Testing file removal
 
@@ -100,7 +100,7 @@ The file 'doomed' should not be visible at this revision.
 
 commit refs/heads/master
 mark :15
-committer foo <foo> 4800 +0000
+committer foo <foo> 22800 +0000
 data 36
 Only README should be visible here.
 
@@ -114,7 +114,7 @@ This is a superflous file, a sanity check for branch creation.
 
 commit refs/heads/master
 mark :17
-committer foo <foo> 5400 +0000
+committer foo <foo> 23400 +0000
 data 52
 Should not generate an extra fileop after branching
 
@@ -134,7 +134,7 @@ This is alternate content for README.
 
 commit refs/heads/samplebranch
 mark :19
-committer foo <foo> 6000 +0000
+committer foo <foo> 24000 +0000
 data 34
 Do we get branch detection right?
 
@@ -147,7 +147,7 @@ I'm back in the saddle again.
 
 commit refs/heads/master
 mark :21
-committer foo <foo> 6600 +0000
+committer foo <foo> 24600 +0000
 data 44
 This commit should alter the master branch.
 
