@@ -48,6 +48,13 @@ tcp_create_socket(int reuse_addr)
     setsockopt( retval, SOL_SOCKET, SO_REUSEADDR, (char *)&yes, sizeof(int));
   }
 
+  /*
+   * This is a good performance enhancement when the socket is going to
+   * be used to pass a lot of short commands.  It prevents them from being
+   * delayed by the Nagle algorithm until they can be aggreagated into
+   * a large packet.  See http://en.wikipedia.org/wiki/Nagle%27s_algorithm
+   * for discussion.
+   */
   yes = 1;
   setsockopt (retval,         /* socket affected */
               IPPROTO_TCP,    /* set option at TCP level */
