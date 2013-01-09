@@ -1688,28 +1688,31 @@ static void print_patch_set(PatchSet * ps)
     printf("\n");
 }
 
-static struct tm *tztime(const time_t *timep, const char *tz)
+static const char *utc_offset_timestamp(const time_t *timep, const char *tz)
 {
+    static char outbuf[BUFSIZ];
+
     struct tm *tm;
-    char buf[BUFSIZ];
+    char tzbuf[BUFSIZ];
     char *oldtz = getenv("TZ");
 
     // make a copy in case original is clobbered
     if (oldtz != NULL)
-	strncpy(buf, oldtz, sizeof(buf));
+	strncpy(tzbuf, oldtz, sizeof(tzbuf));
 
     setenv("TZ", tz, 1);
     tzset();  // just in case ...
 
     tm = localtime(timep);
+    strftime(outbuf, sizeof(outbuf), "%s %z", tm);
 
     if (oldtz != NULL)
-	setenv("TZ", buf, 1);
+	setenv("TZ", tzbuf, 1);
     else
 	unsetenv("TZ");
     tzset();
 
-    return tm;
+    return outbuf;
 }
 
 #define SUFFIX(a, s)	(strcmp(a + strlen(a) - strlen(s), s) == 0) 
@@ -1743,7 +1746,6 @@ static char *fast_export_sanitize(char *name, char *sanitized, int sanlength)
 
 static void print_fast_export(PatchSet * ps)
 {
-    struct tm *tm;
     struct list_head * next, * tagl, * mapl;
     static int mark = 0;
     char *tf = tmpnam(NULL);	/* ugly necessity */
@@ -1753,7 +1755,6 @@ static void print_fast_export(PatchSet * ps)
     int ancestor_mark = 0;
     char sanitized_branch[strlen(ps->branch)+1];
     char *match, *tz, *outbranch;
-    char buf[1024];
     Branch *branch;
  
     struct branch_head {
@@ -1865,8 +1866,6 @@ static void print_fast_export(PatchSet * ps)
 	}
     }
 
-    tm = tztime(&ps->date, tz);
-
     /* map HEAD branch to master, leave others unchanged */
     outbranch = strcmp("HEAD", ps->branch) ? fast_export_sanitize(ps->branch, sanitized_branch, sizeof(sanitized_branch)) : "master";
 
@@ -1883,8 +1882,7 @@ static void print_fast_export(PatchSet * ps)
 	printf("committer %s", match);
     else
 	printf("committer %s <%s>", ps->author, ps->author);
-    strftime(buf, sizeof(buf), "%s %z", tm);
-    printf(" %s\n", buf);
+    printf(" %s\n", utc_offset_timestamp(&ps->date, tz));
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
     if (reposurgeon)
     {

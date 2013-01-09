@@ -5,7 +5,7 @@ The quick brown fox jumped over the lazy dog.
 
 commit refs/heads/master
 mark :2
-committer foo <foo> 18600 +0000
+committer foo <foo> 600 +0000
 data 24
 This is a sample commit
 
@@ -18,7 +18,7 @@ This is a superflous file, a sanity check for branch creation.
 
 commit refs/heads/master
 mark :4
-committer foo <foo> 19200 +0000
+committer foo <foo> 1200 +0000
 data 52
 Should not generate an extra fileop after branching
 
@@ -35,7 +35,7 @@ I date myself with a Jefferson Airplane reference.
 
 commit refs/heads/master
 mark :6
-committer foo <foo> 19800 +0000
+committer foo <foo> 1800 +0000
 data 51
 This file should not appear on the daughter branch
 
