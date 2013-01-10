@@ -1845,12 +1845,6 @@ static void print_fast_export(PatchSet * ps)
 		fwrite (buf, 1, res, stdout);
 	    (void)fclose(cfp);
 	    putchar('\n');
-
-	    if (revfp)
-		fprintf(revfp, "%s %s :%d\n",
-			psm->file->filename,
-			psm->post_rev->rev,
-			mark);
 	}
     }
 
@@ -1885,6 +1879,21 @@ static void print_fast_export(PatchSet * ps)
 	printf("committer %s <%s>", ps->author, ps->author);
     printf(" %s\n", utc_offset_timestamp(&ps->date, tz));
     printf("data %zd\n%s\n", strlen(ps->descr), ps->descr); 
+
+    if (revfp) 
+    {
+       for all_patchset_members(next, ps)
+       {
+           PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+
+           if (!psm->post_rev->dead)
+               fprintf(revfp, "%s %s :%d\n",
+                       psm->file->filename,
+                       psm->post_rev->rev,
+                       mark);
+       }
+    }
+
     if (reposurgeon)
     {
 	FILE *ofp = fopen(tf, "w");
