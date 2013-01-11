@@ -1939,24 +1939,27 @@ static void print_fast_export(PatchSet * ps)
     for all_patchset_members(next, ps)
     {
 	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
+	size_t filename_size = strlen(psm->file->filename) + 1;
+	char sanitized_name[filename_size];
 
-	/* 
-	 * .cvsignore files have a gloobing syntax that is upward-compatible
-	 * with git's, 
+	memcpy (sanitized_name, psm->file->filename, filename_size);
+	/*
+	 * .cvsignore files have a globbing syntax that is upward-compatible
+	 * with git's,
 	 */
-	if (SUFFIX(psm->file->filename, ".cvsignore")) {
-	    char *end = psm->file->filename + strlen(psm->file->filename);
+	if (SUFFIX(sanitized_name, ".cvsignore")) {
+	    char *end = sanitized_name + strlen(sanitized_name);
 	    end[-9] = 'g';
 	    end[-8] = 'i';
 	    end[-7] = 't';
 	}
 
 	if (psm->post_rev->dead)
-	    printf("D %s\n", psm->file->filename);
+	    printf("D %s\n", sanitized_name);
 	else if (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
-	    printf("M 100755 :%d %s\n", ++basemark, psm->file->filename);
+	    printf("M 100755 :%d %s\n", ++basemark, sanitized_name);
 	else
-	    printf("M 100644 :%d %s\n", ++basemark, psm->file->filename);
+	    printf("M 100644 :%d %s\n", ++basemark, sanitized_name);
     }
     printf("\n");
 
