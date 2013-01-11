@@ -110,6 +110,7 @@ static FILE *revfp;
 static int verbose = 0;
 static bool keyword_suppression = false;
 static bool reposurgeon = false;
+static bool convert_ignores = false;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -630,7 +631,8 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "  -k suppress CVS keyword expansion");
     debug(DEBUG_USAGE, "  -T <date> set base date for regression testing");
     debug(DEBUG_USAGE, "  --fast-export emit a git-style fast-import stream");
-    debug(DEBUG_USAGE, "  --reposurgeon emit reference-lifting hints for reposurgeon.\n"); 
+    debug(DEBUG_USAGE, "  --reposurgeon emit reference-lifting hints for reposurgeon.\n");
+    debug(DEBUG_USAGE, "  --convert-ignores renames .cvsignore to .gitignore repositorywide.\n");
     debug(DEBUG_USAGE, "  -V emit version and exit");
     debug(DEBUG_USAGE, "  <repository> apply cvsps to repository. Overrides working directory");
     debug(DEBUG_USAGE, "\ncvsps version %s\n", VERSION);
@@ -977,6 +979,13 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[i], "--reposurgeon") == 0)
 	{
 	    reposurgeon = true;
+	    i++;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "--convert-ignores") == 0)
+	{
+	    convert_ignores = true;
 	    i++;
 	    continue;
 	}
@@ -1947,7 +1956,7 @@ static void print_fast_export(PatchSet * ps)
 	 * .cvsignore files have a globbing syntax that is upward-compatible
 	 * with git's,
 	 */
-	if (SUFFIX(sanitized_name, ".cvsignore")) {
+	if (convert_ignores && SUFFIX(sanitized_name, ".cvsignore")) {
 	    char *end = sanitized_name + strlen(sanitized_name);
 	    end[-9] = 'g';
 	    end[-8] = 'i';
