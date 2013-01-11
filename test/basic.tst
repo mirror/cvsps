@@ -66,7 +66,7 @@ co.commit("This commit should alter the master branch.")
 # The tilde should be stripped from the middle of this
 co.tag("ill~egal")
 
-repo.convert("basic", "basic.gitconvert")
+repo.convert("basic", "basic.gitconvert", '--convert-ignores')
 repo.cleanup()
 
 # end
