@@ -31,6 +31,9 @@ co.write(".cvsignore","*.pyc\n")
 co.add(".cvsignore")
 co.commit("Check that .cvsignore -> .gitignore name translation works.")
 
+co.write(".cvsignore","*.pyc\n*.o\n")
+co.commit("Check that .cvsignore -> .gitignore name translation works on updates as well.")
+
 co.write("README",
          "And now for something completely different.\n")
 co.commit("The obligatory Monty Python reference")
@@ -63,6 +66,7 @@ co.commit("This commit should alter the master branch.")
 # The tilde should be stripped from the middle of this
 co.tag("ill~egal")
 
+repo.convert("basic", "basic.gitconvert")
 repo.cleanup()
 
 # end
