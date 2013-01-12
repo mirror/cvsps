@@ -135,6 +135,44 @@ class cvs2git:
         "Emit the command implied by all previous options."
         return "(cvs2git --username=git-cvsimport --quiet --quiet --blobfile={0} --dumpfile={1} {2} {3} && cat {0} {1} && rm {0} {1})".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts, self.modulepath)
 
+class parsecvs:
+    "Method class for parsecvs back end."
+    def __init__(self):
+        self.opts = ""
+        self.revmap = None
+    def set_repo(self, val):
+        sys.stderr.write("git cvsimport: parsecvs must be run from within a module directory.\n")
+        sys.exit(1)
+    def set_authormap(self, val):
+        "Set the author-map file."
+        self.opts += " -A '%s'" % val
+    def set_fuzz(self, val):
+        "Set the commit-similarity window."
+        self.opts += " -w %s" % val
+    def set_nokeywords(self):
+        "Suppress CVS keyword expansion."
+        self.opts += " -k"
+    def add_opts(self, val):
+        "Add options to the engine command line."
+        self.opts += " " + val
+    def set_exclusion(self, val):
+        "Set a file exclusion regexp."
+        sys.stderr.write("git cvsimport: exclusion is not supported with parsecvs.\n")
+        sys.exit(1)
+    def set_after(self, val):
+        "Set a date threshold for incremental import."
+        sys.stderr.write("git cvsimport: incremental import is not supported with parsecvs.\n")
+        sys.exit(1)
+    def set_revmap(self, val):
+        "Set the file to which the engine should dump a reference map."
+        self.revmap = val
+        self.opts += " -R '%s'" % self.revmap
+    def set_module(self, val):
+        "Set the module to query."
+    def command(self):
+        "Emit the command implied by all previous options."
+        return "find . -name '*,v' -print | parsecvs " + self.opts
+
 class filesource:
     "Method class for file-source back end."
     def __init__(self, filename):
@@ -197,7 +235,7 @@ if __name__ == '__main__':
         elif opt == '-b':
             bare = True
         elif opt == '-e':
-            for cls in (cvsps, cvs2git):
+            for cls in (cvsps, cvs2git, parsecvs):
                 if cls.__name__ == val:
                     backend = cls()
                     break
