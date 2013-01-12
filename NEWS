@@ -1,5 +1,8 @@
 			CVSps project news
 
+3.8 @
+  Fix buggy generation of the revision-map file (thanks to Chris Rorvick).
+
 3.7 @ 2013-01-08
   Bug fix in timezone handling (thanks to Chris Rorvick).
   Major performance gain in the CVS client code (thanks to Sergei Trofimovich).
