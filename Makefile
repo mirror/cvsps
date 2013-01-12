@@ -4,6 +4,7 @@ CC?=gcc
 CFLAGS?=-g -O2 -Wall 
 CPPFLAGS+=-I. -DVERSION=\"$(VERSION)\"
 LDLIBS+=-lz # += to allow solaris and friends add their libs like -lsocket
+INSTALL = install
 prefix?=/usr/local
 target=$(DESTDIR)$(prefix)
 
@@ -48,11 +49,11 @@ pylint:
 .txt.html:
 	a2x --doctype manpage --format xhtml $*.txt
 
-install: cvsps.1
-	[ -d "$(target)/bin" ] || mkdir -p "$(target)/bin"
-	[ -d "$(target)/share/man/man1" ] || mkdir -p "$(target)/share/man/man1"
-	install cvsps "$(target)/bin"
-	install -m 644 cvsps.1 "$(target)/share/man/man1"
+install: cvsps.1 all
+	$(INSTALL) -d "$(target)/bin"
+	$(INSTALL) -d "$(target)/share/man/man1"
+	$(INSTALL) cvsps "$(target)/bin"
+	$(INSTALL) -m 644 cvsps.1 "$(target)/share/man/man1"
 
 tags: *.c *.h
 	ctags *.c *.h
