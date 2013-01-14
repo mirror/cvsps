@@ -600,7 +600,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_USAGE, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
-    debug(DEBUG_USAGE, "             [--diff-opts <option string>]");
+    debug(DEBUG_USAGE, "             [--diff-opts <option string>] [--convert-ignores]");
     debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
     debug(DEBUG_USAGE, "             [-k] [-T] [-V] [<repository>]");
     debug(DEBUG_USAGE, " ");

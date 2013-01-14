@@ -2,6 +2,7 @@
 
 3.8 @
   Fix buggy generation of the revision-map file (thanks to Chris Rorvick).
+  Don't convert .cvsignores by default, we have field reports of collisions.
 
 3.7 @ 2013-01-08
   Bug fix in timezone handling (thanks to Chris Rorvick).
