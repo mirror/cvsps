@@ -799,12 +799,15 @@ void cvs_rdiff(CvsServerCtx * ctx,
 
 void cvs_update(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, bool kk, FILE *fp)
 {
-    if (kk)
-	send_string(ctx, "Argument -kk\n");
-    send_string(ctx, "Argument -r\n");
-    send_string(ctx, "Argument %s\n", rev);
-    send_string(ctx, "Argument %s/%s\n", rep, file);
-    send_string(ctx, "co\n");
+    send_string(ctx,
+		"%s"
+		"Argument -r\n"
+		"Argument %s\n"
+		"Argument %s/%s\n"
+		"co\n",
+		kk ? "Argument -kk\n" : "",
+		rev,
+		rep, file);
 
     ctx_to_fp(ctx, fp);
 }
