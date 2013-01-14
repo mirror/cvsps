@@ -71,7 +71,8 @@ cvsps-$(VERSION).tar.gz: $(ALL)
 dist: cvsps-$(VERSION).tar.gz
 
 release: cvsps-$(VERSION).tar.gz cvsps.html
-	shipper -u -m -t; make clean; rm SHIPPER.FREECODE
+	rm -f docbook-xsl.css git-cvsimport.html
+	shipper -u -m -t; make clean; rm -f SHIPPER.FREECODE
 
 .PHONY: install clean version dist check
 # DO NOT DELETE
