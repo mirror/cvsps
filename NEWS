@@ -1,6 +1,6 @@
 			CVSps project news
 
-3.8 @
+3.8 @ 2013-01-13
   Fix buggy generation of the revision-map file (thanks to Chris Rorvick).
   Don't convert .cvsignores by default, we have field reports of collisions.
 
