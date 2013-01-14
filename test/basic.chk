@@ -68,93 +68,108 @@ data 60
 Check that .cvsignore -> .gitignore name translation works.
 
 from :8
-M 100644 :9 .gitignore
+M 100644 :9 .cvsignore
 
 blob
 mark :11
-data 44
-And now for something completely different.
+data 10
+*.pyc
+*.o
 
 commit refs/heads/master
 mark :12
 committer foo <foo> 3600 +0000
+data 79
+Check that .cvsignore -> .gitignore name translation works on updates as well.
+
+from :10
+M 100644 :11 .cvsignore
+
+blob
+mark :13
+data 44
+And now for something completely different.
+
+commit refs/heads/master
+mark :14
+committer foo <foo> 4200 +0000
 data 38
 The obligatory Monty Python reference
 
-from :10
-M 100644 :11 README
-
-commit refs/heads/master
-mark :13
-committer foo <foo> 4200 +0000
-data 21
-Testing file removal
-
 from :12
-D doomed
-
-blob
-mark :14
-data 58
-The file 'doomed' should not be visible at this revision.
+M 100644 :13 README
 
 commit refs/heads/master
 mark :15
 committer foo <foo> 4800 +0000
-data 36
-Only README should be visible here.
+data 21
+Testing file removal
 
-from :13
-M 100644 :14 README
+from :14
+D doomed
 
 blob
 mark :16
-data 63
-This is a superflous file, a sanity check for branch creation.
+data 58
+The file 'doomed' should not be visible at this revision.
 
 commit refs/heads/master
 mark :17
 committer foo <foo> 5400 +0000
-data 52
-Should not generate an extra fileop after branching
+data 36
+Only README should be visible here.
 
 from :15
-M 100644 :16 superfluous
-
-reset refs/tags/samplebranch_root
-from :17
-
-reset refs/tags/random
-from :17
+M 100644 :16 README
 
 blob
 mark :18
+data 63
+This is a superflous file, a sanity check for branch creation.
+
+commit refs/heads/master
+mark :19
+committer foo <foo> 6000 +0000
+data 52
+Should not generate an extra fileop after branching
+
+from :17
+M 100644 :18 superfluous
+
+reset refs/tags/samplebranch_root
+from :19
+
+reset refs/tags/random
+from :19
+
+blob
+mark :20
 data 38
 This is alternate content for README.
 
 commit refs/heads/samplebranch
-mark :19
-committer foo <foo> 6000 +0000
+mark :21
+committer foo <foo> 6600 +0000
 data 34
 Do we get branch detection right?
 
-M 100644 :18 README
+M 100644 :20 README
 
 blob
-mark :20
+mark :22
 data 30
 I'm back in the saddle again.
 
 commit refs/heads/master
-mark :21
-committer foo <foo> 6600 +0000
+mark :23
+committer foo <foo> 7200 +0000
 data 44
 This commit should alter the master branch.
 
-from :17
-M 100644 :20 README
+from :19
+M 100644 :22 README
 
 reset refs/tags/illegal
-from :21
+from :23
 
 done
