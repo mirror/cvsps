@@ -1,6 +1,6 @@
 # Test makefile for cvsps
 
-PATH := ${PATH}:..
+PATH := ${PWD}/..:${PATH}
 
 
 .SUFFIXES: .tst .repo .checkout
