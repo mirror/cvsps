@@ -17,6 +17,7 @@ import os, getopt, subprocess, tempfile, shutil
 
 
 DEBUG_COMMANDS = 1
+verbose = 0
 
 
 class Fatal(Exception):
@@ -262,17 +263,18 @@ class FileSource:
         "Set the module to query."
         self.__complain("module can't be set")
 
-    def command(self):
-        "Emit the command implied by all previous options."
-        return "cat " + self.filename
+    def command(self, fast_import):
+        "Runs the command, piping data into the fast_import subprocess."
+        subprocess.check_call(["cat", self.filename],
+                              stdout=fast_import.stdin)
 
 
-if __name__ == '__main__':
+def main(argv):
     if sys.hexversion < 0x02060000:
         sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
         sys.exit(1)
-    (options, arguments) = getopt.getopt(sys.argv[1:], "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
-    verbose = 0
+    (options, arguments) = getopt.getopt(argv, "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
+    global verbose
     bare = False
     root = None
     outdir = os.getcwd()
@@ -443,4 +445,6 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
     except KeyboardInterrupt:
         pass
 
-# end
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
