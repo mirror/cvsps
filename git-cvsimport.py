@@ -265,19 +265,29 @@ def main(argv):
     slashsubst = None
     authormap = None
     revisionmap = False
-    backend = Cvsps()
+
+    # Since a number of other options are passed to the backend, we need to
+    # extract the backend option before handling the others.
+    backend_opt = [o[1] for o in options if o[0] == 'e']
+    if backend_opt:
+        val = backend_opt[0]
+        for cls in (Cvsps, Cvs2Git):
+            if cls.__name__.lower() == val:
+                backend = cls()
+                break
+        else:
+            raise Fatal("unknown engine %s." % val)
+    else:
+        backend = Cvsps()
+
     for (opt, val) in options:
         if opt == '-v':
             verbose += 1
         elif opt == '-b':
             bare = True
         elif opt == '-e':
-            for cls in (Cvsps, Cvs2Git, CvsFastExport):
-                if cls.__name__ == val:
-                    backend = cls()
-                    break
-            else:
-                raise Fatal("unknown engine %s." % val)
+            # We handled the backend first, above.
+            pass
         elif opt == '-d':
             backend.set_repo(val)
         elif opt == '-C':
