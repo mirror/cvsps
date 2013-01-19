@@ -36,11 +36,11 @@ def do_or_die(dcmd, legend=""):
     try:
         retcode = subprocess.call(dcmd, shell=True)
         if retcode < 0:
-            raise Fatal("git cvsimport: child was terminated by signal %d." % -retcode)
+            raise Fatal("child was terminated by signal %d." % -retcode)
         elif retcode != 0:
-            raise Fatal("git cvsimport: child returned %d." % retcode)
+            raise Fatal("child returned %d." % retcode)
     except (OSError, IOError) as e:
-        raise Fatal("git cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
+        raise Fatal("execution of %s%s failed: %s" % (dcmd, legend, e))
 
 
 def capture_or_die(dcmd, legend=""):
@@ -53,10 +53,9 @@ def capture_or_die(dcmd, legend=""):
         return subprocess.check_output(dcmd, shell=True)
     except subprocess.CalledProcessError as e:
         if e.returncode < 0:
-            sys.stderr.write("git cvsimport: child was terminated by signal %d." % -e.returncode)
-        elif e.returncode != 0:
-            sys.stderr.write("git cvsimport: child returned %d." % e.returncode)
-        sys.exit(1)
+            raise Fatal("child was terminated by signal %d." % -e.returncode)
+        else:
+            raise Fatal("child returned %d." % e.returncode)
 
 
 class Cvsps:
@@ -121,18 +120,15 @@ class Cvs2Git:
 
     def set_authormap(self, _val):
         "Set the author-map file."
-        sys.stderr.write("git cvsimport: author maping is not supported with cvs2git.\n")
-        sys.exit(1)
+        raise Fatal("author maping is not supported with cvs2git.")
 
     def set_repo(self, _val):
         "Set the repository root option."
-        sys.stderr.write("git cvsimport: cvs2git must run within a repository checkout directory.\n")
-        sys.exit(1)
+        raise Fatal("cvs2git must run within a repository checkout directory.")
 
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
-        sys.stderr.write("git cvsimport: fuzz setting is not supported with cvs2git.\n")
-        sys.exit(1)
+        raise Fatal("fuzz setting is not supported with cvs2git.")
 
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
@@ -148,13 +144,11 @@ class Cvs2Git:
 
     def set_after(self, _val):
         "Set a date threshold for incremental import."
-        sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
-        sys.exit(1)
+        raise Fatal("incremental import is not supported with cvs2git.")
 
     def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
-        sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
-        sys.exit(1)
+        raise Fatal("can't get a reference map from cvs2git.")
 
     def set_module(self, val):
         "Set the module to query."
@@ -173,8 +167,7 @@ class CvsFastExport:
         self.revmap = None
 
     def set_repo(self, val):
-        sys.stderr.write("git cvsimport: cvs-fast-export must be run from within a module directory.\n")
-        sys.exit(1)
+        raise Fatal("cvs-fast-export must be run from within a module directory.")
 
     def set_authormap(self, val):
         "Set the author-map file."
@@ -194,13 +187,11 @@ class CvsFastExport:
 
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
-        sys.stderr.write("git cvsimport: exclusion is not supported with cvs-fast-export.\n")
-        sys.exit(1)
+        raise Fatal("exclusion is not supported with cvs-fast-export.")
 
     def set_after(self, val):
         "Set a date threshold for incremental import."
-        sys.stderr.write("git cvsimport: incremental import is not supported with cvs-fast-export.\n")
-        sys.exit(1)
+        raise Fatal("incremental import is not supported with cvs-fast-export.")
 
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
@@ -222,8 +213,7 @@ class FileSource:
         self.filename = filename
 
     def __complain(self, legend):
-        sys.stderr.write("git cvsimport: %s with file source.\n" % legend)
-        sys.exit(1)
+        raise Fatal("%s with file source." % legend)
 
     def set_repo(self, _val):
         "Set the repository root option."
@@ -231,8 +221,7 @@ class FileSource:
 
     def set_authormap(self, _val):
         "Set the author-map file."
-        sys.stderr.write("git cvsimport: author mapping is not supported with filesource.\n")
-        sys.exit(1)
+        raise Fatal("author mapping is not supported with filesource.")
 
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
@@ -256,8 +245,7 @@ class FileSource:
 
     def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
-        sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
-        sys.exit(1)
+        raise Fatal("can't get a reference map from cvs2git.")
 
     def set_module(self, _val):
         "Set the module to query."
@@ -293,8 +281,7 @@ def main(argv):
                     backend = cls()
                     break
             else:
-                sys.stderr.write("git cvsimport: unknown engine %s.\n" % val)
-                sys.exit(1)
+                raise Fatal("unknown engine %s." % val)
         elif opt == '-d':
             backend.set_repo(val)
         elif opt == '-C':
@@ -302,8 +289,7 @@ def main(argv):
         elif opt == '-r':
             remotize = True
         elif opt == '-o':
-            sys.stderr.write("git cvsimport: -o is no longer supported.\n")
-            sys.exit(1)
+            raise Fatal("-o is no longer supported.")
         elif opt == '-i':
             import_only = True
         elif opt == '-k':
@@ -319,16 +305,13 @@ def main(argv):
         elif opt == '-P':
             backend = FileSource(val)
         elif opt in ('-m', '-M'):
-            sys.stderr.write("git cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
-            sys.exit(1)
+            raise Fatal("-m and -M are no longer supported: use reposurgeon instead.")
         elif opt == '-S':
             backend.set_exclusion(val)
         elif opt == '-a':
-            sys.stderr.write("git cvsimport: -a is no longer supported.\n")
-            sys.exit(1)
+            raise Fatal("-a is no longer supported.")
         elif opt == '-L':
-            sys.stderr.write("git cvsimport: -L is no longer supported.\n")
-            sys.exit(1)
+            raise Fatal("-L is no longer supported.")
         elif opt == '-A':
             authormap = os.path.abspath(val)
         elif opt == '-R':
@@ -355,8 +338,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 sys.stderr.write("cvsimport: falling back to old version...\n")
                 sys.exit(os.system("git-cvsimport-fallback " + " ".join(sys.argv[1:])))
             else:
-                sys.stderr.write("cvsimport: cannot execute cvsps.\n")
-                sys.exit(1)
+                raise Fatal("cannot execute cvsps.")
     # Real mainline code begins here
     if outdir:
         try:
