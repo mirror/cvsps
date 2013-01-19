@@ -318,7 +318,6 @@ def main(argv):
             backend.set_fuzz(val)
         elif opt == '-P':
             backend = FileSource(val)
-            sys.exit(1)
         elif opt in ('-m', '-M'):
             sys.stderr.write("git cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
             sys.exit(1)
