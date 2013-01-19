@@ -358,89 +358,89 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 sys.stderr.write("cvsimport: cannot execute cvsps.\n")
                 sys.exit(1)
     # Real mainline code begins here
-    try:
-        if outdir:
-            try:
-                # If the output directory does not exist, create it
-                # and initialize it as a git repository.
-                os.mkdir(outdir)
-                do_or_die("git init --quiet " + outdir)
-            except OSError:
-                # Otherwise, assume user wants incremental import.
-                if not bare and not os.path.exists(os.path.join(outdir, ".git")):
-                    raise Fatal("output directory is not a git repository")
-                threshold = capture_or_die("git log -1 --format=%ct").strip()
-                backend.set_after(threshold)
-        if revisionmap:
-            backend.set_revmap(tempfile.mkstemp()[1])
-            markmap = tempfile.mkstemp()[1]
-        if arguments:
-            backend.set_module(arguments[0])
-        gitopts = ""
-        if bare:
-            gitopts += " --bare"
-        if revisionmap:
-            gitopts += " --export-marks='%s'" % markmap
-        if authormap:
-            shutil.copyfile(authormap, metadata("cvs-authors", outdir))
-        if os.path.exists(metadata("cvs-authors", outdir)):
-            backend.set_authormap(metadata("cvs-authors", outdir))
-        do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
-                  % (backend.command(), outdir, gitopts))
-        os.chdir(outdir)
-        if underscore_to_dot or slashsubst:
-            tagnames = capture_or_die("git tag -l")
-            for tag in tagnames.split():
-                if tag:
-                    changed = tag
-                    if underscore_to_dot:
-                        changed = changed.replace("_", ".")
-                    if slashsubst:
-                        changed = changed.replace(os.sep, slashsubst)
-                    if changed != tag:
-                        do_or_die("git tag -f %s %s >/dev/null" % (tag, changed))
-        if underscore_to_dot or slashsubst or remotize:
-            branchnames = capture_or_die("git branch -l")
-            for branch in branchnames.split():
-                if branch:
-                    # Ugh - fragile dependency on branch -l output format
-                    branch = branch[2:]
-                    changed = branch
-                    if underscore_to_dot:
-                        changed = changed.replace("_", ".")
-                    if slashsubst:
-                        changed = changed.replace(os.sep, slashsubst)
-                    if remotize:
-                        changed = os.path.join("remotes", remotize, branch)
-                    if changed != branch:
-                        do_or_die("branch --m %s %s >/dev/null" % (branch, changed))
-        if revisionmap:
-            refd = {}
-            for line in open(backend.revmap):
-                if line.startswith("#"):
-                    continue
-                (fn, rev, mark) = line.split()
-                refd[(fn, rev)] = mark
-            markd = {}
-            for line in open(markmap):
-                if line.startswith("#"):
-                    continue
-                (mark, hashd) = line.split()
-                markd[mark] = hashd
-            with open(metadata("cvs-revisions"), "a") as wfp:
-                for ((fn, rev), val) in refd.items():
-                    if val in markd:
-                        wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
-            os.remove(markmap)
-            os.remove(backend.revmap)
-        if not import_only and not bare:
-            do_or_die("git checkout -q")
-    except Fatal, err:
-        sys.stderr.write("git_cvsimport: " + err.msg + "\n")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        pass
+    if outdir:
+        try:
+            # If the output directory does not exist, create it
+            # and initialize it as a git repository.
+            os.mkdir(outdir)
+            do_or_die("git init --quiet " + outdir)
+        except OSError:
+            # Otherwise, assume user wants incremental import.
+            if not bare and not os.path.exists(os.path.join(outdir, ".git")):
+                raise Fatal("output directory is not a git repository")
+            threshold = capture_or_die("git log -1 --format=%ct").strip()
+            backend.set_after(threshold)
+    if revisionmap:
+        backend.set_revmap(tempfile.mkstemp()[1])
+        markmap = tempfile.mkstemp()[1]
+    if arguments:
+        backend.set_module(arguments[0])
+    gitopts = ""
+    if bare:
+        gitopts += " --bare"
+    if revisionmap:
+        gitopts += " --export-marks='%s'" % markmap
+    if authormap:
+        shutil.copyfile(authormap, metadata("cvs-authors", outdir))
+    if os.path.exists(metadata("cvs-authors", outdir)):
+        backend.set_authormap(metadata("cvs-authors", outdir))
+    do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
+              % (backend.command(), outdir, gitopts))
+    os.chdir(outdir)
+    if underscore_to_dot or slashsubst:
+        tagnames = capture_or_die("git tag -l")
+        for tag in tagnames.split():
+            if tag:
+                changed = tag
+                if underscore_to_dot:
+                    changed = changed.replace("_", ".")
+                if slashsubst:
+                    changed = changed.replace(os.sep, slashsubst)
+                if changed != tag:
+                    do_or_die("git tag -f %s %s >/dev/null" % (tag, changed))
+    if underscore_to_dot or slashsubst or remotize:
+        branchnames = capture_or_die("git branch -l")
+        for branch in branchnames.split():
+            if branch:
+                # Ugh - fragile dependency on branch -l output format
+                branch = branch[2:]
+                changed = branch
+                if underscore_to_dot:
+                    changed = changed.replace("_", ".")
+                if slashsubst:
+                    changed = changed.replace(os.sep, slashsubst)
+                if remotize:
+                    changed = os.path.join("remotes", remotize, branch)
+                if changed != branch:
+                    do_or_die("branch --m %s %s >/dev/null" % (branch, changed))
+    if revisionmap:
+        refd = {}
+        for line in open(backend.revmap):
+            if line.startswith("#"):
+                continue
+            (fn, rev, mark) = line.split()
+            refd[(fn, rev)] = mark
+        markd = {}
+        for line in open(markmap):
+            if line.startswith("#"):
+                continue
+            (mark, hashd) = line.split()
+            markd[mark] = hashd
+        with open(metadata("cvs-revisions"), "a") as wfp:
+            for ((fn, rev), val) in refd.items():
+                if val in markd:
+                    wfp.write("%s %s %s\n" % (fn, rev, markd[val]))
+        os.remove(markmap)
+        os.remove(backend.revmap)
+    if not import_only and not bare:
+        do_or_die("git checkout -q")
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Fatal as err:
+        sys.stderr.write("git cvsimport: " + err.msg + "\n")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        pass
