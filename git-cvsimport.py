@@ -15,13 +15,16 @@ if sys.hexversion < 0x02060000:
 
 import os, getopt, subprocess, tempfile, shutil
 
+
 DEBUG_COMMANDS = 1
+
 
 class Fatal(Exception):
     "Unrecoverable error."
     def __init__(self, msg):
         Exception.__init__(self)
         self.msg = msg
+
 
 def do_or_die(dcmd, legend=""):
     "Either execute a command or raise a fatal exception."
@@ -38,6 +41,7 @@ def do_or_die(dcmd, legend=""):
     except (OSError, IOError) as e:
         raise Fatal("git cvsimport: execution of %s%s failed: %s" % (dcmd, legend, e))
 
+
 def capture_or_die(dcmd, legend=""):
     "Either execute a command and capture its output or die."
     if legend:
@@ -52,12 +56,15 @@ def capture_or_die(dcmd, legend=""):
         elif e.returncode != 0:
             sys.stderr.write("git cvsimport: child returned %d." % e.returncode)
         sys.exit(1)
-    
+
+
 class cvsps:
     "Method class for cvsps back end."
+
     def __init__(self):
         self.opts = ""
         self.revmap = None
+
     def set_repo(self, val):
         "Set the repository root option."
         if not val.startswith(":"):
@@ -65,153 +72,200 @@ class cvsps:
                 val = os.path.abspath(val)
             val = ":local:" + val
         self.opts += " --root '%s'" % val
+
     def set_authormap(self, val):
         "Set the author-map file."
         self.opts += " -A '%s'" % val
+
     def set_fuzz(self, val):
         "Set the commit-similarity window."
         self.opts += " -z %s" % val
+
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
         self.opts += " -k"
+
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
+
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         self.opts += " -n -f '%s'" % val
+
     def set_after(self, val):
         "Set a date threshold for incremental import."
         self.opts += " -d '%s'" % val
+
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
         self.opts += " -R '%s'" % self.revmap
+
     def set_module(self, val):
         "Set the module to query."
         self.opts += " " + val
+
     def command(self):
         "Emit the command implied by all previous options."
         return "cvsps --fast-export " + self.opts
 
+
 class cvs2git:
     "Method class for cvs2git back end."
+
     def __init__(self):
         self.opts = ""
         self.modulepath = "."
+
     def set_authormap(self, _val):
         "Set the author-map file."
         sys.stderr.write("git cvsimport: author maping is not supported with cvs2git.\n")
         sys.exit(1)
+
     def set_repo(self, _val):
         "Set the repository root option."
         sys.stderr.write("git cvsimport: cvs2git must run within a repository checkout directory.\n")
         sys.exit(1)
+
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
         sys.stderr.write("git cvsimport: fuzz setting is not supported with cvs2git.\n")
         sys.exit(1)
+
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
         self.opts += " --keywords-off"
+
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
+
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         self.opts += " --exclude='%s'" % val
+
     def set_after(self, _val):
         "Set a date threshold for incremental import."
         sys.stderr.write("git cvsimport: incremental import is not supported with cvs2git.\n")
         sys.exit(1)
+
     def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
+
     def set_module(self, val):
         "Set the module to query."
         self.modulepath = " " + val
+
     def command(self):
         "Emit the command implied by all previous options."
         return "(cvs2git --username=git-cvsimport --quiet --quiet --blobfile={0} --dumpfile={1} {2} {3} && cat {0} {1} && rm {0} {1})".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts, self.modulepath)
 
+
 class cvs_fast_export:
     "Method class for cvs-fast-export back end."
+
     def __init__(self):
         self.opts = ""
         self.revmap = None
+
     def set_repo(self, val):
         sys.stderr.write("git cvsimport: cvs-fast-export must be run from within a module directory.\n")
         sys.exit(1)
+
     def set_authormap(self, val):
         "Set the author-map file."
         self.opts += " -A '%s'" % val
+
     def set_fuzz(self, val):
         "Set the commit-similarity window."
         self.opts += " -w %s" % val
+
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
         self.opts += " -k"
+
     def add_opts(self, val):
         "Add options to the engine command line."
         self.opts += " " + val
+
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
         sys.stderr.write("git cvsimport: exclusion is not supported with cvs-fast-export.\n")
         sys.exit(1)
+
     def set_after(self, val):
         "Set a date threshold for incremental import."
         sys.stderr.write("git cvsimport: incremental import is not supported with cvs-fast-export.\n")
         sys.exit(1)
+
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
         self.opts += " -R '%s'" % self.revmap
+
     def set_module(self, val):
         "Set the module to query."
+
     def command(self):
         "Emit the command implied by all previous options."
         return "find . -name '*,v' -print | cvs-fast-export " + self.opts
 
+
 class filesource:
     "Method class for file-source back end."
+
     def __init__(self, filename):
         self.filename = filename
+
     def __complain(self, legend):
         sys.stderr.write("git cvsimport: %s with file source.\n" % legend)
         sys.exit(1)
+
     def set_repo(self, _val):
         "Set the repository root option."
         self.__complain("repository can't be set")
+
     def set_authormap(self, _val):
         "Set the author-map file."
         sys.stderr.write("git cvsimport: author mapping is not supported with filesource.\n")
         sys.exit(1)
+
     def set_fuzz(self, _val):
         "Set the commit-similarity window."
         self.__complain("fuzz can't be set")
+
     def set_nokeywords(self, _val):
         "Suppress CVS keyword expansion."
         self.__complain("keyword suppression can't be set")
+
     def add_opts(self, _val):
         "Add options to the engine command line."
         self.__complain("other options can't be set")
+
     def set_exclusion(self, _val):
         "Set a file exclusion regexp."
         self.__complain("exclusions can't be set")
+
     def set_after(self, _val):
         "Set a date threshold for incremental import."
         pass
+
     def set_revmap(self, _val):
         "Set the file to which the engine should dump a reference map."
         sys.stderr.write("git cvsimport: can't get a reference map from cvs2git.\n")
         sys.exit(1)
+
     def set_module(self, _val):
         "Set the module to query."
         self.__complain("module can't be set")
+
     def command(self):
         "Emit the command implied by all previous options."
         return "cat " + self.filename
+
 
 if __name__ == '__main__':
     if sys.hexversion < 0x02060000:
