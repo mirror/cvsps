@@ -58,7 +58,7 @@ def capture_or_die(dcmd, legend=""):
         sys.exit(1)
 
 
-class cvsps:
+class Cvsps:
     "Method class for cvsps back end."
 
     def __init__(self):
@@ -111,7 +111,7 @@ class cvsps:
         return "cvsps --fast-export " + self.opts
 
 
-class cvs2git:
+class Cvs2Git:
     "Method class for cvs2git back end."
 
     def __init__(self):
@@ -164,7 +164,7 @@ class cvs2git:
         return "(cvs2git --username=git-cvsimport --quiet --quiet --blobfile={0} --dumpfile={1} {2} {3} && cat {0} {1} && rm {0} {1})".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts, self.modulepath)
 
 
-class cvs_fast_export:
+class CvsFastExport:
     "Method class for cvs-fast-export back end."
 
     def __init__(self):
@@ -214,7 +214,7 @@ class cvs_fast_export:
         return "find . -name '*,v' -print | cvs-fast-export " + self.opts
 
 
-class filesource:
+class FileSource:
     "Method class for file-source back end."
 
     def __init__(self, filename):
@@ -282,14 +282,14 @@ if __name__ == '__main__':
     slashsubst = None
     authormap = None
     revisionmap = False
-    backend = cvsps()
+    backend = Cvsps()
     for (opt, val) in options:
         if opt == '-v':
             verbose += 1
         elif opt == '-b':
             bare = True
         elif opt == '-e':
-            for cls in (cvsps, cvs2git, cvs_fast_export):
+            for cls in (Cvsps, Cvs2Git, CvsFastExport):
                 if cls.__name__ == val:
                     backend = cls()
                     break
@@ -318,7 +318,7 @@ if __name__ == '__main__':
         elif opt == '-z':
             backend.set_fuzz(val)
         elif opt == '-P':
-            backend = filesource(val)
+            backend = FileSource(val)
             sys.exit(1)
         elif opt in ('-m', '-M'):
             sys.stderr.write("git cvsimport: -m and -M are no longer supported: use reposurgeon instead.\n")
