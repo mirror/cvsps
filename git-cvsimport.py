@@ -270,9 +270,6 @@ class FileSource:
 
 
 def main(argv):
-    if sys.hexversion < 0x02060000:
-        sys.stderr.write("git cvsimport: requires Python 2.6 or later.\n")
-        sys.exit(1)
     (options, arguments) = getopt.getopt(argv, "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
     global verbose
     bare = False
