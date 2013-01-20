@@ -264,8 +264,40 @@ class FileSource:
                               stdout=fast_import.stdin)
 
 
+def read_repo_config(optstring):
+    # Users can set default values for options in their git configuration
+    # file but that is case insensitive so we map uppercase option letters
+    # to a long name.
+    config_longopt_map = {
+        'A': 'authorsfile',
+        'P': None,
+        'R': 'trackrevisions',
+        'S': 'ignorepaths',
+    }
+    options = []
+    for i, c in enumerate(optstring):
+        if c == ':':
+            continue
+        # Map the letter to a long option if applicable.
+        key = config_longopt_map.get(c, c)
+        cmd = ["git", "config"]
+        # If the next character isn't a colon, this is a flag.
+        flag = (i + 1 == len(optstring)) or (optstring[i + 1] != ':')
+        if flag:
+            cmd.append("--bool")
+        cmd.extend(["--get", "cvsimport.%s" % key])
+        try:
+            result = capture_or_die(cmd).strip()
+        except subprocess.CalledProcessError:
+            continue
+        if not flag or result != "false":
+            options.append(("-%s" % c, result))
+    return options
+
+
 def main(argv):
-    (options, arguments) = getopt.getopt(argv, "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh")
+    optstring = "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh"
+    (options, arguments) = getopt.getopt(argv, optstring)
     global verbose
     bare = False
     root = None
@@ -276,6 +308,10 @@ def main(argv):
     slashsubst = None
     authormap = None
     revisionmap = False
+
+    # Add the user's repository options to the beginning of the parsed option
+    # list.
+    options = read_repo_config(optstring) + options
 
     # Since a number of other options are passed to the backend, we need to
     # extract the backend option before handling the others.
@@ -372,6 +408,12 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
 
     if len(arguments) > 1:
         raise Fatal('you cannot specify more than one CVS module')
+    if not arguments:
+        try:
+            module = capture_or_die(["git", "config", "--get", "cvsimport.module"])
+            arguments = [module.strip()]
+        except subprocess.CalledProcessError:
+            pass
     if arguments:
         backend.set_module(arguments[0])
 
