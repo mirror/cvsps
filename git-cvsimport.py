@@ -27,18 +27,18 @@ class Fatal(Exception):
         self.msg = msg
 
 
-def do_or_die(dcmd):
+def do_or_die(*args, **kwargs):
     "Either execute a command or raise a fatal exception."
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(dcmd))
-    return subprocess.check_call(dcmd)
+        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(args[0]))
+    return subprocess.check_call(*args, **kwargs)
 
 
-def capture_or_die(dcmd):
+def capture_or_die(*args, **kwargs):
     "Either execute a command and capture its output or die."
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(dcmd))
-    return subprocess.check_output(dcmd)
+        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(args[0]))
+    return subprocess.check_output(*args, **kwargs)
 
 
 class Cvsps:
@@ -91,8 +91,8 @@ class Cvsps:
 
     def run(self, fast_import):
         "Runs the command, piping data into the fast_import subprocess."
-        subprocess.check_call([self.cvsps, "--fast-export"] + self.opts,
-                              stdout=fast_import.stdin)
+        do_or_die([self.cvsps, "--fast-export"] + self.opts,
+                  stdout=fast_import.stdin)
 
 
 class Cvs2Git:
@@ -147,8 +147,7 @@ class Cvs2Git:
                               "--blobfile=%s" % blobfile,
                               "--dumpfile=%s" % dumpfile] +
                               self.opts + [self.modulepath])
-        subprocess.check_call(['cat', blobfile, dumpfile],
-                              stdout=fast_import.stdin)
+        do_or_die(['cat', blobfile, dumpfile], stdout=fast_import.stdin)
         os.unlink(blobfile)
         os.unlink(dumpfile)
 
