@@ -30,22 +30,22 @@ class Fatal(Exception):
 def do_or_die(dcmd):
     "Either execute a command or raise a fatal exception."
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
-    return subprocess.check_call(dcmd, shell=True)
+        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(dcmd))
+    return subprocess.check_call(dcmd)
 
 
 def capture_or_die(dcmd):
     "Either execute a command and capture its output or die."
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
-    return subprocess.check_output(dcmd, shell=True)
+        sys.stdout.write("git cvsimport: executing '%s'\n" % ' '.join(dcmd))
+    return subprocess.check_output(dcmd)
 
 
 class Cvsps:
     "Method class for cvsps back end."
 
     def __init__(self):
-        self.opts = ""
+        self.opts = []
         self.revmap = None
 
     def set_repo(self, val):
@@ -54,51 +54,52 @@ class Cvsps:
             if not val.startswith(os.sep):
                 val = os.path.abspath(val)
             val = ":local:" + val
-        self.opts += " --root '%s'" % val
+        self.opts.extend(["--root", val])
 
     def set_authormap(self, val):
         "Set the author-map file."
-        self.opts += " -A '%s'" % val
+        self.opts.extend(["-A", val])
 
     def set_fuzz(self, val):
         "Set the commit-similarity window."
-        self.opts += " -z %s" % val
+        self.opts.extend(["-z", val])
 
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
-        self.opts += " -k"
+        self.opts.append("-k")
 
-    def add_opts(self, val):
+    def add_opts(self, options):
         "Add options to the engine command line."
-        self.opts += " " + val
+        self.opts.extend(options)
 
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
-        self.opts += " -n -f '%s'" % val
+        self.opts.extend(["-n", "-f", val])
 
     def set_after(self, val):
         "Set a date threshold for incremental import."
-        self.opts += " -d '%s'" % val
+        self.opts.extend(["-d", val])
 
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
-        self.opts += " -R '%s'" % self.revmap
+        self.opts.extend(["-R", self.revmap])
 
     def set_module(self, val):
         "Set the module to query."
-        self.opts += " " + val
+        self.opts.append(val)
 
-    def command(self):
-        "Emit the command implied by all previous options."
-        return "cvsps --fast-export " + self.opts
+    def run(self, fast_import):
+        "Runs the command, piping data into the fast_import subprocess."
+        subprocess.check_call([self.cvsps, "--fast-export"] + self.opts,
+                              stdout=fast_import.stdin)
 
 
 class Cvs2Git:
     "Method class for cvs2git back end."
 
     def __init__(self):
-        self.opts = ""
+        self.opts = []
         self.modulepath = "."
 
     def set_authormap(self, _val):
@@ -115,15 +116,15 @@ class Cvs2Git:
 
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
-        self.opts += " --keywords-off"
+        self.opts.append("--keywords-off")
 
-    def add_opts(self, val):
+    def add_opts(self, options):
         "Add options to the engine command line."
-        self.opts += " " + val
+        self.opts.extend(options)
 
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
-        self.opts += " --exclude='%s'" % val
+        self.opts.append("--exclude=%s" % val)
 
     def set_after(self, _val):
         "Set a date threshold for incremental import."
@@ -135,18 +136,28 @@ class Cvs2Git:
 
     def set_module(self, val):
         "Set the module to query."
-        self.modulepath = " " + val
+        self.modulepath = val
 
-    def command(self):
-        "Emit the command implied by all previous options."
-        return "(cvs2git --username=git-cvsimport --quiet --quiet --blobfile={0} --dumpfile={1} {2} {3} && cat {0} {1} && rm {0} {1})".format(tempfile.mkstemp()[1], tempfile.mkstemp()[1], self.opts, self.modulepath)
+    def run(self, fast_import):
+        "Runs the command, piping data into the fast_import subprocess."
+        blobfile = tempfile.mkstemp()[1]
+        dumpfile = tempfile.mkstemp()[1]
+        do_or_die(["cvs2git", "--username=git-cvsimport",
+                              "--quiet", "--quiet",
+                              "--blobfile=%s" % blobfile,
+                              "--dumpfile=%s" % dumpfile] +
+                              self.opts + [self.modulepath])
+        subprocess.check_call(['cat', blobfile, dumpfile],
+                              stdout=fast_import.stdin)
+        os.unlink(blobfile)
+        os.unlink(dumpfile)
 
 
 class CvsFastExport:
     "Method class for cvs-fast-export back end."
 
     def __init__(self):
-        self.opts = ""
+        self.opts = []
         self.revmap = None
 
     def set_repo(self, val):
@@ -154,19 +165,19 @@ class CvsFastExport:
 
     def set_authormap(self, val):
         "Set the author-map file."
-        self.opts += " -A '%s'" % val
+        self.opts.extend(["-A", val])
 
     def set_fuzz(self, val):
         "Set the commit-similarity window."
-        self.opts += " -w %s" % val
+        self.opts.extend(["-w", val])
 
     def set_nokeywords(self):
         "Suppress CVS keyword expansion."
-        self.opts += " -k"
+        self.opts.append("-k")
 
-    def add_opts(self, val):
+    def add_opts(self, options):
         "Add options to the engine command line."
-        self.opts += " " + val
+        self.opts.extend(options)
 
     def set_exclusion(self, val):
         "Set a file exclusion regexp."
@@ -179,14 +190,27 @@ class CvsFastExport:
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
-        self.opts += " -R '%s'" % self.revmap
+        self.opts.extend(["-R", self.revmap])
 
     def set_module(self, val):
         "Set the module to query."
 
-    def command(self):
+    def run(self, fast_import):
         "Emit the command implied by all previous options."
-        return "find . -name '*,v' -print | cvs-fast-export " + self.opts
+        cmd = ["cvs-fast-export"] + self.opts
+        fast_export = subprocess.Popen(cmd,
+                                       stdin=subprocess.PIPE,
+                                       stdout=fast_import.stdin)
+        fast_import.stdin.close()
+        for root, dirs, files in os.walk('.', onerror=lambda e: raise e):
+            for name in files:
+                if name.endswith(',v'):
+                    fast_export.stdin.write('%s\n' % os.path.join(root, name))
+        fast_export.stdin.close()
+
+        returncode = fast_export.wait()
+        if returncode != 0:
+            raise CalledProcessError(returncode, cmd)
 
 
 class FileSource:
@@ -292,7 +316,7 @@ def main(argv):
         elif opt == '-s':
             slashsubst = val
         elif opt == '-p':
-            backend.add_opts(val.replace(",", " "))
+            backend.add_opts(val.split(","))
         elif opt == '-z':
             backend.set_fuzz(val)
         elif opt == '-P':
@@ -338,32 +362,39 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
             # If the output directory does not exist, create it
             # and initialize it as a git repository.
             os.mkdir(outdir)
-            do_or_die("git init --quiet " + outdir)
+            do_or_die(["git", "init", "--quiet", outdir])
         except OSError:
             # Otherwise, assume user wants incremental import.
             if not bare and not os.path.exists(os.path.join(outdir, ".git")):
                 raise Fatal("output directory is not a git repository")
-            threshold = capture_or_die("git log -1 --format=%ct").strip()
+            threshold = capture_or_die(["git", "log",  "-1",
+                                        "--format=%ct"]).strip()
             backend.set_after(threshold)
     if revisionmap:
         backend.set_revmap(tempfile.mkstemp()[1])
         markmap = tempfile.mkstemp()[1]
     if arguments:
         backend.set_module(arguments[0])
-    gitopts = ""
+    gitopts = []
     if bare:
-        gitopts += " --bare"
+        gitopts.append("--bare")
     if revisionmap:
-        gitopts += " --export-marks='%s'" % markmap
+        gitopts.append("--export-marks=%s" % markmap)
     if authormap:
         shutil.copyfile(authormap, metadata("cvs-authors", outdir))
     if os.path.exists(metadata("cvs-authors", outdir)):
         backend.set_authormap(metadata("cvs-authors", outdir))
-    do_or_die("%s | (cd %s >/dev/null; git fast-import --quiet %s)" \
-              % (backend.command(), outdir, gitopts))
+    fast_import = subprocess.Popen(["git", "fast-import", "--quiet"] + gitopts,
+                                   cwd=outdir,
+                                   stdin=subprocess.PIPE)
+    backend.run(fast_import)
+    if fast_import.wait():
+        raise Fatal("git-fast-import returned an error: %d"
+                    % fast_import.returncode)
+
     os.chdir(outdir)
     if underscore_to_dot or slashsubst:
-        tagnames = capture_or_die("git tag -l")
+        tagnames = capture_or_die(["git", "tag", "-l"])
         for tag in tagnames.split():
             if tag:
                 changed = tag
@@ -372,9 +403,9 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 if slashsubst:
                     changed = changed.replace(os.sep, slashsubst)
                 if changed != tag:
-                    do_or_die("git tag -f %s %s >/dev/null" % (tag, changed))
+                    do_or_die(["git", "tag", "-f", tag, changed])
     if underscore_to_dot or slashsubst or remotize:
-        branchnames = capture_or_die("git branch -l")
+        branchnames = capture_or_die(["git", "branch", "-l"])
         for branch in branchnames.split():
             if branch:
                 # Ugh - fragile dependency on branch -l output format
@@ -387,7 +418,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 if remotize:
                     changed = os.path.join("remotes", remotize, branch)
                 if changed != branch:
-                    do_or_die("branch --m %s %s >/dev/null" % (branch, changed))
+                    do_or_die(["branch", "-m", branch, changed])
     if revisionmap:
         refd = {}
         for line in open(backend.revmap):
