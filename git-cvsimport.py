@@ -27,12 +27,10 @@ class Fatal(Exception):
         self.msg = msg
 
 
-def do_or_die(dcmd, legend=""):
+def do_or_die(dcmd):
     "Either execute a command or raise a fatal exception."
-    if legend:
-        legend = " "  + legend
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'%s\n" % (dcmd, legend))
+        sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
     try:
         retcode = subprocess.call(dcmd, shell=True)
         if retcode < 0:
@@ -40,15 +38,13 @@ def do_or_die(dcmd, legend=""):
         elif retcode != 0:
             raise Fatal("child returned %d." % retcode)
     except (OSError, IOError) as e:
-        raise Fatal("execution of %s%s failed: %s" % (dcmd, legend, e))
+        raise Fatal("execution of %s failed: %s" % (dcmd, e))
 
 
-def capture_or_die(dcmd, legend=""):
+def capture_or_die(dcmd):
     "Either execute a command and capture its output or die."
-    if legend:
-        legend = " "  + legend
     if verbose >= DEBUG_COMMANDS:
-        sys.stdout.write("git cvsimport: executing '%s'%s\n" % (dcmd, legend))
+        sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
     try:
         return subprocess.check_output(dcmd, shell=True)
     except subprocess.CalledProcessError as e:
