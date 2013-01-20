@@ -402,7 +402,9 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
             if slashsubst:
                 changed = changed.replace(os.sep, slashsubst)
             if changed != tag:
-                do_or_die(["git", "tag", "-f", changed, tag])
+                do_or_die(["git", "update-ref",
+                                  "refs/tags/%s" % changed,
+                                  ref])
                 do_or_die(["git", "update-ref", "-d", tag])
     if underscore_to_dot or slashsubst or remotize:
         branchnames = capture_or_die(["git", "for-each-ref",
