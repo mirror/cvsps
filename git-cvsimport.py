@@ -31,27 +31,14 @@ def do_or_die(dcmd):
     "Either execute a command or raise a fatal exception."
     if verbose >= DEBUG_COMMANDS:
         sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
-    try:
-        retcode = subprocess.call(dcmd, shell=True)
-        if retcode < 0:
-            raise Fatal("child was terminated by signal %d." % -retcode)
-        elif retcode != 0:
-            raise Fatal("child returned %d." % retcode)
-    except (OSError, IOError) as e:
-        raise Fatal("execution of %s failed: %s" % (dcmd, e))
+    return subprocess.check_call(dcmd, shell=True)
 
 
 def capture_or_die(dcmd):
     "Either execute a command and capture its output or die."
     if verbose >= DEBUG_COMMANDS:
         sys.stdout.write("git cvsimport: executing '%s'\n" % (dcmd,))
-    try:
-        return subprocess.check_output(dcmd, shell=True)
-    except subprocess.CalledProcessError as e:
-        if e.returncode < 0:
-            raise Fatal("child was terminated by signal %d." % -e.returncode)
-        else:
-            raise Fatal("child returned %d." % e.returncode)
+    return subprocess.check_output(dcmd, shell=True)
 
 
 class Cvsps:
@@ -421,14 +408,21 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         os.remove(markmap)
         os.remove(backend.revmap)
     if not import_only and not bare:
-        do_or_die("git checkout -q")
+        do_or_die(["git", "checkout", "-q"])
 
 
 if __name__ == '__main__':
     try:
-        sys.exit(main(sys.argv[1:]))
+        try:
+            sys.exit(main(sys.argv[1:]))
+        except subprocess.CalledProcessError as e:
+            if e.returncode < 0:
+                raise Fatal("child was terminated by signal %d."
+                            % -e.returncode)
+            else:
+                raise Fatal("child returned %d." % e.returncode)
+        except KeyboardInterrupt:
+            pass
     except Fatal as err:
         sys.stderr.write("git cvsimport: " + err.msg + "\n")
         sys.exit(1)
-    except KeyboardInterrupt:
-        pass
