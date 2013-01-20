@@ -369,8 +369,12 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
     if revisionmap:
         backend.set_revmap(tempfile.mkstemp()[1])
         markmap = tempfile.mkstemp()[1]
+
+    if len(arguments) > 1:
+        raise Fatal('you cannot specify more than one CVS module')
     if arguments:
         backend.set_module(arguments[0])
+
     gitopts = []
     if bare:
         gitopts.append("--bare")
