@@ -390,17 +390,20 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
 
     os.chdir(outdir)
     if underscore_to_dot or slashsubst:
-        tagnames = capture_or_die(["git", "tag", "-l"])
-        for tag in tagnames.split():
-            if tag:
-                changed = tag
-                if underscore_to_dot:
-                    changed = changed.replace("_", ".")
-                if slashsubst:
-                    changed = changed.replace(os.sep, slashsubst)
-                if changed != tag:
-                    do_or_die(["git", "tag", "-f", changed, tag])
-                    do_or_die(["git", "update-ref", "-d", tag])
+        tagnames = capture_or_die(["git", "for-each-ref",
+                                          "--format=%(refname)",
+                                          "refs/tags/"])
+        for ref in tagnames.splitlines():
+            # Get rid of the trailing newline and the leading "refs/tags/":
+            tag = ref.strip()[10:]
+            changed = tag
+            if underscore_to_dot:
+                changed = changed.replace("_", ".")
+            if slashsubst:
+                changed = changed.replace(os.sep, slashsubst)
+            if changed != tag:
+                do_or_die(["git", "tag", "-f", changed, tag])
+                do_or_die(["git", "update-ref", "-d", tag])
     if underscore_to_dot or slashsubst or remotize:
         branchnames = capture_or_die(["git", "for-each-ref",
                                              "--format=%(refname)",
