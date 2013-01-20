@@ -12,3 +12,4 @@ dist
 htdocs
 *.py[co]
 test/*.repo
+test/neutralize.map
