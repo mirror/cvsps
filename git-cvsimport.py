@@ -442,7 +442,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         os.remove(markmap)
         os.remove(backend.revmap)
     if not import_only and not bare:
-        do_or_die(["git", "checkout", "-q"])
+        do_or_die(["git", "checkout", "-f"])
 
 
 if __name__ == '__main__':
