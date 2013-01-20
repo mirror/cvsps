@@ -111,6 +111,7 @@ static int verbose = 0;
 static bool keyword_suppression = false;
 static bool reposurgeon = false;
 static bool convert_ignores = false;
+static bool incremental = false;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
@@ -602,7 +603,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
     debug(DEBUG_USAGE, "             [--diff-opts <option string>] [--convert-ignores]");
     debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_USAGE, "             [-k] [-T] [-V] [<repository>]");
+    debug(DEBUG_USAGE, "             [-i] [-k] [-T] [-V] [<repository>]");
     debug(DEBUG_USAGE, " ");
     debug(DEBUG_USAGE, "Where:");
     debug(DEBUG_USAGE, "  -h display this informative message");
@@ -628,6 +629,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_USAGE, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_USAGE, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
+    debug(DEBUG_USAGE, "  -i generate ^0 branch starts for incremental export");
     debug(DEBUG_USAGE, "  -k suppress CVS keyword expansion");
     debug(DEBUG_USAGE, "  -T <date> set base date for regression testing");
     debug(DEBUG_USAGE, "  --fast-export emit a git-style fast-import stream");
@@ -759,6 +761,13 @@ static int parse_args(int argc, char *argv[])
 	
 	if (strcmp(argv[i], "-h") == 0)
 	    return usage(NULL, NULL);
+
+	if (strcmp(argv[i], "-i") == 0)
+	{
+	    incremental = true;
+	    i++;
+	    continue;
+	}
 
 	if (strcmp(argv[i], "-k") == 0)
 	{
@@ -1943,6 +1952,8 @@ static void print_fast_export(PatchSet * ps)
     }
     if (ancestor_mark)
 	printf("from :%d\n", ancestor_mark);
+    else if (incremental)
+	printf("from refs/heads/%s^0\n", outbranch);
     ps->mark = tip->mark = mark;
 
     for all_patchset_members(next, ps)
