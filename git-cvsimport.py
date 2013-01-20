@@ -414,7 +414,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 if remotize:
                     changed = os.path.join("remotes", remotize, branch)
                 if changed != branch:
-                    do_or_die(["branch", "-m", branch, changed])
+                    do_or_die(["git", "branch", "-m", branch, changed])
     if revisionmap:
         refd = {}
         for line in open(backend.revmap):
