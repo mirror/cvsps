@@ -402,20 +402,21 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                     do_or_die(["git", "tag", "-f", changed, tag])
                     do_or_die(["git", "update-ref", "-d", tag])
     if underscore_to_dot or slashsubst or remotize:
-        branchnames = capture_or_die(["git", "branch", "-l"])
-        for branch in branchnames.split():
-            if branch:
-                # Ugh - fragile dependency on branch -l output format
-                branch = branch[2:]
-                changed = branch
-                if underscore_to_dot:
-                    changed = changed.replace("_", ".")
-                if slashsubst:
-                    changed = changed.replace(os.sep, slashsubst)
-                if remotize:
-                    changed = os.path.join("remotes", remotize, branch)
-                if changed != branch:
-                    do_or_die(["git", "branch", "-m", branch, changed])
+        branchnames = capture_or_die(["git", "for-each-ref",
+                                             "--format=%(refname)",
+                                             "refs/heads/"])
+        for branch in branchnames.splitlines():
+            # Get rid of the trailing newline and the leading "refs/heads/":
+            branch = branch.strip()[11:]
+            changed = branch
+            if underscore_to_dot:
+                changed = changed.replace("_", ".")
+            if slashsubst:
+                changed = changed.replace(os.sep, slashsubst)
+            if remotize:
+                changed = os.path.join("remotes", remotize, branch)
+            if changed != branch:
+                do_or_die(["git", "branch", "-m", branch, changed])
     if revisionmap:
         refd = {}
         for line in open(backend.revmap):
