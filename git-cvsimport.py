@@ -321,7 +321,6 @@ def main(argv):
     (options, arguments) = getopt.getopt(argv, optstring)
     global verbose
     bare = False
-    root = None
     outdir = os.getcwd()
     remotize = False
     import_only = False
