@@ -409,19 +409,27 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         except subprocess.CalledProcessError as e:
             raise Fatal("cvsps 2.x is unsupported.")
     # Real mainline code begins here
-    if outdir:
-        try:
-            # If the output directory does not exist, create it
-            # and initialize it as a git repository.
-            os.mkdir(outdir)
-            do_or_die(["git", "init", "--quiet", outdir])
-        except OSError:
-            # Otherwise, assume user wants incremental import.
-            if not bare and not os.path.exists(os.path.join(outdir, ".git")):
-                raise Fatal("output directory is not a git repository")
-            threshold = capture_or_die(["git", "log",  "-1",
-                                        "--format=%ct"]).strip()
-            backend.set_after(threshold)
+    outdir = os.path.abspath(outdir)
+    if bare:
+        gitdir = outdir
+    else:
+        gitdir = os.path.join(outdir, os.environ.get('GIT_DIR', '.git'))
+    os.environ['GIT_DIR'] = gitdir
+
+    if os.path.exists(gitdir):
+        # If the git directory already exists, continue the previous import.
+        threshold = capture_or_die(["git", "log",  "-1",
+                                    "--format=%ct"]).strip()
+        backend.set_after(threshold)
+    else:
+        # Otherwise, initialize a new Git repository.
+        cmd = ["git", "init", "--quiet"]
+        if bare:
+            cmd.append("--bare")
+        cmd.append(outdir)
+        do_or_die(cmd)
+    os.chdir(outdir)
+
     if revisionmap:
         backend.set_revmap(tempfile.mkstemp()[1])
         markmap = tempfile.mkstemp()[1]
@@ -454,7 +462,6 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         raise Fatal("git-fast-import returned an error: %d"
                     % fast_import.returncode)
 
-    os.chdir(outdir)
     if underscore_to_dot or slashsubst:
         tagnames = capture_or_die(["git", "for-each-ref",
                                           "--format=%(refname)",
