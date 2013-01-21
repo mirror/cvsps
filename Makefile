@@ -66,7 +66,7 @@ SOURCES = Makefile *.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.asc TODO
 ALL =  $(SOURCES) $(DOCS) control
 cvsps-$(VERSION).tar.gz: $(ALL)
-	tar --transform='s:^:cvsps-$(VERSION)/:' --show-transformed-names -cvzf cvsps-$(VERSION).tar.gz $(ALL)
+	tar --transform='s:^:cvsps-$(VERSION)/:' --show-transformed-names -czf cvsps-$(VERSION).tar.gz $(ALL)
 
 dist: cvsps-$(VERSION).tar.gz
 
