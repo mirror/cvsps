@@ -47,6 +47,13 @@ class Cvsps:
     def __init__(self):
         self.opts = []
         self.revmap = None
+        self.min_version = (3, 0)
+        self.version_reason = None
+
+    def _require_version(self, major, minor, msg):
+        if (major, minor) > self.min_version:
+            self.min_version = (major, minor)
+            self.version_reason = msg
 
     def set_repo(self, val):
         "Set the repository root option."
@@ -58,6 +65,7 @@ class Cvsps:
 
     def set_authormap(self, val):
         "Set the author-map file."
+        self._require_version(3, 3, "the authormap feature")
         self.opts.extend(["-A", val])
 
     def set_fuzz(self, val):
@@ -83,6 +91,7 @@ class Cvsps:
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
         self.revmap = val
+        self._require_version(3, 3, "the revisionmap feature")
         self.opts.extend(["-R", self.revmap])
 
     def set_module(self, val):
@@ -91,6 +100,16 @@ class Cvsps:
 
     def run(self, fast_import):
         "Runs the command, piping data into the fast_import subprocess."
+        # The "-V" argument was added in cvsps 3.2, so there's nothing we can
+        # check if our required version is less than that.
+        if self.min_version >= (3, 2):
+            output = capture_or_die([self.cvsps, "-V"])
+            version_str = output.strip().rpartition(' ')[2]
+            version = tuple([int(part) for part in version_str.split('.')])
+            if version < self.min_version:
+                raise Fatal("cvsps version %s is required in order to use %s, you have version %s."
+                            % ('.'.join([str(i) for i in self.min_version]),
+                               self.version_reason, version_str))
         do_or_die([self.cvsps, "--fast-export"] + self.opts,
                   stdout=fast_import.stdin)
 
