@@ -1560,8 +1560,8 @@ static bool visible(PatchSet * ps)
  ok:
     //fprintf(stderr, "Time check: %zd %zd %zd\n", restrict_date_start, restrict_date_end, ps->date);
     if (restrict_date_start > 0 &&
-	(ps->date < restrict_date_start ||
-	 (restrict_date_end > 0 && ps->date > restrict_date_end)))
+	(ps->date <= restrict_date_start ||
+	 (restrict_date_end > 0 && ps->date >= restrict_date_end)))
 	return false;
 
     if (restrict_author && strcmp(restrict_author, ps->author) != 0)
