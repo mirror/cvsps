@@ -1,6 +1,9 @@
 			CVSps project news
 
-3.9 @ 2013-01-18
+3.10 @ 2013-01-20
+  Make the behavior of a second -d option match the documentation.
+
+3.9 @ 2013-01-20
   Added -i option for generating incremental fast exports.
 
 3.8 @ 2013-01-13
