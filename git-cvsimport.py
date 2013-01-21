@@ -86,7 +86,10 @@ class Cvsps:
 
     def set_after(self, val):
         "Set a date threshold for incremental import."
-        self.opts.extend(["-d", val])
+        # We also add the "-i" incremental flag here - this only works
+        # correctly in cvsps 3.10 and later.
+        self._require_version(3, 10, "incremental import")
+        self.opts.extend(["-d", val, "-i"])
 
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
