@@ -316,6 +316,35 @@ def read_repo_config(optstring):
     return options
 
 
+def _get_ref_times():
+    """Gets a map of ref -> commit time.
+
+    The ref is a byte string and the commit time is an integer number of
+    seconds since the Unix epoch.
+
+    """
+    # We use both %(authordate) and %(*authordate) here since only one will
+    # be non-empty and this lets us read the right thing for both tags and
+    # branches.
+    output = capture_or_die(["git", "for-each-ref",
+                "--format=%(refname)%09%(authordate:raw)%(*authordate:raw)"])
+    refs = {}
+    for line in output.splitlines():
+        ref, time = line.split(b'\t')
+        # The time string may only contain ASCII characters and it's easier
+        # to deal with it as a string, so decode it now.
+        time = time.decode('ascii')
+        time, offset = time.split(' ')
+        time = int(time)
+        delta = ((int(offset[1:3]) * 60) + int(offset[3:5])) * 60
+        if offset[0] == '+':
+            time += delta
+        else:
+            time -= delta
+        refs[ref] = time
+    return refs
+
+
 def main(argv):
     optstring = "vbe:d:C:r:o:ikus:p:z:P:S:aL:A:Rh"
     (options, arguments) = getopt.getopt(argv, optstring)
@@ -416,11 +445,24 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         gitdir = os.path.join(outdir, os.environ.get('GIT_DIR', '.git'))
     os.environ['GIT_DIR'] = gitdir
 
+    timestamp_file = os.path.join(gitdir, "CVSIMPORT_TIMESTAMP")
+
+    timestamp = 0
     if os.path.exists(gitdir):
         # If the git directory already exists, continue the previous import.
-        threshold = capture_or_die(["git", "log",  "-1",
-                                    "--format=%ct"]).strip()
-        backend.set_after(threshold)
+        try:
+            with open(timestamp_file) as f:
+                timestamp = int(f.read().strip())
+            backend.set_after(str(timestamp))
+        except IOError:
+            raise Fatal("""timestamp file not found.
+
+    To set the timestamp from which to continue importing, run:
+
+        git rev-list --no-walk --format=%ct <git-cvs-branch> >'%s'
+
+    where <git-cvs-branch> is the Git branch imported from CVS which has the
+    most recent commit.""" % timestamp_file)
     else:
         # Otherwise, initialize a new Git repository.
         cmd = ["git", "init", "--quiet"]
@@ -445,6 +487,8 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
     if arguments:
         backend.set_module(arguments[0])
 
+    start_refs = _get_ref_times()
+
     gitopts = []
     if bare:
         gitopts.append("--bare")
@@ -461,6 +505,18 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
     if fast_import.wait():
         raise Fatal("git-fast-import returned an error: %d"
                     % fast_import.returncode)
+
+    end_refs = _get_ref_times()
+
+    # Calculate the time of the last commit imported from CVS by looking at
+    # those refs which have changed while fast-import was running.
+    for ref, time in end_refs.items():
+        orig_time = start_refs.get(ref, 0)
+        if orig_time != time and time > timestamp:
+            timestamp = time
+
+    with open(timestamp_file, "w") as f:
+        f.write("%d\n" % timestamp)
 
     if underscore_to_dot or slashsubst:
         tagnames = capture_or_die(["git", "for-each-ref",
