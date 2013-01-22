@@ -497,17 +497,19 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
                 do_or_die(["git", "branch", "-m", branch, changed])
     if revisionmap:
         refd = {}
-        for line in open(backend.revmap):
-            if line.startswith("#"):
-                continue
-            (fn, rev, mark) = line.split()
-            refd[(fn, rev)] = mark
+        with open(backend.revmap) as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                (fn, rev, mark) = line.split()
+                refd[(fn, rev)] = mark
         markd = {}
-        for line in open(markmap):
-            if line.startswith("#"):
-                continue
-            (mark, hashd) = line.split()
-            markd[mark] = hashd
+        with open(markmap) as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                (mark, hashd) = line.split()
+                markd[mark] = hashd
         with open(metadata("cvs-revisions"), "a") as wfp:
             for ((fn, rev), val) in refd.items():
                 if val in markd:
