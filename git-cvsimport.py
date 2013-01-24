@@ -351,11 +351,7 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         try:
             subprocess.check_output("cvsps -V 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as e:
-            if e.returncode == 1:
-                sys.stderr.write("cvsimport: falling back to old version...\n")
-                sys.exit(os.system("git-cvsimport-fallback " + " ".join(sys.argv[1:])))
-            else:
-                raise Fatal("cannot execute cvsps.")
+            raise Fatal("cvsps 2.x is unsupported.")
     # Real mainline code begins here
     if outdir:
         try:
