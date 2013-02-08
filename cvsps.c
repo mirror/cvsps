@@ -1706,30 +1706,47 @@ static void print_patch_set(PatchSet * ps)
     printf("\n");
 }
 
-static const char *utc_offset_timestamp(const time_t *timep, const char *tz)
+static void set_timezone(const char *tz)
 {
-    static char outbuf[BUFSIZ];
+    if (tz != NULL)
+        setenv("TZ", tz, 1);
+    else
+        unsetenv("TZ");
+    tzset();  // just in case ...
+}
 
+static int utc_offset(const time_t *timep, const char *tz)
+{
     struct tm *tm;
     char tzbuf[BUFSIZ];
     /* coverity[tainted_data] */
     char *oldtz = getenv("TZ");
+    int seconds;
 
     // make a copy in case original is clobbered
     if (oldtz != NULL)
 	strncpy(tzbuf, oldtz, sizeof(tzbuf)-1);
 
-    setenv("TZ", tz, 1);
-    tzset();  // just in case ...
-
+    set_timezone(tz);
     tm = localtime(timep);
-    strftime(outbuf, sizeof(outbuf), "%s %z", tm);
 
-    if (oldtz != NULL)
-	setenv("TZ", tzbuf, 1);
-    else
-	unsetenv("TZ");
-    tzset();
+    set_timezone("UTC");
+    seconds = mktime(tm) - *timep;
+
+    set_timezone(oldtz != NULL ? tzbuf : NULL);
+
+    return seconds;
+}
+
+static const char *utc_offset_timestamp(const time_t *timep, const char *tz)
+{
+    static char outbuf[BUFSIZ];
+
+    int seconds = utc_offset(timep, tz);
+    int hh = seconds / 3600;
+    int mm = abs((seconds % 3600) / 60);
+
+    sprintf(outbuf, "%ld %+03d%02d", *timep, hh, mm);
 
     return outbuf;
 }
