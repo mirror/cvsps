@@ -1,0 +1,269 @@
+blob
+mark :1
+data 25
+A test of multiple tags.
+
+commit refs/heads/master
+mark :2
+committer foo <foo> 600 +0000
+data 17
+Initial revision
+
+M 100644 :1 README
+
+reset refs/tags/branch1_root
+from :2
+
+blob
+mark :3
+data 7
+branch1
+commit refs/heads/branch1
+mark :4
+committer foo <foo> 1200 +0000
+data 20
+Updated for branch1
+
+from :2
+M 100644 :3 README
+
+reset refs/tags/branch2_root
+from :4
+
+blob
+mark :5
+data 7
+branch2
+commit refs/heads/branch2
+mark :6
+committer foo <foo> 1800 +0000
+data 20
+Updated for branch2
+
+from :4
+M 100644 :5 README
+
+reset refs/tags/branch3_root
+from :6
+
+blob
+mark :7
+data 7
+branch3
+commit refs/heads/branch3
+mark :8
+committer foo <foo> 2400 +0000
+data 20
+Updated for branch3
+
+from :6
+M 100644 :7 README
+
+reset refs/tags/branch4_root
+from :8
+
+blob
+mark :9
+data 7
+branch4
+commit refs/heads/branch4
+mark :10
+committer foo <foo> 3000 +0000
+data 20
+Updated for branch4
+
+from :8
+M 100644 :9 README
+
+reset refs/tags/branch5_root
+from :10
+
+blob
+mark :11
+data 7
+branch5
+commit refs/heads/branch5
+mark :12
+committer foo <foo> 3600 +0000
+data 20
+Updated for branch5
+
+from :10
+M 100644 :11 README
+
+reset refs/tags/branch6_root
+from :12
+
+blob
+mark :13
+data 7
+branch6
+commit refs/heads/branch6
+mark :14
+committer foo <foo> 4200 +0000
+data 20
+Updated for branch6
+
+from :12
+M 100644 :13 README
+
+reset refs/tags/branch7_root
+from :14
+
+blob
+mark :15
+data 7
+branch7
+commit refs/heads/branch7
+mark :16
+committer foo <foo> 4800 +0000
+data 20
+Updated for branch7
+
+from :14
+M 100644 :15 README
+
+reset refs/tags/branch8_root
+from :16
+
+blob
+mark :17
+data 7
+branch8
+commit refs/heads/branch8
+mark :18
+committer foo <foo> 5400 +0000
+data 20
+Updated for branch8
+
+from :16
+M 100644 :17 README
+
+reset refs/tags/branch9_root
+from :18
+
+blob
+mark :19
+data 7
+branch9
+commit refs/heads/branch9
+mark :20
+committer foo <foo> 6000 +0000
+data 20
+Updated for branch9
+
+from :18
+M 100644 :19 README
+
+reset refs/tags/branch10_root
+from :20
+
+blob
+mark :21
+data 8
+branch10
+commit refs/heads/branch10
+mark :22
+committer foo <foo> 6600 +0000
+data 21
+Updated for branch10
+
+from :20
+M 100644 :21 README
+
+reset refs/tags/branch11_root
+from :22
+
+blob
+mark :23
+data 8
+branch11
+commit refs/heads/branch11
+mark :24
+committer foo <foo> 7200 +0000
+data 21
+Updated for branch11
+
+from :22
+M 100644 :23 README
+
+reset refs/tags/branch12_root
+from :24
+
+blob
+mark :25
+data 8
+branch12
+commit refs/heads/branch12
+mark :26
+committer foo <foo> 7800 +0000
+data 21
+Updated for branch12
+
+from :24
+M 100644 :25 README
+
+reset refs/tags/branch13_root
+from :26
+
+blob
+mark :27
+data 8
+branch13
+commit refs/heads/branch13
+mark :28
+committer foo <foo> 8400 +0000
+data 21
+Updated for branch13
+
+from :26
+M 100644 :27 README
+
+reset refs/tags/branch14_root
+from :28
+
+blob
+mark :29
+data 8
+branch14
+commit refs/heads/branch14
+mark :30
+committer foo <foo> 9000 +0000
+data 21
+Updated for branch14
+
+from :28
+M 100644 :29 README
+
+reset refs/tags/branch15_root
+from :30
+
+blob
+mark :31
+data 8
+branch15
+commit refs/heads/branch15
+mark :32
+committer foo <foo> 9600 +0000
+data 21
+Updated for branch15
+
+from :30
+M 100644 :31 README
+
+reset refs/tags/branch16_root
+from :32
+
+blob
+mark :33
+data 8
+branch16
+commit refs/heads/branch16
+mark :34
+committer foo <foo> 10200 +0000
+data 21
+Updated for branch16
+
+M 100644 :33 README
+
+done
