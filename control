@@ -16,4 +16,9 @@ XBS-Ohloh-URL: https://www.ohloh.net/p/cvsps
 
 Homepage: http://www.catb.org/~esr/cvsps
 
-XBS-Project-Tag-List: version control, cvs, git
+XBS-HTML-Template: index.html
+
+XBS-Freecode-Tags: version control, cvs, git
+
+XBS-VC-Tag-Template: %(version)s
+
