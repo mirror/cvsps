@@ -16,7 +16,7 @@ XBS-Ohloh-URL: https://www.ohloh.net/p/cvsps
 
 Homepage: http://www.catb.org/~esr/cvsps
 
-XBS-HTML-Template: index.html
+XBS-HTML-Target: index.html
 
 XBS-Freecode-Tags: version control, cvs, git
 
