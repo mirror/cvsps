@@ -1,5 +1,8 @@
 			CVSps project news
 
+Repository head:
+  Make the documentation truthful about --convert-ignores.
+
 3.10 @ 2013-01-20
   Make the behavior of a second -d option match the documentation.
 
