@@ -60,7 +60,6 @@ tags: *.c *.h
 
 clean:
 	rm -f cvsps *.o core tags cvsps.1 cvsps.html docbook-xsl.css
-	rm -f SHIPPER.FREECODE
 
 SOURCES = Makefile *.[ch] merge_utils.sh
 DOCS = README COPYING NEWS cvsps.asc TODO
@@ -72,7 +71,7 @@ dist: cvsps-$(VERSION).tar.gz
 
 release: cvsps-$(VERSION).tar.gz cvsps.html
 	rm -f docbook-xsl.css git-cvsimport.html
-	shipper -u -m -t; make clean; rm -f SHIPPER.FREECODE
+	shipper version=$(VERSION) | sh -e -x
 
 .PHONY: install clean version dist check
 # DO NOT DELETE
