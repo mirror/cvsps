@@ -94,7 +94,6 @@ static time_t restrict_date_end;
 static const char * restrict_branch;
 static struct list_head show_patch_set_ranges;
 static struct list_head authormap;
-static int summary_first;
 static bool fast_export;
 static const char * patch_set_dir;
 static const char * restrict_tag_start;
@@ -255,9 +254,6 @@ int main(int argc, char *argv[])
     }
 
     walk_all_patch_sets(check_print_patch_set);
-
-    if (summary_first++)
-	walk_all_patch_sets(check_print_patch_set);
 
     if (cvsclient_ctx)
 	close_cvs_server(cvsclient_ctx);
@@ -594,7 +590,7 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
     debug(DEBUG_USAGE, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_USAGE, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
-    debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t] [--summary-first]");
+    debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t]");
     debug(DEBUG_USAGE, "             [--diff-opts <option string>] [--convert-ignores]");
     debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
     debug(DEBUG_USAGE, "             [-i] [-k] [-T] [-V] [<repository>]");
@@ -618,7 +614,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "  -p <directory> output patch sets to individual files in <directory>");
     debug(DEBUG_USAGE, "  -v show very verbose parsing messages");
     debug(DEBUG_USAGE, "  -t show some brief memory usage statistics");
-    debug(DEBUG_USAGE, "  --summary-first when multiple patch sets are shown, put all summaries first");
     debug(DEBUG_USAGE, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_USAGE, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_USAGE, "  -Z <compression> A value 1-9 which specifies amount of compression");
@@ -969,13 +964,6 @@ static int parse_args(int argc, char *argv[])
 		return usage("argument to --root missing", "");
 
 	    strcpy(root_path, argv[i++]);
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--summary-first") == 0)
-	{
-	    summary_first = 1;
-	    i++;
 	    continue;
 	}
 
@@ -1448,22 +1436,16 @@ static void check_print_patch_set(PatchSet * ps)
     }
 
     /*
-     * If the summary_first option is in effect, there will be 
-     * two passes through the tree.  the first with summary_first == 1
-     * the second with summary_first == 2.  if the option is not
-     * in effect, there will be one pass with summary_first == 0
-     *
      * When the -s option is in effect, the show_patch_set_ranges
      * list will be non-empty.
      *
-     * In fast-export mode, the do_diff and summary_first options 
-     * are ignored.
+     * In fast-export mode, the do_diff option is ignored.
      */
     if (fast_export)
 	print_fast_export(ps);
-    else if (summary_first <= 1)
+    else
 	print_patch_set(ps);
-    if (do_diff && summary_first != 1)
+    if (do_diff)
 	do_cvs_diff(ps);
 
     fflush(stdout);

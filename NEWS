@@ -1,5 +1,8 @@
 			CVSps project news
 
+Repository head:
+  --summary-first option removed.
+
 3.11 @ 2013-12-09
   Eliminate dodgy tmpnam() use.
   Make the documentation truthful about --convert-ignores.
