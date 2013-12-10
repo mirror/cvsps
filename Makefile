@@ -12,6 +12,7 @@ OBJS= debug.o \
 	hash.o \
 	sio.o \
 	tcpsocket.o \
+	paths.o \
 	cvsps.o \
 	util.o \
 	stats.o \

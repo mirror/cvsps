@@ -20,5 +20,6 @@ FILE * cvs_rlog_open(CvsServerCtx *, const char *);
 char * cvs_rlog_fgets(char *, int, CvsServerCtx *);
 void cvs_rlog_close(CvsServerCtx *);
 void cvs_version(CvsServerCtx *, char *, char *, int, int);
+int init_paths(char *, char *, char *);
 
 #endif /* CVS_DIRECT_H */
