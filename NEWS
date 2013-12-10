@@ -1,6 +1,7 @@
 			CVSps project news
 
 Repository head:
+  The command-line argument can now be a CVS URL.
   The --summary-first option was removed to simplify the code's control flow.
 
 3.11 @ 2013-12-09

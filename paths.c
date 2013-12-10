@@ -28,8 +28,29 @@ int init_paths(char *root_path, char *repository_path, char *strip_path)
      */
     if (!root_path[0])
     {
+	/* if the repository path looks like a CVS URL, we can deduce the root */
+	if (strncmp(repository_path, "cvs://", 6) == 0) 
+	{
+	    char *delim = strrchr(repository_path, '#');
+	    if (delim == NULL)
+	    {
+		debug(DEBUG_APPERROR, "no module specified in CVS URL.");
+		exit(1);
+	    }
+
+	    /* discard service prefix, but copy the trailing NUL */
+	    (void)memmove(repository_path, 
+			  repository_path + 6, 
+			  strlen(repository_path) - 5);
+	    delim -= 6;
+
+	    *delim = '\0';
+	    (void)memcpy(root_path, repository_path, strlen(repository_path) + 1);
+	    (void)memmove(repository_path, delim+1, strlen(delim+1)+1);
+	}
+
 	/* Are we in a working directory? */
-	if ((fp = fopen("CVS/Root", "r")) != NULL)
+	else if ((fp = fopen("CVS/Root", "r")) != NULL)
 	{
 	    if (fgets(root_path, PATH_MAX, fp) == NULL)
 	    {
