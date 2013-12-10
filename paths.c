@@ -3,26 +3,14 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
-#include <search.h>
-#include <time.h>
-#include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdbool.h>
-#include <fcntl.h>
-#include <regex.h>
-#include <sys/wait.h> /* for WEXITSTATUS - see system(3) */
 
-#include "hash.h"
-#include "list.h"
+#include "util.h"
 #include "debug.h"
 
-#include "cvsps_types.h"
-#include "cvsps.h"
-#include "util.h"
-#include "stats.h"
 #include "cvsclient.h"
-#include "list_sort.h"
 
 int init_paths(char *root_path, char *repository_path, char *strip_path)
 {
