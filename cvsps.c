@@ -1666,6 +1666,19 @@ static void print_fast_export(PatchSet * ps)
 		       keyword_suppression,
 		       tfp);
 
+	    /*
+	     *  Depends on cvs_update turning on the execute bit when it should.
+	     */
+	    /* coverity[toctou] */
+	    if (fstat(fileno(tfp), &st) == 0)
+		psm->file->mode = st.st_mode;
+	    else
+	    {
+		debug(DEBUG_APPERROR, "stat(2) of %s:%s copy failed.\n",
+			psm->file->filename, psm->post_rev->rev);
+		exit(1);
+	    }
+
 	    printf("blob\nmark :%d\ndata %zd\n", ++mark, ftell(tfp));
 
 	    (void)fseek(tfp, 0L, SEEK_SET);
@@ -1773,7 +1786,7 @@ static void print_fast_export(PatchSet * ps)
 
 	if (psm->post_rev->dead)
 	    printf("D %s\n", sanitized_name);
-	else if (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))
+	else if (psm->file->mode & (S_IXUSR | S_IXGRP | S_IXOTH))
 	    printf("M 100755 :%d %s\n", ++basemark, sanitized_name);
 	else
 	    printf("M 100644 :%d %s\n", ++basemark, sanitized_name);

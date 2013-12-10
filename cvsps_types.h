@@ -8,6 +8,9 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define LOG_STR_MAX 65536
 #define AUTH_STR_MAX 64
@@ -66,6 +69,7 @@ struct _CvsFileRevision
 struct _CvsFile
 {
     char *filename;
+    mode_t mode;
     struct hash_table * revisions;    /* rev_str to revision [CvsFileRevision*] */
     struct hash_table * branches;     /* branch to branch_sym [char*]           */
     struct hash_table * branches_sym; /* branch_sym to branch [char*]           */
