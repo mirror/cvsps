@@ -1,4 +1,4 @@
-VERSION=3.10
+VERSION=3.11
 
 CC?=gcc
 CFLAGS?=-g -O2 -Wall 
