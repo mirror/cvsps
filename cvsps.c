@@ -115,7 +115,7 @@ static bool incremental = false;
 
 static int parse_args(int, char *[]);
 static int parse_rc();
-static void load_from_cvs();
+static void load_from_cvs(FILE *);
 static void init_paths();
 static CvsFile * build_file_by_name(const char *);
 static CvsFile * parse_rcs_file(const char *);
@@ -170,6 +170,7 @@ static int debug_levels[] = {
 
 int main(int argc, char *argv[])
 {
+    FILE *cvsfp = NULL;
     struct list_head * next;
 
     INIT_LIST_HEAD(&show_patch_set_ranges);
@@ -195,8 +196,17 @@ int main(int argc, char *argv[])
     init_paths();
 
     cvsclient_ctx = open_cvs_server(root_path, compress);
+    cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path);
 
-    load_from_cvs();
+    if (!cvsfp)
+    {
+	debug(DEBUG_SYSERROR, "can't get CVS log data");
+	exit(1);
+    }
+
+    load_from_cvs(cvsfp);
+    
+    cvs_rlog_close(cvsclient_ctx);
 
     //XXX
     //handle_collisions();
@@ -299,9 +309,8 @@ void detect_and_repair_time_skew(const char *last_date, char *date, int n,
     }
 }
 
-static void load_from_cvs()
+static void load_from_cvs(FILE *cvsfp)
 {
-    FILE * cvsfp = NULL;
     char buff[BUFSIZ];
     int state = NEED_RCS_FILE;
     CvsFile * file = NULL;
@@ -314,15 +323,6 @@ static void load_from_cvs()
     char * logbuff = malloc(logbufflen);
     int loglen = 0;
     bool have_log = false;
-
-    if (cvsclient_ctx)
-	cvsfp = cvs_rlog_open(cvsclient_ctx, repository_path);
-
-    if (!cvsfp)
-    {
-	debug(DEBUG_SYSERROR, "can't get CVS log data");
-	exit(1);
-    }
 
     /* initialize the last_datebuff with value indicating invalid date */
     last_datebuff[0]='\0';
@@ -584,11 +584,6 @@ static void load_from_cvs()
     {
 	debug(DEBUG_APPERROR, "Error: Log file parsing error. (%d)  Use -v to debug", state);
 	exit(1);
-    }
-    
-    if (cvsclient_ctx)
-    {
-	cvs_rlog_close(cvsclient_ctx);
     }
 }
 
