@@ -1,6 +1,7 @@
 			CVSps project news
 
 Repository head:
+  Eliminmate dodgy tmpnam() use.
   Make the documentation truthful about --convert-ignores.
 
 3.10 @ 2013-01-20

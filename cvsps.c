@@ -1784,7 +1784,6 @@ static void print_fast_export(PatchSet * ps)
 {
     struct list_head * next, * tagl, * mapl;
     static int mark = 0;
-    char *tf = tmpnam(NULL);	/* ugly necessity */
     struct stat st;
     int basemark = mark;
     int c;
@@ -1839,11 +1838,10 @@ static void print_fast_export(PatchSet * ps)
 
 	if (!psm->post_rev->dead) 
 	{
-	    FILE *ofp = fopen(tf, "w");
-	    FILE *cfp;
+	    FILE *tfp = tmpfile();
 	    char buf[BUFSIZ];
 
-	    if (ofp == NULL)
+	    if (tfp == NULL)
 	    {
 		debug(DEBUG_APPERROR, "CVS direct retrieval of %s failed.\n",
 			psm->file->filename);
@@ -1854,32 +1852,20 @@ static void print_fast_export(PatchSet * ps)
 		  psm->post_rev->rev,
 		  psm->file->filename, 
 		  mark+1);
+
 	    cvs_update(cvsclient_ctx,
 		       repository_path,
 		       psm->file->filename,
 		       psm->post_rev->rev, 
 		       keyword_suppression,
-		       ofp);
-	    fclose(ofp);
+		       tfp);
 
-	    /* coverity[toctou] */
-	    if (stat(tf, &st) != 0)
-	    {
-		debug(DEBUG_APPERROR, "stat(2) of %s:%s copy failed.\n",
-			psm->file->filename, psm->post_rev->rev);
-		exit(1);
-	    }
+	    printf("blob\nmark :%d\ndata %zd\n", ++mark, ftell(tfp));
 
-	    printf("blob\nmark :%d\ndata %zd\n", ++mark, st.st_size);
-	    if ((cfp = fopen(tf, "r")) == NULL)
-	    {
-		debug(DEBUG_APPERROR, "blobfile open of  %s:%s failed.\n",
-		      psm->file->filename, psm->post_rev->rev);
-		exit(1);
-	    }
-	    while ((res = fread (buf, 1, sizeof (buf), cfp)) != 0)
+	    (void)fseek(tfp, 0L, SEEK_SET);
+	    while ((res = fread (buf, 1, sizeof (buf), tfp)) != 0)
 		fwrite (buf, 1, res, stdout);
-	    (void)fclose(cfp);
+	    (void)fclose(tfp);
 	    putchar('\n');
 	}
     }
@@ -1932,10 +1918,9 @@ static void print_fast_export(PatchSet * ps)
 
     if (reposurgeon)
     {
-	FILE *ofp = fopen(tf, "w");
-	FILE *cfp;
+	FILE *tfp = tmpfile();
 
-	if (ofp == NULL)
+	if (tfp == NULL)
 	{
 	    debug(DEBUG_APPERROR, "tempfile write of CVS revisions failed.\n");
 	    exit(1);
@@ -1945,26 +1930,15 @@ static void print_fast_export(PatchSet * ps)
 	    PatchSetMember * psm = list_entry(next, PatchSetMember, link);
 
 	    if (!psm->post_rev->dead)
-		fprintf(ofp,
+		fprintf(tfp,
 			"%s:%s\n", psm->file->filename, psm->post_rev->rev);
 	}
-	fclose(ofp);
 
-	/* coverity[toctou] */
-	if (stat(tf, &st) != 0)
-	{
-	    debug(DEBUG_APPERROR, "stat(2) of CVS revisuions failed.\n");
-	    exit(1);
-	}
-	printf("property cvs-revisions %ld ", st.st_size);
-	if ((cfp = fopen(tf, "r")) == NULL)
-	{
-	    debug(DEBUG_APPERROR, "tempfile read of CVS revisions failed.\n");
-	    exit(1);
-	}
-	while ((c = fgetc(cfp)) != EOF)
+	printf("property cvs-revisions %ld ", ftell(tfp));
+	(void)fseek(tfp, 0L, SEEK_SET);
+	while ((c = fgetc(tfp)) != EOF)
 	    putchar(c);
-	(void)fclose(cfp);
+	(void)fclose(tfp);
 	putchar('\n');
     }
     if (ancestor_mark)
@@ -2009,8 +1983,6 @@ static void print_fast_export(PatchSet * ps)
 	printf("reset refs/tags/%s\nfrom :%d\n\n", 
 	       fast_export_sanitize(tag->name, sanitized_tag, sizeof(sanitized_tag)), ps->mark);
     }
-
-    unlink(tf);
 }
 
 static void fast_export_finalize(void)
