@@ -3,6 +3,7 @@
 Repository head:
   The command-line argument can now be a CVS URL.
   The --summary-first option was removed to simplify the code's control flow.
+  Deprecation warning for -g, -s, -a, -f, -l, -n, -p, --root, --diff-opts, and -t.
 
 3.11 @ 2013-12-09
   Eliminate dodgy tmpnam() use.
