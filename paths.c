@@ -31,22 +31,39 @@ int init_paths(char *root_path, char *repository_path, char *strip_path)
 	/* if the repository path looks like a CVS URL, we can deduce the root */
 	if (strncmp(repository_path, "cvs://", 6) == 0) 
 	{
-	    char *delim = strrchr(repository_path, '#');
-	    if (delim == NULL)
+	    char *pound = strrchr(repository_path, '#');
+	    char *hostend = NULL;
+	    int hostlen;
+	    if (pound == NULL)
 	    {
 		debug(DEBUG_APPERROR, "no module specified in CVS URL.");
 		exit(1);
 	    }
 
-	    /* discard service prefix, but copy the trailing NUL */
+	    hostend = strchr(repository_path + 6, '/');
+	    if (pound == NULL)
+	    {
+		debug(DEBUG_APPERROR, "no path specified in CVS URL.");
+		exit(1);
+	    }
+
+	    /*
+	     * Discard service prefix, but insert ':' after the hostname,
+	     * otherwise CVS will barf.
+	     */
+	    hostlen = (hostend - repository_path - 6);
 	    (void)memmove(repository_path, 
 			  repository_path + 6, 
-			  strlen(repository_path) - 5);
-	    delim -= 6;
+			  hostlen);
+	    repository_path[hostlen++] = ':';
+	    (void)memmove(repository_path + hostlen,
+			  repository_path + hostlen + 5,
+			  strlen(repository_path + hostlen + 5) + 1);
+	    pound -= 5;
 
-	    *delim = '\0';
+	    *pound = '\0';
 	    (void)memcpy(root_path, repository_path, strlen(repository_path) + 1);
-	    (void)memmove(repository_path, delim+1, strlen(delim+1)+1);
+	    (void)memmove(repository_path, pound+1, strlen(pound+1)+1);
 	}
 
 	/* Are we in a working directory? */
