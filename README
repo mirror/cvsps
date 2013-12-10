@@ -54,6 +54,13 @@ and should run on any Unixoid OS.
 
 'make check' runs a regression-test suite.
 
+== Known Bugs ==
+
+Executable permissions on CVS files are not retrieved or reported.
+This could in theory be fixed - cvs update (mostly) does the right
+thing - but it would require figuring out how the very poorly dcumented 
+CVS protocol transmits the information.
+
 == Running ==
 
 Note: not all options are necessarily discussed here.  Please check the
@@ -155,17 +162,7 @@ patchsets with the commit message matching the regex.
 By tag.  With the -r <tag1> -r <tag2> you can limit the patchsets to
 commits after a given tag1 and, optionally, before tag2.
 
-d) viewing the changes made by a patchset.
-
-To show the 'diff' output for a given patchset, use -g.
-
-It will show you the diff of changes made by the selected commits.
-Some effort was made to ensure that the patches are valid, even in the 
-case of removing or creating files, a case in which 'cvs diff' fails.  
-The patches generated are, generally speaking, applyable in the working
-directory with the '-p1' option to the patch command.
-
-e) what is timestamp fuzz factor (-z option)?
+d) what is timestamp fuzz factor (-z option)?
 
 There's another annoying feature of CVS.  When you commit a large change,
 the timestamp on the change is created per file committed.  For example:

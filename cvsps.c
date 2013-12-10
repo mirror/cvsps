@@ -1634,7 +1634,8 @@ static void print_fast_export(PatchSet * ps)
 		       tfp);
 
 	    /*
-	     *  Depends on cvs_update turning on the execute bit when it should.
+	     *  Depends on cvs_update() using fchmod() to turn on the
+	     *  execute bit when it should.
 	     */
 	    /* coverity[toctou] */
 	    if (fstat(fileno(tfp), &st) == 0)
