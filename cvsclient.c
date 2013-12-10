@@ -142,7 +142,9 @@ CvsServerCtx * open_cvs_server(char * p_root, int compress)
 
 	if (!strstr(buff, " version") ||
 	    !strstr(buff, " rlog") ||
+#ifdef __UNUSED__
 	    !strstr(buff, " diff") ||
+#endif /* __UNUSED__ */
 	    !strstr(buff, " co"))
 	{
 	    debug(DEBUG_APPERROR, "cvsclient: cvs server too old for cvsclient");
@@ -780,6 +782,7 @@ static void ctx_to_fp(CvsServerCtx * ctx, FILE * fp)
 	fflush(fp);
 }
 
+#ifdef __UNUSED__
 void cvs_rdiff(CvsServerCtx * ctx, 
 	       const char * rep, const char * file, 
 	       const char * rev1, const char * rev2)
@@ -796,6 +799,7 @@ void cvs_rdiff(CvsServerCtx * ctx,
 
     ctx_to_fp(ctx, stdout);
 }
+#endif /* __UNUSED__ */
 
 void cvs_update(CvsServerCtx * ctx, const char * rep, const char * file, const char * rev, bool kk, FILE *fp)
 {

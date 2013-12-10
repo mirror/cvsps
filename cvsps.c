@@ -83,7 +83,6 @@ static int dubious_branches = 0;
 
 /* settable via options */
 static int timestamp_fuzz_factor = 300;
-static bool do_diff;
 static const char * restrict_author;
 static bool have_restrict_log;
 static regex_t restrict_log;
@@ -100,7 +99,6 @@ static const char * restrict_tag_start;
 static const char * restrict_tag_end;
 static int restrict_tag_ps_start;
 static int restrict_tag_ps_end = INT_MAX;
-static const char * diff_opts;
 static int compress;
 static char compress_arg[8];
 static bool regression_time;
@@ -133,7 +131,6 @@ static int compare_patch_sets_bytime(const PatchSet *, const PatchSet *);
 static bool is_revision_metadata(const char *);
 static bool patch_set_member_regex(PatchSet * ps, regex_t * reg);
 static bool patch_set_affects_branch(PatchSet *, const char *);
-static void do_cvs_diff(PatchSet *);
 static PatchSet * create_patch_set(void);
 static PatchSetRange * create_patch_set_range(void);
 static void parse_sym(CvsFile *, char *);
@@ -587,18 +584,16 @@ static int usage(const char * str1, const char * str2)
     if (str1)
 	debug(DEBUG_USAGE, "\nbad usage: %s %s\n", str1, str2);
 
-    debug(DEBUG_USAGE, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-g] [-s <range>[,<range>]]  ");
+    debug(DEBUG_USAGE, "Usage: cvsps [-h] [-x] [-u] [-z <fuzz>] [-s <range>[,<range>]]  ");
     debug(DEBUG_USAGE, "             [-a <author>] [-f <file>] [-d <date1> [-d <date2>]] ");
     debug(DEBUG_USAGE, "             [-b <branch>]  [-l <regex>] [-n] [-r <tag> [-r <tag>]] ");
     debug(DEBUG_USAGE, "             [-p <directory>] [-A 'authormap'] [-v] [-t]");
-    debug(DEBUG_USAGE, "             [--diff-opts <option string>] [--convert-ignores]");
     debug(DEBUG_USAGE, "             [--debuglvl <bitmask>] [-Z <compression>] [--root <cvsroot>]");
-    debug(DEBUG_USAGE, "             [-i] [-k] [-T] [-V] [<repository>]");
+    debug(DEBUG_USAGE, "             [--convert-ignores] [-i] [-k] [-T] [-V] [<repository>]");
     debug(DEBUG_USAGE, " ");
     debug(DEBUG_USAGE, "Where:");
     debug(DEBUG_USAGE, "  -h display this informative message");
     debug(DEBUG_USAGE, "  -z <fuzz> set the timestamp fuzz factor for identifying patch sets");
-    debug(DEBUG_USAGE, "  -g generate diffs of the selected patch sets");
     debug(DEBUG_USAGE, "  -s <patch set>[-[<patch set>]][,<patch set>...] restrict patch sets by id");
     debug(DEBUG_USAGE, "  -a <author> restrict output to patch sets created by author");
     debug(DEBUG_USAGE, "  -f <file> restrict output to patch sets involving file");
@@ -614,7 +609,6 @@ static int usage(const char * str1, const char * str2)
     debug(DEBUG_USAGE, "  -p <directory> output patch sets to individual files in <directory>");
     debug(DEBUG_USAGE, "  -v show very verbose parsing messages");
     debug(DEBUG_USAGE, "  -t show some brief memory usage statistics");
-    debug(DEBUG_USAGE, "  --diff-opts <option string> supply special set of options to diff");
     debug(DEBUG_USAGE, "  --debuglvl <bitmask> enable various debug channels.");
     debug(DEBUG_USAGE, "  -Z <compression> A value 1-9 which specifies amount of compression");
     debug(DEBUG_USAGE, "  --root <cvsroot> specify cvsroot.  overrides env. and working directory");
@@ -738,13 +732,6 @@ static int parse_args(int argc, char *argv[])
 
 	    have_restrict_file = true;
 
-	    continue;
-	}
-	
-	if (strcmp(argv[i], "-g") == 0)
-	{
-	    do_diff = true;
-	    i++;
 	    continue;
 	}
 	
@@ -931,22 +918,6 @@ static int parse_args(int argc, char *argv[])
 	    if (*end != '\0')
 		return usage("invalid value passed to --debuglvl", argv[i]);
 	    debuglvl = lvl;
-	    i++;
-	    continue;
-	}
-
-	if (strcmp(argv[i], "--diff-opts") == 0)
-	{
-	    if (++i >= argc)
-		return usage("argument to --diff-opts missing", "");
-
-	    /* allow diff_opts to be turned off by making empty string
-	     * into NULL
-	     */
-	    if (!strlen(argv[i]))
-		diff_opts = NULL;
-	    else
-		diff_opts = argv[i];
 	    i++;
 	    continue;
 	}
@@ -1438,15 +1409,11 @@ static void check_print_patch_set(PatchSet * ps)
     /*
      * When the -s option is in effect, the show_patch_set_ranges
      * list will be non-empty.
-     *
-     * In fast-export mode, the do_diff option is ignored.
      */
     if (fast_export)
 	print_fast_export(ps);
     else
 	print_patch_set(ps);
-    if (do_diff)
-	do_cvs_diff(ps);
 
     fflush(stdout);
 }
@@ -2091,114 +2058,6 @@ static bool patch_set_affects_branch(PatchSet * ps, const char * branch)
     }
 
     return false;
-}
-
-static void do_cvs_diff(PatchSet * ps)
-{
-    struct list_head * next;
-    const char * dopts;
-    char use_rep_path[PATH_MAX];
-    char esc_use_rep_path[PATH_MAX];
-
-    fflush(stdout);
-    fflush(stderr);
-
-    if (diff_opts == NULL) 
-    {
-	dopts = "-u";
-	sprintf(use_rep_path, "%s/", repository_path);
-	/* the rep_path may contain characters that the shell will barf on */
-	escape_filename(esc_use_rep_path, PATH_MAX, use_rep_path);
-    }
-    else
-    {
-	dopts = diff_opts;
-	use_rep_path[0] = 0;
-	esc_use_rep_path[0] = 0;
-    }
-
-    for all_patchset_members(next, ps)
-    {
-	PatchSetMember * psm = list_entry(next, PatchSetMember, link);
-	char esc_file[PATH_MAX];
-
-	/* the filename may contain characters that the shell will barf on */
-	escape_filename(esc_file, PATH_MAX, psm->file->filename);
-
-	/*
-	 * Check the patchset funk. We may not want to diff this
-	 * particular file
-	 */
-	if (ps->funk_factor == FNK_SHOW_SOME && psm->bad_funk)
-	{
-	    printf("Index: %s\n", psm->file->filename);
-	    printf("===================================================================\n");
-	    printf("*** Member not diffed, before start tag\n");
-	    continue;
-	}
-	else if (ps->funk_factor == FNK_HIDE_SOME && !psm->bad_funk)
-	{
-	    printf("Index: %s\n", psm->file->filename);
-	    printf("===================================================================\n");
-	    printf("*** Member not diffed, after end tag\n");
-	    continue;
-	}
-
-	/* 
-	 * When creating diffs for INITIAL or DEAD revisions, we have
-	 * to use 'cvs co' or 'cvs update' to get the file, because
-	 * cvs won't generate these diffs.  The problem is that this
-	 * must be piped to diff, and so the resulting diff doesn't
-	 * contain the filename anywhere! (diff between - and
-	 * /dev/null).  sed is used to replace the '-' with the
-	 * filename.
-	 *
-	 * It's possible for pre_rev to be a 'dead' revision. This
-	 * happens when a file is added on a branch. post_rev will be
-	 * dead dead for remove
-	 */
-	if (!psm->pre_rev || psm->pre_rev->dead || psm->post_rev->dead)
-	{
-	    bool cr;
-	    const char * rev;
-	    char cmdbuff[BUFSIZ];
-	    FILE *fp;
-
-	    if (!psm->pre_rev || psm->pre_rev->dead)
-	    {
-		cr = true;
-		rev = psm->post_rev->rev;
-	    }
-	    else
-	    {
-		cr = false;
-		rev = psm->pre_rev->rev;
-	    }
-
-	    snprintf(cmdbuff, BUFSIZ, "diff %s %s /dev/null %s | sed -e '%s s|^\\([+-][+-][+-]\\) -|\\1 %s/%s|g'",
-		     dopts, cr?"":"-", cr?"-":"", cr?"2":"1", repository_path, psm->file->filename);
-
-	    /* debug(DEBUG_TCP, "cmdbuff: %s", cmdbuff); */
-
-	    if (!(fp = popen(cmdbuff, "w")))
-	    {
-		debug(DEBUG_APPERROR, "cvsclient: popen for diff failed: %s", cmdbuff);
-		exit(1);
-	    }
-
-	    cvs_update(cvsclient_ctx, 
-		       repository_path, psm->file->filename, rev, keyword_suppression, fp);
-	    pclose(fp);
-	}
-	else
-	    cvs_diff(cvsclient_ctx, 
-		     repository_path, 
-		     psm->file->filename, 
-		     psm->pre_rev->rev, 
-		     psm->post_rev->rev,
-		     dopts);
-
-    }
 }
 
 static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str)
