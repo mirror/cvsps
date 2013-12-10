@@ -39,6 +39,8 @@ fast-export mode). The new -A option accepts an author-mapping file
 in the same format traditionally accepted by git-cvsimport, cvs2git,
 git-svn, reposurgeon, and other similar tools.
 
+The --summary-first, -g and --diff-opts options have been dropped.
+
 The old-style non-fast-export reporting mode is still supported, but
 deprecated.  In the future, it is possible that it may be dropped
 entirely.
@@ -47,10 +49,6 @@ entirely.
 
 Do 'make' and 'make install'.  This is very plain-vanilla ANSI C
 and should run on any Unixoid OS.
-
-== Dependencies ==
-
-The -g diff-generation option of cvsps depends on diff and sed at runtime.
 
 == Testing ==
 
