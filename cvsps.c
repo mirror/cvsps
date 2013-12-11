@@ -1683,6 +1683,9 @@ static void print_fast_export(PatchSet * ps)
 
     printf("commit refs/heads/%s\n", outbranch);
     printf("mark :%d\n", ++mark);
+    /* we need to be able to fake dates for regression testing */
+    if (regression_time)
+	    ps->date = mark * timestamp_fuzz_factor * 2;
     if (match != NULL)
 	printf("committer %s", match);
     else
@@ -1817,11 +1820,6 @@ static void assign_patchset_id(PatchSet * ps)
     {
 	ps_counter++;
 	ps->psid = ps_counter;
-
-	/* we need to be able to fake dates for regression testing */
-	if (regression_time)
-	    ps->date = ps->psid * timestamp_fuzz_factor * 2;
-
 	find_branch_points(ps);
     }
     else
