@@ -1,5 +1,10 @@
 			CVSps project news
 
+3.13 @ 2013-12-11
+  Terminal release of this code - the branch and tag analysis is just not
+  good enough on anything other than a linear repository. Use cvs-fast-export 
+  instead.  
+
 3.12 @ 2013-12-10
   Warning: execute permissions on CVS files are not reported! 
   The command-line argument can now be a CVS URL.
