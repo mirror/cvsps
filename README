@@ -1,5 +1,13 @@
 = cvsps README =
 
+== WARNING ==
+
+This program has been declared end-of-life. Do not use it unless you
+have no alternative, and consider its results highly suspect on any CVS
+repository with branches - that is, anything other than a straight
+linear succession of commits.  For a better alternative, see
+cvs-fast-export(1).
+
 == Overview ==
 
 CVSps is a program for collecting patchsets from a CVS repository. The

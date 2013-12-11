@@ -3,7 +3,10 @@
 
 Package: cvsps
 
-Description: Collect changesets from CVS repositories.
+Description: Collect changesets from CVS repositories (DEPRECATED).
+ Deprecation warning: this code has been end-of-lifed by its maintainer.
+ Use cvs-fast-export instead.
+ .
  This tool can be used either by humans to inspect changesets or
  as an exporter from CVS to other version control systems - it can be told
  to emit a fast-export stream to standard output.
