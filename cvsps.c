@@ -805,7 +805,8 @@ static int parse_args(int argc, char *argv[])
 	{
 	    if (++i >= argc)
 		return usage("argument to -R missing", "");
-
+	    else if (revfp != NULL)
+		return usage("revision file already opened", "");
 	    revfp = fopen(argv[i++], "w");
 	    continue;
 	}
@@ -1492,7 +1493,7 @@ static int utc_offset(const time_t *timep, const char *tz)
 {
     struct tm *tm;
     char tzbuf[BUFSIZ];
-    /* coverity[tainted_data] */
+    /* coverity[tainted_string_return_content] */
     char *oldtz = getenv("TZ");
     int seconds;
 

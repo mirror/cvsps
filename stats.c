@@ -114,16 +114,18 @@ void print_statistics(void * ps_tree)
 	    &max_branches_sym_for_file);
     }
 
-    /* Print file statistics */
-    printf("Num files: %u\nMax filename len: %u, Average filename len: %.2f\n",
-	    num_files, max_file_len, (float)total_file_len/num_files);
+    if (num_files != 0) {
+	/* Print file statistics */
+	printf("Num files: %u\nMax filename len: %u, Average filename len: %.2f\n",
+	       num_files, max_file_len, (float)total_file_len/num_files);
 
-    printf("Max revisions for file: %u, Average revisions for file: %.2f\n",
-	  max_revisions_for_file, (float)total_revisions/num_files);
-    printf("Max branches for file: %u, Average branches for file: %.2f\n",
-	  max_branches_for_file, (float)total_branches/num_files);
-    printf("Max branches_sym for file: %u, Average branches_sym for file: %.2f\n",
-	  max_branches_sym_for_file, (float)total_branches_sym/num_files);
+	printf("Max revisions for file: %u, Average revisions for file: %.2f\n",
+	       max_revisions_for_file, (float)total_revisions/num_files);
+	printf("Max branches for file: %u, Average branches for file: %.2f\n",
+	       max_branches_for_file, (float)total_branches/num_files);
+	printf("Max branches_sym for file: %u, Average branches_sym for file: %.2f\n",
+	       max_branches_sym_for_file, (float)total_branches_sym/num_files);
+    }
 
     /* Gather patchset statistics */
     twalk(ps_tree, stat_ps_tree_node);

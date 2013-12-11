@@ -56,7 +56,7 @@ tcp_create_socket(int reuse_addr)
    * for discussion.
    */
   yes = 1;
-  setsockopt (retval,         /* socket affected */
+  (void)setsockopt (retval,   /* socket affected */
               IPPROTO_TCP,    /* set option at TCP level */
               TCP_NODELAY,    /* name of option */
               (char *) &yes,  /* the cast is historical
