@@ -1,6 +1,6 @@
 			CVSps project news
 
-Repository head:
+3.12 @ 2013-12-10
   Warning: execute permissions on CVS files are not reported! 
   The command-line argument can now be a CVS URL.
   The --summary-first option was removed to simplify the code's control flow.
