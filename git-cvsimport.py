@@ -130,7 +130,7 @@ class CvsFastExport:
 
     def set_after(self, val):
         "Set a date threshold for incremental import."
-        raise Fatal("incremental import is not supported with cvs-fast-export.")
+        self.opts.extend(["-i", val])
 
     def set_revmap(self, val):
         "Set the file to which the engine should dump a reference map."
@@ -370,16 +370,12 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
         try:
             with open(timestamp_file) as f:
                 timestamp = int(f.read().strip())
-            backend.set_after(str(timestamp))
         except IOError:
-            raise Fatal("""timestamp file not found.
-
-    To set the timestamp from which to continue importing, run:
-
-        git rev-list --no-walk --format=%ct <git-cvs-branch> >'%s'
-
-    where <git-cvs-branch> is the Git branch imported from CVS which has the
-    most recent commit.""" % timestamp_file)
+            timestamp = capture_or_die(["git", "log",
+                                          "--format=%ct",
+                                          "-n 1",
+                                          "--all"])
+        backend.set_after(str(timestamp))
     else:
         # Otherwise, initialize a new Git repository.
         cmd = ["git", "init", "--quiet"]
