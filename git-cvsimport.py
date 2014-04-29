@@ -155,7 +155,7 @@ class CvsFastExport:
 
         returncode = fast_export.wait()
         if returncode != 0:
-            raise CalledProcessError(returncode, cmd)
+            raise Fatal("cvs-fast-export returned an error: %d" % returncode)
 
 
 class FileSource:
@@ -203,7 +203,7 @@ class FileSource:
         "Set the module to query."
         self.__complain("module can't be set")
 
-    def command(self, fast_import):
+    def run(self, fast_import):
         "Runs the command, piping data into the fast_import subprocess."
         subprocess.check_call(["cat", self.filename],
                               stdout=fast_import.stdin)
@@ -288,7 +288,7 @@ def main(argv):
 
     # Since a number of other options are passed to the backend, we need to
     # extract the backend option before handling the others.
-    backend_opt = [o[1] for o in options if o[0] == 'e']
+    backend_opt = [o[1] for o in options if o[0] == '-e']
     if backend_opt:
         val = backend_opt[0]
         for cls in (CvsFastExport, Cvs2Git):
