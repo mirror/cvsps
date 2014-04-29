@@ -165,7 +165,7 @@ The conversion engines try to warn you about repository histories they
 can't handle; see their individual manual pages to learn how to
 interpret the warnings you may receive.
 
-The default conversion engine is 'cvsps'.  If warnings you receive
+The default conversion engine is 'cvs-fast-export'.  If warnings you receive
 suggest that the repository translation is invalid, consider switching
 engines to 'cvs2git'.
 
