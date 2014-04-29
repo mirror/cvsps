@@ -41,82 +41,6 @@ def capture_or_die(*args, **kwargs):
     return subprocess.check_output(*args, **kwargs)
 
 
-class Cvsps:
-    "Method class for cvsps back end."
-
-    def __init__(self):
-        self.opts = []
-        self.revmap = None
-        self.min_version = (3, 0)
-        self.version_reason = None
-
-    def _require_version(self, major, minor, msg):
-        if (major, minor) > self.min_version:
-            self.min_version = (major, minor)
-            self.version_reason = msg
-
-    def set_repo(self, val):
-        "Set the repository root option."
-        if not val.startswith(":"):
-            if not val.startswith(os.sep):
-                val = os.path.abspath(val)
-            val = ":local:" + val
-        self.opts.extend(["--root", val])
-
-    def set_authormap(self, val):
-        "Set the author-map file."
-        self._require_version(3, 3, "the authormap feature")
-        self.opts.extend(["-A", val])
-
-    def set_fuzz(self, val):
-        "Set the commit-similarity window."
-        self.opts.extend(["-z", val])
-
-    def set_nokeywords(self):
-        "Suppress CVS keyword expansion."
-        self.opts.append("-k")
-
-    def add_opts(self, options):
-        "Add options to the engine command line."
-        self.opts.extend(options)
-
-    def set_exclusion(self, val):
-        "Set a file exclusion regexp."
-        self.opts.extend(["-n", "-f", val])
-
-    def set_after(self, val):
-        "Set a date threshold for incremental import."
-        # We also add the "-i" incremental flag here - this only works
-        # correctly in cvsps 3.10 and later.
-        self._require_version(3, 10, "incremental import")
-        self.opts.extend(["-d", val, "-i"])
-
-    def set_revmap(self, val):
-        "Set the file to which the engine should dump a reference map."
-        self.revmap = val
-        self._require_version(3, 3, "the revisionmap feature")
-        self.opts.extend(["-R", self.revmap])
-
-    def set_module(self, val):
-        "Set the module to query."
-        self.opts.append(val)
-
-    def run(self, fast_import):
-        "Runs the command, piping data into the fast_import subprocess."
-        # The "-V" argument was added in cvsps 3.2, so there's nothing we can
-        # check if our required version is less than that.
-        if self.min_version >= (3, 2):
-            output = capture_or_die([self.cvsps, "-V"])
-            version_str = output.strip().rpartition(' ')[2]
-            version = tuple([int(part) for part in version_str.split('.')])
-            if version < self.min_version:
-                raise Fatal("cvsps version %s is required in order to use %s, you have version %s."
-                            % ('.'.join([str(i) for i in self.min_version]),
-                               self.version_reason, version_str))
-        do_or_die([self.cvsps, "--fast-export"] + self.opts,
-                  stdout=fast_import.stdin)
-
-
 class Cvs2Git:
     "Method class for cvs2git back end."
 
@@ -223,7 +147,7 @@ class CvsFastExport:
                                        stdin=subprocess.PIPE,
                                        stdout=fast_import.stdin)
         fast_import.stdin.close()
-        for root, dirs, files in os.walk('.', onerror=lambda e: raise e):
+        for root, dirs, files in os.walk('.', onerror=Fatal):
             for name in files:
                 if name.endswith(',v'):
                     fast_export.stdin.write('%s\n' % os.path.join(root, name))
@@ -367,7 +291,7 @@ def main(argv):
     backend_opt = [o[1] for o in options if o[0] == 'e']
     if backend_opt:
         val = backend_opt[0]
-        for cls in (Cvsps, Cvs2Git):
+        for cls in (CvsFastExport, Cvs2Git):
             if cls.__name__.lower() == val:
                 backend = cls()
                 break
@@ -430,13 +354,6 @@ git cvsimport [-A <author-conv-file>] [-C <git_repository>] [-b] [-d <CVSROOT>]
             return os.path.join(outdir, fn)
         else:
             return os.path.join(outdir, ".git", fn) 
-    # Ugly fallback code for people with only cvsps-2.x
-    # Added January 2013 - should be removed after a decent interval.
-    if backend.__class__.__name__ == "cvsps":
-        try:
-            subprocess.check_output("cvsps -V 2>/dev/null", shell=True)
-        except subprocess.CalledProcessError as e:
-            raise Fatal("cvsps 2.x is unsupported.")
     # Real mainline code begins here
     outdir = os.path.abspath(outdir)
     if bare:
