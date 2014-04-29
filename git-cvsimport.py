@@ -298,7 +298,7 @@ def main(argv):
         else:
             raise Fatal("unknown engine %s." % val)
     else:
-        backend = Cvsps()
+        backend = CvsFastExport()
 
     for (opt, val) in options:
         if opt == '-v':

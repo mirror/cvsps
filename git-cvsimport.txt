@@ -169,22 +169,16 @@ The default conversion engine is 'cvsps'.  If warnings you receive
 suggest that the repository translation is invalid, consider switching
 engines to 'cvs2git'.
 
-cvsps
-~~~~~
-The default conversion engine is 'cvsps'; at least version 3.3 is
-required.  The cvsps project page is at `http://www.catb.org/~esr/cvsps`.
+cvs-fast-export
+~~~~~~~~~~~~~~~
+The default conversion engine is 'cvs-fasrt-export'; at least version 1.10 is
+required.  The cvsps project page is at `http://www.catb.org/~esr/cvs-fast-export`.
 Things to know about this engine:
 
-* As well as working from within a CVS checkout directory,
-  'cvsps' will also adapt without requiring a root or module
-  specification when run from within a module subdirectory within a CVS
-  repository directory.  When run from within the top level of a CVS
-  repository, 'cvsps' requires only a module argument.
+* Must be run from within the top level of a CVS repository module
+  directory.
 
-* The -S option will interpret exclusion regular expressions using the
-  POSIX syntax of regex(7).
-
-* 'cvsps' automatically removes characters in CVS tag and branch names
+* 'cvs-fast-export' automatically removes characters in CVS tag and branch names
   that would be illegal in git.
 
 cvs2git
